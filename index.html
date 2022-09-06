@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>运行状态 - TomyJan</title>
+  <link rel="icon" type="image/x-icon" href="https://cdn.tomys.top/common/img/favicon.ico">
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <style>
+  .footer {
+    text-align: center;
+    padding-top: 16px;
+    width: 100%;
+    height: 50px;
+  }
+  .wname {
+    font-size:16px;
+  }
+  .label-status {
+    margin-right: 5px;
+  }
+  .check>tbody>tr>td {
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+  .check th {
+    text-align: center;
+  }
+  .check .center {
+    text-align: center;
+    vertical-align: middle;
+  }
+  .check .sertitle {
+    vertical-align: middle;
+  }
+  .status-success {
+    color: #5cb85c
+  }
+  .status-warning {
+    color: #f0ad4e
+  }
+  .status-danger {
+    color: #d9534f
+  }
+  #server-container {
+    border-bottom: 1px solid #ddd;
+  }
+  .barl > td {
+    border-top: none !important;
+    padding: 0 !important;
+  }
+  .barl .progress {
+    margin:0;
+    border-radius:0;
+    height: 8px;
+    box-shadow: none;
+  }
+  .barl .progress .progress-bar {
+    box-shadow: none;
+    opacity: 0.7;
+  }
+  .barl .progress .progress-bar:hover {
+    opacity: 1;
+  }
+  .barl .progress .progress-bar-default {
+    background-color: #EFEFEF;
+  }
+  .progress .tooltip .tooltip-inner .ttime {
+    color: #A3A3A3;
+    font-size: 11px;
+  }
+  .credit {
+    font-size: 12px;
+    color: #BBB;
+  }
+  .credit a {
+    color: #999;
+  }
+  .credit .pipe {
+    padding-left: 6px;
+    padding-right: 6px;
+    color: #DDD;
+  }
+    <style type="text/css">
+        a:link {color:#000000;}      /* 未访问链接*/
+        a:visited {color:#000000;}  /* 已访问链接 */
+        a:hover {color:#00DDDD;}  /* 鼠标移动到链接上 */
+        a:active {color:#00FFFF;}  /* 鼠标点击时 */
+    </style>
+  </style>
+  
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N194P9LRRJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    
+    gtag('config', 'G-N194P9LRRJ');
+  </script>
+  
+  <!--51la统计-->
+  <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
+  <script>LA.init({id: "JidmAiOYd9mmSih3",ck: "JidmAiOYd9mmSih3"})</script>
+  
+</head>
+<body>
+  <div class="navbar navbar-default navbar-static-top" role="navigation">
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-10 col-lg-offset-1">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+              <span class="sr-only">切换导航</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="./">运行状态监测</a>
+          </div>
+          <div class="collapse navbar-collapse navbar-ex1-collapse">
+            <ul class="nav navbar-nav">
+              <li><a href="https://tomys.top">主页</a></li>
+              <li><a href="https://blog.tomys.top">博客</a></li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right">
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 col-lg-offset-1">
+        <div id="stattip-err" class="alert alert-warning hide" role="alert">
+          <b>当前状态：</b>TomyJan 的部分服务发生异常，我们将尽快修复。
+        </div>
+        <div id="stattip-ok" class="alert alert-success hide" role="alert">
+          <b>当前状态：</b>TomyJan 的所有服务正常运行中，没有发现异常。
+        </div>
+        <div id="stattip-load" class="alert alert-info" role="alert">
+          <b>当前状态：</b>正在检测运行状态，请稍候..
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover check">
+            <thead>
+              <tr id="server-title">
+              </tr>
+            </thead>
+            <tbody id="server-container"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+       
+    <div>数据约有 5 分钟 的延迟 | 页面将在 <span id="last-update"></span> 后刷新</div>
+    
+    <!--下面是运行时间统计代码-->
+    <script>
+        function secondToDate(second) {
+            if (!second) {
+                    return 0;
+                    }
+            var time = new Array(0, 0, 0, 0, 0);
+            if (second >= 365 * 24 * 3600) {
+                time[0] = parseInt(second / (365 * 24 * 3600));
+                second %= 365 * 24 * 3600;
+                }
+            if (second >= 24 * 3600) {
+                time[1] = parseInt(second / (24 * 3600));
+                second %= 24 * 3600;
+                }
+            if (second >= 3600) {
+                time[2] = parseInt(second / 3600);
+                second %= 3600;
+                }
+            if (second >= 60) {
+                time[3] = parseInt(second / 60);
+                second %= 60;
+                }
+            if (second > 0) {
+                time[4] = second;
+                }
+            return time;
+        }
+    </script>
+    <script type="text/javascript" language="javascript">
+        function setTime() {
+            //下面是建站时间，月份需要-1
+            var create_time = Math.round(new Date(Date.UTC(2020, 06, 15, 18, 0, 0)).getTime() / 1000);
+            var timestamp = Math.round((new Date().getTime() + 8 * 60 * 60 * 1000) / 1000);
+            currentTime = secondToDate((timestamp - create_time));
+            currentTimeHtml = currentTime[0] + '年' + currentTime[1] + '天'
+                    + currentTime[2] + '时' + currentTime[3] + '分'
+                    + currentTime[4] + '秒';
+            document.getElementById("htmer_time").innerHTML = currentTimeHtml;
+        }
+        setInterval(setTime, 1000);
+    </script>
+    <!--显示数据-->
+    <div><span>在风雨中度过<span id="htmer_time"></span></span>
+<!--运行时间代码结束位置-->
+<span> | <a href="https://github.com/TomyJan/UptimePage" target="_blank" style="color:black;">GitHub</a></span></div>
+
+    <p> <a href="//www.beian.miit.gov.cn/" target="_blank" style="color:black;">陇ICP备20002637号-1</a></p>
+  </div>
+  <script type="template/mustache" id="server-template">
+    <tr class="{{alert}}">
+      <td rowspan="2" class="sertitle">
+        <span class="label label-status label-{{label}}"><span class="glyphicon glyphicon-{{statusicon}}"></span> {{statustext}}</span>
+        <span class="wname">{{friendly_name}}</span>
+      </td>
+      {{#charts}}
+      <td class="center">
+      <span class="status-{{uptype}} set-tooltip" data-toggle="tooltip" data-placement="top" title="{{uptimetext}}"><span class="glyphicon glyphicon-{{upsign}}"></span></span>
+      </td>
+      {{/charts}}
+    </tr>
+    <tr class="{{alert}} barl">
+      <td colspan="8" class="barls">
+        <div class="progress">
+        {{#progress}}
+          <div class="progress-bar progress-bar-{{types}} set-tooltip" style="width: {{len}}%" data-toggle="tooltip" data-placement="top" title="{{stattip}}"></div>
+        {{/progress}}
+       </div>
+      </td>
+    </tr>
+  </script>
+  <script src="js/jquery-1.12.4.min.js" type="text/javascript"></script>
+  <script src="js/bootstrap.min.js" type="text/javascript"></script>
+  <script src="js/mustache.min.js" type="text/javascript"></script>
+  <script src="js/config.js" type="text/javascript"></script>
+  <script src="js/cup.js" type="text/javascript"></script>
+  <script type="text/javascript">
+    jQuery(document).ready(myApp.dashboard.init);
+  </script>
+
+</body>
+</html>
