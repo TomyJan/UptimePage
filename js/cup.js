@@ -1,5 +1,5 @@
 window.myApp = window.myApp || {};
-myApp.dashboard = (function($) {
+myApp.dashboard = (function ($) {
   var _template = "";
   var _loaded = 0;
   var _intervalId = 0;
@@ -67,7 +67,7 @@ myApp.dashboard = (function($) {
       url: 'https://api.uptimerobot.com/v2/getMonitors',
       data: 'api_key=' + apikey + '&custom_uptime_ranges=' + _uptimeRanges + '&format=json&logs=1&logs_limit=100',
       dataType: 'json',
-      success: function(str) {
+      success: function (str) {
         var htmls = [];
         for (var i in str.monitors) {
           htmls.push(buildServerHTML(str.monitors[i]));
@@ -140,8 +140,8 @@ myApp.dashboard = (function($) {
       });
     } else {
       var starttime = barstarttime,
-          endtime = barendtime,
-          starttype, endtype;
+        endtime = barendtime,
+        starttype, endtype;
       for (var r = 0; r < data.logs.length; r++) {
         starttime = data.logs[r].datetime * 1000;
         if (starttime < barstarttime) {
@@ -177,16 +177,16 @@ myApp.dashboard = (function($) {
       }
       if (starttime > barstarttime) {
         switch (parseInt(endtype, 10)) {
-        case 1:
-          starttype = 2;
-          //grey
-          break;
-        case 2:
-          starttype = 1;
-          //green
-          break;
-        default:
-          starttype = 0;
+          case 1:
+            starttype = 2;
+            //grey
+            break;
+          case 2:
+            starttype = 1;
+            //green
+            break;
+          default:
+            starttype = 0;
           //grey
         }
         if (bar.length > 0 && bar[bar.length - 1].typeid == endtype) {
@@ -306,30 +306,30 @@ myApp.dashboard = (function($) {
   /* give the icon in front of log line a nice color */
   function getLogType() {
     switch (parseInt(this.typeid, 10)) {
-    case 1:
-      return "danger";
-    case 2:
-      return "success";
-    case 99:
-      return "default";
-    case 98:
-      return "default";
-    default:
-      return "default";
+      case 1:
+        return "danger";
+      case 2:
+        return "success";
+      case 99:
+        return "default";
+      case 98:
+        return "default";
+      default:
+        return "default";
     }
   }
   function Type2Word(t, icon) {
     switch (t) {
-    case 1:
-      return (icon ? "<span class=\"fa-solid fa-circle-xmark\"></span> " : "") + "故障";
-    case 2:
-      return (icon ? "<span class=\"fa-solid fa-circle-check\"></span> " : "") + "正常";
+      case 1:
+        return (icon ? "<span class=\"fa-solid fa-circle-xmark\"></span> " : "") + "故障";
+      case 2:
+        return (icon ? "<span class=\"fa-solid fa-circle-check\"></span> " : "") + "正常";
       //case 99:
       //  return "未知";
       //case 98:
       //  return "未知";
-    default:
-      return (icon ? "<span class=\"fa-sold fa-circle-question\"></span> " : "") + "未知";
+      default:
+        return (icon ? "<span class=\"fa-sold fa-circle-question\"></span> " : "") + "未知";
     }
   }
   function num2string(num) {
