@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>运行状态 - TomyJan</title>
-  <link rel="icon" type="image/x-icon" href="https://cdn.tomys.top/common/img/favicon.ico">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link href="css/bootstrap.min.css" rel="stylesheet">
   <style>
   .footer {
@@ -81,12 +81,10 @@
     padding-right: 6px;
     color: #DDD;
   }
-    <style type="text/css">
-        a:link {color:#000000;}      /* 未访问链接*/
-        a:visited {color:#000000;}  /* 已访问链接 */
-        a:hover {color:#00DDDD;}  /* 鼠标移动到链接上 */
-        a:active {color:#00FFFF;}  /* 鼠标点击时 */
-    </style>
+  a:link {color:#000000;}      /* 未访问链接*/
+  a:visited {color:#000000;}  /* 已访问链接 */
+  a:hover {color:#00DDDD;}  /* 鼠标移动到链接上 */
+  a:active {color:#00FFFF;}  /* 鼠标点击时 */
   </style>
   
   <!-- Global site tag (gtag.js) - Google Analytics -->
@@ -98,11 +96,6 @@
     
     gtag('config', 'G-N194P9LRRJ');
   </script>
-  
-  <!--51la统计-->
-  <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
-  <script>LA.init({id: "JidmAiOYd9mmSih3",ck: "JidmAiOYd9mmSih3"})</script>
-  
 </head>
 <body>
   <div class="navbar navbar-default navbar-static-top" role="navigation">
@@ -120,7 +113,7 @@
           </div>
           <div class="collapse navbar-collapse navbar-ex1-collapse">
             <ul class="nav navbar-nav">
-              <li><a href="https://tomys.top">主页</a></li>
+              <li><a href="https://www.tomys.top">主页</a></li>
               <li><a href="https://blog.tomys.top">博客</a></li>
             </ul>
             <ul class="nav navbar-nav navbar-right">
@@ -157,52 +150,69 @@
   <div class="footer">
        
     <div>数据约有 5 分钟 的延迟 | 页面将在 <span id="last-update"></span> 后刷新</div>
-    
+    <div>
     <!--下面是运行时间统计代码-->
     <script>
-        function secondToDate(second) {
-            if (!second) {
-                    return 0;
-                    }
-            var time = new Array(0, 0, 0, 0, 0);
-            if (second >= 365 * 24 * 3600) {
-                time[0] = parseInt(second / (365 * 24 * 3600));
-                second %= 365 * 24 * 3600;
-                }
-            if (second >= 24 * 3600) {
-                time[1] = parseInt(second / (24 * 3600));
-                second %= 24 * 3600;
-                }
-            if (second >= 3600) {
-                time[2] = parseInt(second / 3600);
-                second %= 3600;
-                }
-            if (second >= 60) {
-                time[3] = parseInt(second / 60);
-                second %= 60;
-                }
-            if (second > 0) {
-                time[4] = second;
-                }
-            return time;
+      function secondToDate(second) {
+        if (!second) {
+          return 0;
         }
+        var time = new Array(0, 0, 0, 0, 0);
+        if (second >= 365 * 24 * 3600) {
+          time[0] = parseInt(second / (365 * 24 * 3600));
+          second %= 365 * 24 * 3600;
+        }
+        if (second >= 24 * 3600) {
+          time[1] = parseInt(second / (24 * 3600));
+          second %= 24 * 3600;
+        }
+        if (second >= 3600) {
+          time[2] = parseInt(second / 3600);
+          second %= 3600;
+        }
+        if (second >= 60) {
+          time[3] = parseInt(second / 60);
+          second %= 60;
+        }
+        if (second > 0) {
+          time[4] = second;
+        }
+        return time;
+      }
     </script>
     <script type="text/javascript" language="javascript">
-        function setTime() {
-            //下面是建站时间，月份需要-1
-            var create_time = Math.round(new Date(Date.UTC(2020, 06, 15, 18, 0, 0)).getTime() / 1000);
-            var timestamp = Math.round((new Date().getTime() + 8 * 60 * 60 * 1000) / 1000);
-            currentTime = secondToDate((timestamp - create_time));
-            currentTimeHtml = currentTime[0] + '年' + currentTime[1] + '天'
-                    + currentTime[2] + '时' + currentTime[3] + '分'
-                    + currentTime[4] + '秒';
-            document.getElementById("htmer_time").innerHTML = currentTimeHtml;
+      function setTime(createTimestamp) {
+        // 获取当前时间戳（十位），并加上8小时的偏移量
+        let currentTimestamp = Math.floor(Date.now() / 1000) + 8 * 60 * 60;
+
+        // 计算时间差（秒）
+        let elapsed = currentTimestamp - createTimestamp;
+
+        // 转换为年、天、时、分、秒
+        let years = Math.floor(elapsed / (365 * 24 * 60 * 60));
+        elapsed %= (365 * 24 * 60 * 60);
+        let days = Math.floor(elapsed / (24 * 60 * 60));
+        elapsed %= (24 * 60 * 60);
+        let hours = Math.floor(elapsed / (60 * 60));
+        elapsed %= (60 * 60);
+        let minutes = Math.floor(elapsed / 60);
+        let seconds = elapsed % 60;
+
+        // 更新页面内容
+        let element = document.getElementById("htmer_time");
+        if (element) {
+          element.innerHTML = `${years}年${days}天${hours}时${minutes}分${seconds}秒`;
         }
-        setInterval(setTime, 1000);
+      }
+
+      // 设置初始建站时间戳（十位时间戳：2020-07-15 18:00:00 UTC）
+      let create_time = 1594836000;
+
+      // 每秒更新
+      setInterval(() => setTime(create_time), 1000);
     </script>
-    <!--显示数据-->
-    <div><span>在风雨中度过<span id="htmer_time"></span></span>
-<!--运行时间代码结束位置-->
+    <span>在风雨中度过<span id="htmer_time">...</span></span>
+    <!--运行时间代码结束位置-->
 <span> | <a href="https://github.com/TomyJan/UptimePage" target="_blank" style="color:black;">GitHub</a></span></div>
 
     <p> <a href="//www.beian.miit.gov.cn/" target="_blank" style="color:black;">陇ICP备20002637号-1</a></p>
