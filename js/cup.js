@@ -42,6 +42,7 @@ myApp.dashboard = (function ($) {
     }
     _intervalId = setInterval(countdown, 1000);
   }
+
   function getUptimeRanges() {
     var now = +new Date();
     var midnight = +(new Date).setHours(0, 0, 0, 0);
@@ -60,6 +61,7 @@ myApp.dashboard = (function ($) {
     r.push(midnight + '_' + now);
     return { ranges: r.join('-'), secondsToday: now - midnight };
   }
+
   /* load uptime variables from UptimeRobot
   */
   function getUptime(apiKey, id) {
@@ -74,6 +76,14 @@ myApp.dashboard = (function ($) {
         }
         showQueue[id] = { id: id, ctxs: ctxs, shown: false };
         updatePage();
+      },
+      error: function (xhr) {
+        if (xhr.status === 429) {
+          $('#stattip-err-429').removeClass('d-none');
+          $('#stattip-err').addClass('d-none');
+          $('#stattip-ok').addClass('d-none');
+          $('#stattip-load').addClass('d-none');
+        }
       }
     });
   }
@@ -280,15 +290,17 @@ myApp.dashboard = (function ($) {
         html: true
       });
       $('#stattip-load').addClass('d-none');
+      $('#stattip-err-429').addClass('d-none');
+      $('#stattip-err').addClass('d-none');
+      $('#stattip-ok').addClass('d-none');
       if (_hasError) {
         $('#stattip-err').removeClass('d-none');
-        $('#stattip-ok').addClass('d-none');
       } else {
         $('#stattip-ok').removeClass('d-none');
-        $('#stattip-err').addClass('d-none');
       }
     }
   }
+
   /* count down till next refresh */
   function countdown() {
     var now = Date.now();
@@ -303,6 +315,7 @@ myApp.dashboard = (function ($) {
       $_lastUpdate.html(mins + ':' + secs);
     }
   }
+
   /* give the icon in front of log line a nice color */
   function getLogType() {
     switch (parseInt(this.typeid, 10)) {
@@ -318,6 +331,7 @@ myApp.dashboard = (function ($) {
         return "default";
     }
   }
+
   function Type2Word(t, icon) {
     switch (t) {
       case 1:
@@ -332,11 +346,13 @@ myApp.dashboard = (function ($) {
         return (icon ? "<span class=\"fa-sold fa-circle-question\"></span> " : "") + "未知";
     }
   }
+
   function num2string(num) {
     tmpDate = new Date(parseInt(num));
     dateStr = (tmpDate.getMonth() + 1) + "-" + tmpDate.getDate() + " " + tmpDate.getHours() + ":" + (tmpDate.getMinutes() < 10 ? "0" + tmpDate.getMinutes() : tmpDate.getMinutes());
     return dateStr;
   }
+
   function getUptimeColor() {
     var upt = this.uptime;
     if (upt >= 99.99) {
@@ -347,6 +363,7 @@ myApp.dashboard = (function ($) {
       return "danger";
     }
   }
+
   function getUptimeSign() {
     var upt = this.uptime;
     if (upt >= 99.99) {
@@ -357,6 +374,7 @@ myApp.dashboard = (function ($) {
       return "fa-circle-xmark";
     }
   }
+
   return {
     init: init
   };
