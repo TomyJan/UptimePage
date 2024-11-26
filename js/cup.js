@@ -84,30 +84,30 @@ myApp.dashboard = (function($) {
     switch (parseInt(data.status, 10)) {
       case 0:
         data.statustext = "未知";
-        data.statusicon = "question-sign";
+        data.statusicon = "fa-question";
         data.label = "default";
         break;
       case 1:
         data.statustext = "未知";
-        data.statusicon = "question-sign";
+        data.statusicon = "fa-question";
         data.label = "default";
         break;
       case 2:
         data.statustext = "正常";
-        data.statusicon = "ok";
+        data.statusicon = "fa-check";
         data.label = "success";
         data.alert = "";
         break;
       case 8:
         data.statustext = "异常";
-        data.statusicon = "exclamation-sign";
+        data.statusicon = "fa-exclamation";
         data.label = "warning";
         data.alert = "warning";
         _hasError = true;
         break;
       case 9:
         data.statustext = "故障";
-        data.statusicon = "remove";
+        data.statusicon = "fa-xmark";
         data.label = "danger";
         data.alert = "danger";
         _hasError = true;
@@ -279,13 +279,13 @@ myApp.dashboard = (function($) {
       $('.set-tooltip').tooltip({
         html: true
       });
-      $('#stattip-load').addClass('hide');
+      $('#stattip-load').addClass('d-none');
       if (_hasError) {
-        $('#stattip-err').removeClass('hide');
-        $('#stattip-ok').addClass('hide');
+        $('#stattip-err').removeClass('d-none');
+        $('#stattip-ok').addClass('d-none');
       } else {
-        $('#stattip-ok').removeClass('hide');
-        $('#stattip-err').addClass('hide');
+        $('#stattip-ok').removeClass('d-none');
+        $('#stattip-err').addClass('d-none');
       }
     }
   }
@@ -321,15 +321,15 @@ myApp.dashboard = (function($) {
   function Type2Word(t, icon) {
     switch (t) {
     case 1:
-      return (icon ? "<span class=\"glyphicon glyphicon-remove-sign\"></span> " : "") + "故障";
+      return (icon ? "<span class=\"fa-solid fa-circle-xmark\"></span> " : "") + "故障";
     case 2:
-      return (icon ? "<span class=\"glyphicon glyphicon-ok-sign\"></span> " : "") + "正常";
+      return (icon ? "<span class=\"fa-solid fa-circle-check\"></span> " : "") + "正常";
       //case 99:
       //  return "未知";
       //case 98:
       //  return "未知";
     default:
-      return (icon ? "<span class=\"glyphicon glyphicon-question-sign\"></span> " : "") + "未知";
+      return (icon ? "<span class=\"fa-sold fa-circle-question\"></span> " : "") + "未知";
     }
   }
   function num2string(num) {
@@ -350,11 +350,11 @@ myApp.dashboard = (function($) {
   function getUptimeSign() {
     var upt = this.uptime;
     if (upt >= 99.99) {
-      return "ok-sign";
+      return "fa-check-circle";
     } else if (upt >= 98.00) {
-      return "exclamation-sign";
+      return "fa-circle-exclamation";
     } else {
-      return "remove-sign";
+      return "fa-circle-xmark";
     }
   }
   return {
