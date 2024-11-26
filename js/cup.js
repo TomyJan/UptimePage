@@ -9,25 +9,25 @@ myApp.dashboard = (function ($) {
   var _secondsToday = 0;
   var $_container = {};
   var $_lastUpdate = {};
-  var $_servertitle = {};
+  var $_serverTitle = {};
   var showQueue = [];
-  var tmpdate;
-  var datestr = "";
+  var tmpDate;
+  var dateStr = "";
   var _hasError = false;
 
   function init() {
     _start = Date.now();
     _template = $('#server-template').html();
     $_container = $('#server-container').html('');
-    $_servertitle = $('#server-title').html('');
+    $_serverTitle = $('#server-title').html('');
     $_lastUpdate = $('#last-update');
 
-    $_servertitle.append("<th style=\"width:21%\"></th>");
-    $_servertitle.append("<th style=\"width:9%\">近30日</th>");
+    $_serverTitle.append("<th style=\"width:21%\"></th>");
+    $_serverTitle.append("<th style=\"width:9%\">近30日</th>");
     for (var d = 6; d >= 0; d--) {
-      tmpdate = new Date(+ new Date() - 86400000 * d);
-      datestr = (tmpdate.getMonth() + 1) + "-" + tmpdate.getDate();
-      $_servertitle.append("<th style=\"width:10%\">" + datestr + "</th>");
+      tmpDate = new Date(+ new Date() - 86400000 * d);
+      dateStr = (tmpDate.getMonth() + 1) + "-" + tmpDate.getDate();
+      $_serverTitle.append("<th style=\"width:10%\">" + dateStr + "</th>");
     }
     var ranges = getUptimeRanges();
     _uptimeRanges = ranges.ranges;
@@ -60,19 +60,19 @@ myApp.dashboard = (function ($) {
     r.push(midnight + '_' + now);
     return { ranges: r.join('-'), secondsToday: now - midnight };
   }
-  /* load uptime variables from uptimerobot
+  /* load uptime variables from UptimeRobot
   */
-  function getUptime(apikey, id) {
+  function getUptime(apiKey, id) {
     $.post({
       url: 'https://api.uptimerobot.com/v2/getMonitors',
-      data: 'api_key=' + apikey + '&custom_uptime_ranges=' + _uptimeRanges + '&format=json&logs=1&logs_limit=100',
+      data: 'api_key=' + apiKey + '&custom_uptime_ranges=' + _uptimeRanges + '&format=json&logs=1&logs_limit=100',
       dataType: 'json',
       success: function (str) {
-        var htmls = [];
+        var ctxs = [];
         for (var i in str.monitors) {
-          htmls.push(buildServerHTML(str.monitors[i]));
+          ctxs.push(buildServerHTML(str.monitors[i]));
         }
-        showQueue[id] = { id: id, htmls: htmls, shown: false };
+        showQueue[id] = { id: id, ctxs: ctxs, shown: false };
         updatePage();
       }
     });
@@ -83,31 +83,31 @@ myApp.dashboard = (function ($) {
     data.alert = "";
     switch (parseInt(data.status, 10)) {
       case 0:
-        data.statustext = "未知";
-        data.statusicon = "fa-question";
+        data.statusText = "未知";
+        data.statusIcon = "fa-question";
         data.label = "default";
         break;
       case 1:
-        data.statustext = "未知";
-        data.statusicon = "fa-question";
+        data.statusText = "未知";
+        data.statusIcon = "fa-question";
         data.label = "default";
         break;
       case 2:
-        data.statustext = "正常";
-        data.statusicon = "fa-check";
+        data.statusText = "正常";
+        data.statusIcon = "fa-check";
         data.label = "success";
         data.alert = "";
         break;
       case 8:
-        data.statustext = "异常";
-        data.statusicon = "fa-exclamation";
+        data.statusText = "异常";
+        data.statusIcon = "fa-exclamation";
         data.label = "warning";
         data.alert = "warning";
         _hasError = true;
         break;
       case 9:
-        data.statustext = "故障";
-        data.statusicon = "fa-xmark";
+        data.statusText = "故障";
+        data.statusIcon = "fa-xmark";
         data.label = "danger";
         data.alert = "danger";
         _hasError = true;
@@ -115,10 +115,10 @@ myApp.dashboard = (function ($) {
     }
 
     //make sure log is set
-    var barstarttime, barendtime, period, bar = [], remainlen = 1;
+    var barStartTime, barEndTime, period, bar = [], remainLen = 1;
     period = 86400000; // 24 hrs
-    barendtime = + new Date()
-    barstarttime = barendtime - period;
+    barEndTime = + new Date()
+    barStartTime = barEndTime - period;
     if (!data.logs.length) {
       var typeid;
       switch (parseInt(data.status, 10)) {
@@ -135,68 +135,68 @@ myApp.dashboard = (function ($) {
       bar.push({
         typeid: typeid,
         len: 1,
-        left: barstarttime,
-        right: barendtime
+        left: barStartTime,
+        right: barEndTime
       });
     } else {
-      var starttime = barstarttime,
-        endtime = barendtime,
-        starttype, endtype;
+      var starttime = barStartTime,
+        endtime = barEndTime,
+        startType, endType;
       for (var r = 0; r < data.logs.length; r++) {
         starttime = data.logs[r].datetime * 1000;
-        if (starttime < barstarttime) {
-          starttime = barstarttime;
+        if (starttime < barStartTime) {
+          starttime = barStartTime;
         }
-        endtype = data.logs[r].type;
-        switch (parseInt(endtype, 10)) {
+        endType = data.logs[r].type;
+        switch (parseInt(endType, 10)) {
           case 1:
-            endtype = 1; //grey
+            endType = 1; //grey
             break;
           case 2:
-            endtype = 2; //green
+            endType = 2; //green
             break;
           default:
-            endtype = 0; //grey
+            endType = 0; //grey
         }
-        remainlen = remainlen - (endtime - starttime) / period;
-        if (bar.length > 0 && bar[bar.length - 1].typeid == endtype) {
+        remainLen = remainLen - (endtime - starttime) / period;
+        if (bar.length > 0 && bar[bar.length - 1].typeid == endType) {
           bar[bar.length - 1].len += (endtime - starttime) / period;
           bar[bar.length - 1].left = starttime;
         } else {
           bar.push({
-            typeid: endtype,
+            typeid: endType,
             len: (endtime - starttime) / period,
             left: starttime,
             right: endtime
           });
         }
         endtime = starttime;
-        if (starttime <= barstarttime) {
+        if (starttime <= barStartTime) {
           break;
         }
       }
-      if (starttime > barstarttime) {
-        switch (parseInt(endtype, 10)) {
+      if (starttime > barStartTime) {
+        switch (parseInt(endType, 10)) {
           case 1:
-            starttype = 2;
+            startType = 2;
             //grey
             break;
           case 2:
-            starttype = 1;
+            startType = 1;
             //green
             break;
           default:
-            starttype = 0;
+            startType = 0;
           //grey
         }
-        if (bar.length > 0 && bar[bar.length - 1].typeid == endtype) {
-          bar[bar.length - 1].len += remainlen;
-          bar[bar.length - 1].left = barstarttime;
+        if (bar.length > 0 && bar[bar.length - 1].typeid == endType) {
+          bar[bar.length - 1].len += remainLen;
+          bar[bar.length - 1].left = barStartTime;
         } else {
           bar.push({
-            typeid: starttype,
-            len: remainlen,
-            start: barstarttime,
+            typeid: startType,
+            len: remainLen,
+            start: barStartTime,
             end: bar[bar.length - 1].left
           });
         }
@@ -225,7 +225,7 @@ myApp.dashboard = (function ($) {
     }
     // gather data for the graphs
     var uptimes = data.custom_uptime_ranges.split("-");
-    var uptimetext = [], hours, minutes;
+    var upTimeText = [], hours, minutes;
     for (a = 0; a < uptimes.length; a++) {
       if (a === 0) { // last 30 days
         minutes = (100 - uptimes[a]) / 100 * 1440 * 30;
@@ -236,23 +236,23 @@ myApp.dashboard = (function ($) {
       }
       hours = minutes / 60;
       if (uptimes[a] >= 99.99) {
-        uptimetext[a] = "可用率 100%";
+        upTimeText[a] = "可用率 100%";
       } else if (minutes < 60) {
-        uptimetext[a] = "可用率 " + new Number(uptimes[a]).toFixed(2) + "%<br>故障 " + new Number(minutes).toFixed(0) + " 分钟";
+        upTimeText[a] = "可用率 " + new Number(uptimes[a]).toFixed(2) + "%<br>故障 " + new Number(minutes).toFixed(0) + " 分钟";
       } else {
-        uptimetext[a] = "可用率 " + new Number(uptimes[a]).toFixed(2) + "%<br>故障 " + new Number(hours).toFixed(1) + " 小时";
+        upTimeText[a] = "可用率 " + new Number(uptimes[a]).toFixed(2) + "%<br>故障 " + new Number(hours).toFixed(1) + " 小时";
       }
     }
-    //uptimes.push(data.alltimeuptimeratio);
+    //uptimes.push(data.allTimeUptimeRatio);
     data.charts = [
-      { uptime: uptimes[0], uptimetext: uptimetext[0], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[1], uptimetext: uptimetext[1], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[2], uptimetext: uptimetext[2], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[3], uptimetext: uptimetext[3], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[4], uptimetext: uptimetext[4], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[5], uptimetext: uptimetext[5], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[6], uptimetext: uptimetext[6], uptype: getUptimeColor, upsign: getUptimeSign },
-      { uptime: uptimes[7], uptimetext: uptimetext[7], uptype: getUptimeColor, upsign: getUptimeSign }
+      { uptime: uptimes[0], upTimeText: upTimeText[0], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[1], upTimeText: upTimeText[1], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[2], upTimeText: upTimeText[2], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[3], upTimeText: upTimeText[3], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[4], upTimeText: upTimeText[4], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[5], upTimeText: upTimeText[5], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[6], upTimeText: upTimeText[6], upType: getUptimeColor, upSign: getUptimeSign },
+      { uptime: uptimes[7], upTimeText: upTimeText[7], upType: getUptimeColor, upSign: getUptimeSign }
     ];
     var $output = $(Mustache.render(_template, data));
     return $output;
@@ -267,8 +267,8 @@ myApp.dashboard = (function ($) {
       } else if (showQueue[k].shown === true) {
         continue;
       } else {
-        for (var i in showQueue[k].htmls) {
-          $_container.append(showQueue[k].htmls[i]);
+        for (var i in showQueue[k].ctxs) {
+          $_container.append(showQueue[k].ctxs[i]);
         }
         showQueue[k].shown = true;
         _loaded++;
@@ -333,9 +333,9 @@ myApp.dashboard = (function ($) {
     }
   }
   function num2string(num) {
-    tmpdate = new Date(parseInt(num));
-    datestr = (tmpdate.getMonth() + 1) + "-" + tmpdate.getDate() + " " + tmpdate.getHours() + ":" + (tmpdate.getMinutes() < 10 ? "0" + tmpdate.getMinutes() : tmpdate.getMinutes());
-    return datestr;
+    tmpDate = new Date(parseInt(num));
+    dateStr = (tmpDate.getMonth() + 1) + "-" + tmpDate.getDate() + " " + tmpDate.getHours() + ":" + (tmpDate.getMinutes() < 10 ? "0" + tmpDate.getMinutes() : tmpDate.getMinutes());
+    return dateStr;
   }
   function getUptimeColor() {
     var upt = this.uptime;
