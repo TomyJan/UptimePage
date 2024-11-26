@@ -15,6 +15,11 @@
       font-family: MiSans;
     }
 
+    body {
+      background-color: #FFFFFF;
+      color: #000000;
+    }
+
     .footer {
       text-align: center;
       padding-top: 16px;
@@ -129,6 +134,91 @@
 
     a:active {
       color: #00FFFF;
+    }
+
+    /* 媒体查询应用深色模式样式 */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #121212;
+        color: #E1E1E1;
+      }
+
+      .navbar-light {
+        background-color: #2A2A2A !important;
+      }
+
+      .navbar-light .navbar-brand,
+      .navbar-light .nav-link {
+        color: #E1E1E1 !important;
+        /* 导航链接颜色 */
+      }
+
+      .alert-success {
+        background-color: #0b3a24;
+      }
+
+      .alert-info {
+        background-color: #0a2244;
+      }
+
+      .alert-warning {
+        background-color: #442a0a;
+      }
+
+      a,
+      a:link,
+      a:visited {
+        color: #BBBBBB !important;
+      }
+
+      a:hover {
+        color: #1DA1F2;
+      }
+
+      a:active {
+        color: #1DC2F2;
+      }
+
+      .table-hover tbody tr:hover {
+        background-color: #323232;
+      }
+
+      .table {
+        border-color: #444;
+        /* 表格边框颜色 */
+      }
+
+      .table th,
+      .table td,
+      .table td .wname {
+        background-color: #333;
+        /* 表头背景颜色 */
+        color: #FFF;
+        /* 表头文字颜色 */
+      }
+
+      .alert {
+        color: #FFFFFF;
+      }
+
+      .footer {
+        color: #BBBBBB;
+      }
+
+      .progress-bar-default {
+        background-color: #333;
+      }
+
+      .navbar-toggler {
+        filter: invert(100%);
+      }
+
+      .badge-status {
+        background-color: #555;
+        /* 状态徽章背景颜色 */
+        color: #E1E1E1;
+        /* 状态徽章文字颜色 */
+      }
     }
   </style>
   <script defer src="https://umami.amoe.cc/script.js" data-website-id="b2791028-0435-4add-bdfa-244ba1e93902"></script>
