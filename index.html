@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-cn">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,96 +8,133 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link href="css/bootstrap.min.css" rel="stylesheet">
   <style>
-  .footer {
-    text-align: center;
-    padding-top: 16px;
-    width: 100%;
-    height: 50px;
-  }
-  .wname {
-    font-size:16px;
-  }
-  .label-status {
-    margin-right: 5px;
-  }
-  .check>tbody>tr>td {
-    padding-top: 11px;
-    padding-bottom: 11px;
-  }
-  .check th {
-    text-align: center;
-  }
-  .check .center {
-    text-align: center;
-    vertical-align: middle;
-  }
-  .check .sertitle {
-    vertical-align: middle;
-  }
-  .status-success {
-    color: #5cb85c
-  }
-  .status-warning {
-    color: #f0ad4e
-  }
-  .status-danger {
-    color: #d9534f
-  }
-  #server-container {
-    border-bottom: 1px solid #ddd;
-  }
-  .barl > td {
-    border-top: none !important;
-    padding: 0 !important;
-  }
-  .barl .progress {
-    margin:0;
-    border-radius:0;
-    height: 8px;
-    box-shadow: none;
-  }
-  .barl .progress .progress-bar {
-    box-shadow: none;
-    opacity: 0.7;
-  }
-  .barl .progress .progress-bar:hover {
-    opacity: 1;
-  }
-  .barl .progress .progress-bar-default {
-    background-color: #EFEFEF;
-  }
-  .progress .tooltip .tooltip-inner .ttime {
-    color: #A3A3A3;
-    font-size: 11px;
-  }
-  .credit {
-    font-size: 12px;
-    color: #BBB;
-  }
-  .credit a {
-    color: #999;
-  }
-  .credit .pipe {
-    padding-left: 6px;
-    padding-right: 6px;
-    color: #DDD;
-  }
-  a:link {color:#000000;}      /* 未访问链接*/
-  a:visited {color:#000000;}  /* 已访问链接 */
-  a:hover {color:#00DDDD;}  /* 鼠标移动到链接上 */
-  a:active {color:#00FFFF;}  /* 鼠标点击时 */
+    .footer {
+      text-align: center;
+      padding-top: 16px;
+      width: 100%;
+      height: 50px;
+    }
+
+    .wname {
+      font-size: 16px;
+    }
+
+    .label-status {
+      margin-right: 5px;
+    }
+
+    .check>tbody>tr>td {
+      padding-top: 11px;
+      padding-bottom: 11px;
+    }
+
+    .check th {
+      text-align: center;
+    }
+
+    .check .center {
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .check .sertitle {
+      vertical-align: middle;
+    }
+
+    .status-success {
+      color: #5cb85c
+    }
+
+    .status-warning {
+      color: #f0ad4e
+    }
+
+    .status-danger {
+      color: #d9534f
+    }
+
+    #server-container {
+      border-bottom: 1px solid #ddd;
+    }
+
+    .barl>td {
+      border-top: none !important;
+      padding: 0 !important;
+    }
+
+    .barl .progress {
+      margin: 0;
+      border-radius: 0;
+      height: 8px;
+      box-shadow: none;
+    }
+
+    .barl .progress .progress-bar {
+      box-shadow: none;
+      opacity: 0.7;
+    }
+
+    .barl .progress .progress-bar:hover {
+      opacity: 1;
+    }
+
+    .barl .progress .progress-bar-default {
+      background-color: #EFEFEF;
+    }
+
+    .progress .tooltip .tooltip-inner .ttime {
+      color: #A3A3A3;
+      font-size: 11px;
+    }
+
+    .credit {
+      font-size: 12px;
+      color: #BBB;
+    }
+
+    .credit a {
+      color: #999;
+    }
+
+    .credit .pipe {
+      padding-left: 6px;
+      padding-right: 6px;
+      color: #DDD;
+    }
+
+    a:link {
+      color: #000000;
+    }
+
+    /* 未访问链接*/
+    a:visited {
+      color: #000000;
+    }
+
+    /* 已访问链接 */
+    a:hover {
+      color: #00DDDD;
+    }
+
+    /* 鼠标移动到链接上 */
+    a:active {
+      color: #00FFFF;
+    }
+
+    /* 鼠标点击时 */
   </style>
-  
+
   <!-- Global site tag (gtag.js) - Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-N194P9LRRJ"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
-    
+
     gtag('config', 'G-N194P9LRRJ');
   </script>
 </head>
+
 <body>
   <div class="navbar navbar-default navbar-static-top" role="navigation">
     <div class="container">
@@ -148,72 +186,73 @@
     </div>
   </div>
   <div class="footer">
-       
+
     <div>数据约有 5 分钟 的延迟 | 页面将在 <span id="last-update"></span> 后刷新</div>
     <div>
-    <!--下面是运行时间统计代码-->
-    <script>
-      function secondToDate(second) {
-        if (!second) {
-          return 0;
+      <!--下面是运行时间统计代码-->
+      <script>
+        function secondToDate(second) {
+          if (!second) {
+            return 0;
+          }
+          var time = new Array(0, 0, 0, 0, 0);
+          if (second >= 365 * 24 * 3600) {
+            time[0] = parseInt(second / (365 * 24 * 3600));
+            second %= 365 * 24 * 3600;
+          }
+          if (second >= 24 * 3600) {
+            time[1] = parseInt(second / (24 * 3600));
+            second %= 24 * 3600;
+          }
+          if (second >= 3600) {
+            time[2] = parseInt(second / 3600);
+            second %= 3600;
+          }
+          if (second >= 60) {
+            time[3] = parseInt(second / 60);
+            second %= 60;
+          }
+          if (second > 0) {
+            time[4] = second;
+          }
+          return time;
         }
-        var time = new Array(0, 0, 0, 0, 0);
-        if (second >= 365 * 24 * 3600) {
-          time[0] = parseInt(second / (365 * 24 * 3600));
-          second %= 365 * 24 * 3600;
-        }
-        if (second >= 24 * 3600) {
-          time[1] = parseInt(second / (24 * 3600));
-          second %= 24 * 3600;
-        }
-        if (second >= 3600) {
-          time[2] = parseInt(second / 3600);
-          second %= 3600;
-        }
-        if (second >= 60) {
-          time[3] = parseInt(second / 60);
-          second %= 60;
-        }
-        if (second > 0) {
-          time[4] = second;
-        }
-        return time;
-      }
-    </script>
-    <script type="text/javascript" language="javascript">
-      function setTime(createTimestamp) {
-        // 获取当前时间戳（十位），并加上8小时的偏移量
-        let currentTimestamp = Math.floor(Date.now() / 1000) + 8 * 60 * 60;
+      </script>
+      <script type="text/javascript" language="javascript">
+        function setTime(createTimestamp) {
+          // 获取当前时间戳（十位），并加上8小时的偏移量
+          let currentTimestamp = Math.floor(Date.now() / 1000) + 8 * 60 * 60;
 
-        // 计算时间差（秒）
-        let elapsed = currentTimestamp - createTimestamp;
+          // 计算时间差（秒）
+          let elapsed = currentTimestamp - createTimestamp;
 
-        // 转换为年、天、时、分、秒
-        let years = Math.floor(elapsed / (365 * 24 * 60 * 60));
-        elapsed %= (365 * 24 * 60 * 60);
-        let days = Math.floor(elapsed / (24 * 60 * 60));
-        elapsed %= (24 * 60 * 60);
-        let hours = Math.floor(elapsed / (60 * 60));
-        elapsed %= (60 * 60);
-        let minutes = Math.floor(elapsed / 60);
-        let seconds = elapsed % 60;
+          // 转换为年、天、时、分、秒
+          let years = Math.floor(elapsed / (365 * 24 * 60 * 60));
+          elapsed %= (365 * 24 * 60 * 60);
+          let days = Math.floor(elapsed / (24 * 60 * 60));
+          elapsed %= (24 * 60 * 60);
+          let hours = Math.floor(elapsed / (60 * 60));
+          elapsed %= (60 * 60);
+          let minutes = Math.floor(elapsed / 60);
+          let seconds = elapsed % 60;
 
-        // 更新页面内容
-        let element = document.getElementById("htmer_time");
-        if (element) {
-          element.innerHTML = `${years}年${days}天${hours}时${minutes}分${seconds}秒`;
+          // 更新页面内容
+          let element = document.getElementById("htmer_time");
+          if (element) {
+            element.innerHTML = `${years}年${days}天${hours}时${minutes}分${seconds}秒`;
+          }
         }
-      }
 
-      // 设置初始建站时间戳（十位时间戳：2020-07-15 18:00:00 UTC）
-      let create_time = 1594836000;
+        // 设置初始建站时间戳（十位时间戳：2020-07-15 18:00:00 UTC）
+        let create_time = 1594836000;
 
-      // 每秒更新
-      setInterval(() => setTime(create_time), 1000);
-    </script>
-    <span>在风雨中度过<span id="htmer_time">...</span></span>
-    <!--运行时间代码结束位置-->
-<span> | <a href="https://github.com/TomyJan/UptimePage" target="_blank" style="color:black;">GitHub</a></span></div>
+        // 每秒更新
+        setInterval(() => setTime(create_time), 1000);
+      </script>
+      <span>在风雨中度过<span id="htmer_time">...</span></span>
+      <!--运行时间代码结束位置-->
+      <span> | <a href="https://github.com/TomyJan/UptimePage" target="_blank" style="color:black;">GitHub</a></span>
+    </div>
 
     <p> <a href="//www.beian.miit.gov.cn/" target="_blank" style="color:black;">陇ICP备20002637号-1</a></p>
   </div>
@@ -235,7 +274,7 @@
         {{#progress}}
           <div class="progress-bar progress-bar-{{types}} set-tooltip" style="width: {{len}}%" data-toggle="tooltip" data-placement="top" title="{{stattip}}"></div>
         {{/progress}}
-       </div>
+      </div>
       </td>
     </tr>
   </script>
@@ -249,4 +288,5 @@
   </script>
 
 </body>
+
 </html>
