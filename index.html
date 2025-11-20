@@ -5,6 +5,258 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>运行状态 - TomyJan</title>
+  <!-- 资源加载失败检测脚本 - 必须使用原生方法 -->
+  <script>
+    (function() {
+      'use strict';
+      
+      var failedResources = [];
+      var errorDisplayShown = false;
+      var cssLoadFailed = false;
+      var cssFailureHandled = false;
+      
+      function handleCSSLoadFailure() {
+        if (cssFailureHandled) return;
+        cssFailureHandled = true;
+        
+        function applyFallbackStyles() {
+          var errorDiv = document.getElementById('resource-load-error');
+          if (errorDiv) {
+            errorDiv.style.cssText = 'display:block !important;padding:12px 20px;margin-bottom:20px;background-color:#f8d7da;border:1px solid #dc3545;border-radius:4px;color:#721c24;';
+            errorDiv.innerHTML = '<b>⚠️ 加载失败：</b>重要资源加载失败，页面将无法正常显示。请检查网络连接或稍后重试。';
+          }
+          
+          var otherAlerts = ['stattip-err', 'stattip-ok', 'stattip-load', 'stattip-err-429'];
+          for (var i = 0; i < otherAlerts.length; i++) {
+            var alert = document.getElementById(otherAlerts[i]);
+            if (alert) {
+              alert.style.display = 'none';
+            }
+          }
+        }
+        
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', applyFallbackStyles);
+        } else {
+          applyFallbackStyles();
+        }
+      }
+      
+      function checkCSSLoadStatus() {
+        var bootstrapLinks = document.querySelectorAll('link[href*="bootstrap"], link[href*="Bootstrap"]');
+        
+        for (var i = 0; i < bootstrapLinks.length; i++) {
+          var link = bootstrapLinks[i];
+          setTimeout(function(l) {
+            try {
+              if (l.sheet === null && l.parentNode) {
+                cssLoadFailed = true;
+                handleCSSLoadFailure();
+              }
+            } catch (e) {
+              // 跨域限制，无法检测
+              console.error('[CSS样式表加载失败]', {
+                错误信息: e.message || 'CSS样式表加载异常',
+                建议: '请检查CSS样式表路径和网络连接'
+              });
+              if (!errorDisplayShown) {
+                showErrorDisplay();
+              }
+            }
+          }, 3000, link);
+        }
+      }
+      
+      function showErrorDisplay() {
+        if (errorDisplayShown) return;
+        errorDisplayShown = true;
+        
+        if (cssLoadFailed) {
+          handleCSSLoadFailure();
+          return;
+        }
+        
+        function tryShow() {
+          var errorDiv = document.getElementById('resource-load-error');
+          if (errorDiv) {
+            errorDiv.classList.remove('d-none');
+          } else {
+            setTimeout(tryShow, 100);
+          }
+        }
+        
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', tryShow);
+        } else {
+          tryShow();
+        }
+      }
+      
+      function getResourceTypeName(tagName, href, src) {
+        if (tagName === 'LINK') {
+          var rel = (href || '').toLowerCase();
+          if (rel.indexOf('stylesheet') !== -1 || href.indexOf('.css') !== -1) return 'CSS样式表';
+          if (rel.indexOf('font') !== -1 || href.indexOf('font') !== -1) return '字体文件';
+          return '链接资源';
+        }
+        if (tagName === 'SCRIPT') return 'JavaScript脚本';
+        if (tagName === 'IMG') return '图片';
+        if (tagName === 'IFRAME') return '内嵌框架';
+        return '未知资源';
+      }
+      
+      function recordFailedResource(element, url, errorType) {
+        var resourceInfo = {
+          url: url,
+          type: getResourceTypeName(element.tagName, element.href, element.src),
+          tagName: element.tagName,
+          timestamp: new Date().toISOString(),
+          errorType: errorType || '加载失败'
+        };
+        
+        var exists = failedResources.some(function(r) {
+          return r.url === resourceInfo.url;
+        });
+        
+        if (!exists) {
+          failedResources.push(resourceInfo);
+          
+          if (resourceInfo.type === 'CSS样式表' && (url.indexOf('bootstrap') !== -1 || url.indexOf('Bootstrap') !== -1)) {
+            cssLoadFailed = true;
+            handleCSSLoadFailure();
+          } else {
+            showErrorDisplay();
+          }
+          
+          console.error('[资源加载失败]', {
+            资源类型: resourceInfo.type,
+            资源URL: resourceInfo.url,
+            标签类型: resourceInfo.tagName,
+            失败时间: resourceInfo.timestamp,
+            错误类型: resourceInfo.errorType,
+            建议: '请检查网络连接、CDN状态或资源路径是否正确'
+          });
+        }
+      }
+      
+      window.addEventListener('error', function(event) {
+        if (event.target && event.target !== window && event.target !== document) {
+          var element = event.target;
+          var url = element.src || element.href || element.action || '';
+          
+          if (url && url.indexOf('data:') !== 0 && url.indexOf('blob:') !== 0 && url.indexOf('javascript:') !== 0) {
+            var errorMsg = '网络错误或资源不存在';
+            if (event.message) {
+              errorMsg += ' (' + event.message + ')';
+            }
+            
+            if (element.tagName === 'LINK' && (url.indexOf('bootstrap') !== -1 || url.indexOf('Bootstrap') !== -1)) {
+              cssLoadFailed = true;
+            }
+            
+            recordFailedResource(element, url, errorMsg);
+          }
+        }
+      }, true);
+      
+      document.addEventListener('error', function(event) {
+        if (event.target && event.target.tagName === 'IMG') {
+          var img = event.target;
+          if (img.src) {
+            recordFailedResource(img, img.src, '图片加载失败');
+          }
+        }
+      }, true);
+      
+      function checkResourceStatus() {
+        var links = document.querySelectorAll('link[rel="stylesheet"], link[rel*="stylesheet"]');
+        for (var i = 0; i < links.length; i++) {
+          var link = links[i];
+          if (link.href) {
+            try {
+              if (link.sheet === null && link.href.indexOf('data:') !== 0) {
+                var isBootstrap = link.href.indexOf('bootstrap') !== -1 || link.href.indexOf('Bootstrap') !== -1;
+                var delay = isBootstrap ? 3000 : 2000;
+                
+                setTimeout(function(l, isBootstrapCSS) {
+                  if (l.sheet === null && l.parentNode) {
+                    recordFailedResource(l, l.href, 'CSS样式表可能加载失败');
+                    if (isBootstrapCSS) {
+                      cssLoadFailed = true;
+                    }
+                  }
+                }, delay, link, isBootstrap);
+              }
+            } catch (e) {
+              // 跨域或其他安全限制，无法检测
+              console.error('[CSS样式表加载失败]', {
+                错误信息: e.message || 'CSS样式表加载异常',
+                建议: '请检查CSS样式表路径和网络连接'
+              });
+              if (!errorDisplayShown) {
+                showErrorDisplay();
+              }
+            }
+          }
+        }
+        
+        checkCSSLoadStatus();
+        
+        var scripts = document.querySelectorAll('script[src]');
+        for (var j = 0; j < scripts.length; j++) {
+          var script = scripts[j];
+          if (script.src && !script.hasAttribute('data-checked')) {
+            script.setAttribute('data-checked', 'true');
+            setTimeout(function(s) {
+              var checkDelay = s.hasAttribute('defer') || s.hasAttribute('async') ? 5000 : 2000;
+              setTimeout(function() {}, checkDelay);
+            }, 100, script);
+          }
+        }
+      }
+      
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function() {
+          var fontLinks = document.querySelectorAll('link[href*="font"], link[rel*="font"]');
+        }).catch(function(error) {
+          console.error('[字体加载失败]', {
+            错误信息: error.message || '字体加载异常',
+            建议: '请检查字体文件路径和网络连接'
+          });
+          
+          if (!errorDisplayShown) {
+            showErrorDisplay();
+          }
+        });
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(checkResourceStatus, 1000);
+          setTimeout(checkCSSLoadStatus, 2000);
+        });
+      } else {
+        setTimeout(checkResourceStatus, 1000);
+        setTimeout(checkCSSLoadStatus, 2000);
+      }
+      
+      window.addEventListener('load', function() {
+        setTimeout(checkResourceStatus, 500);
+        
+        if (failedResources.length > 0) {
+          console.group('%c资源加载失败总结', 'color: #dc3545; font-weight: bold; font-size: 14px;');
+          console.table(failedResources.map(function(r) {
+            return {
+              '资源类型': r.type,
+              '资源URL': r.url,
+              '失败时间': r.timestamp
+            };
+          }));
+          console.groupEnd();
+        }
+      });
+    })();
+  </script>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="https://font.sec.miui.com/font/css?family=MiSans:400,700:MiSans" />
   <link href="https://cdn.amoe.cc/lib/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -165,6 +417,10 @@
         background-color: #442a0a;
       }
 
+      .alert-danger {
+        background-color: #440a0a;
+      }
+
       a,
       a:link,
       a:visited {
@@ -254,6 +510,9 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-10 mx-auto">
+        <div id="resource-load-error" class="alert alert-danger d-none" role="alert">
+          <b>加载异常：</b>部分资源未能正常加载，页面可能显示不完整。请检查网络连接或稍后重试。
+        </div>
         <div id="stattip-err" class="alert alert-warning d-none" role="alert">
           <b>当前状态：</b>TomyJan 的部分服务发生异常，我们将尽快修复。
         </div>
