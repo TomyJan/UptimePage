@@ -14,6 +14,7 @@ export type UptimeRobotRequestOptions = {
   startDate?: number;
   endDate?: number;
   includeDetails?: boolean;
+  responseTimesAverage?: number;
 };
 
 function asPage(value: unknown): Page {
@@ -27,7 +28,9 @@ export async function fetchUptimeRobotMonitors(
   fetcher: JsonFetcher = fetch,
   options: UptimeRobotRequestOptions = {},
 ): Promise<unknown[]> {
+  if (monitorIds?.length === 0) return [];
   const result: unknown[] = [];
+  const seen = new Set<string>();
   const limit = 50;
   let offset = 0;
   let total = Number.POSITIVE_INFINITY;
@@ -37,13 +40,14 @@ export async function fetchUptimeRobotMonitors(
       format: 'json',
       offset: String(offset),
       limit: String(limit),
+      custom_uptime_ratios: '1',
     });
     if (monitorIds?.length) body.set('monitors', monitorIds.join('-'));
     if (options.includeDetails) {
       body.set('response_times', '1');
-      body.set('response_times_limit', '1000');
+      if (options.responseTimesAverage)
+        body.set('response_times_average', String(options.responseTimesAverage));
       body.set('logs', '1');
-      body.set('logs_limit', '100');
       if (options.startDate !== undefined) {
         body.set('response_times_start_date', String(options.startDate));
         body.set('logs_start_date', String(options.startDate));
@@ -64,12 +68,39 @@ export async function fetchUptimeRobotMonitors(
       throw new SourceRequestError(
         typeof page.error === 'string' ? page.error : 'UptimeRobot rejected the request',
       );
-    const monitors = Array.isArray(page.monitors) ? page.monitors : [];
+    if (!Array.isArray(page.monitors) || (page.stat !== undefined && page.stat !== 'ok'))
+      throw new SourceRequestError('Invalid UptimeRobot response');
+    const monitors = page.monitors;
+    for (const monitor of monitors) {
+      if (
+        !monitor ||
+        typeof monitor !== 'object' ||
+        !('id' in monitor) ||
+        monitor.id === null ||
+        seen.has(String(monitor.id))
+      )
+        throw new SourceRequestError('Invalid UptimeRobot pagination');
+      seen.add(String(monitor.id));
+    }
     result.push(...monitors);
-    total = Number.isFinite(Number(page.pagination?.total))
-      ? Number(page.pagination?.total)
-      : offset + monitors.length;
-    if (!monitors.length) break;
+    if (
+      page.pagination?.total !== undefined &&
+      (page.pagination.total === null ||
+        page.pagination.total === '' ||
+        !Number.isSafeInteger(Number(page.pagination.total)) ||
+        Number(page.pagination.total) < 0)
+    )
+      throw new SourceRequestError('Invalid UptimeRobot pagination');
+    total =
+      page.pagination?.total !== undefined
+        ? Number(page.pagination?.total)
+        : monitors.length < limit
+          ? offset + monitors.length
+          : Number.POSITIVE_INFINITY;
+    if (!monitors.length) {
+      if (offset < total) throw new SourceRequestError('Incomplete UptimeRobot pagination');
+      break;
+    }
     offset += monitors.length;
   }
   return result;

@@ -50,8 +50,9 @@ describe('source normalization', () => {
         friendly_name: 'Website',
         status: 9,
         type: 1,
-        monitor_interval: 300,
-        custom_uptime_ratio: '98.25-99.10',
+        interval: 300,
+        monitor_interval: 30,
+        custom_uptime_ratios: '98.25-99.10',
         average_response_time: null,
       },
       'external',
@@ -76,8 +77,8 @@ describe('source normalization', () => {
         friendly_name: 'Website',
         status: 2,
         response_times: [
-          { datetime: 1761048000, value: 250 },
-          { datetime: 1761047940, value: 200 },
+          { datetime: 1792584000, value: 250 },
+          { datetime: 1792583940, value: 200 },
         ],
       },
       'external',
@@ -85,7 +86,7 @@ describe('source normalization', () => {
       fetchedAt,
     );
     expect(monitor?.history.map((bucket) => bucket.responseMs)).toEqual([200, 250]);
-    expect(monitor?.history[0].from).toBe('2025-10-21T11:59:00.000Z');
+    expect(monitor?.history[0].from).toBe('2026-10-21T11:59:00.000Z');
   });
 
   it('rejects malformed upstream records instead of creating fake monitors', () => {

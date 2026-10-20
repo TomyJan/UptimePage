@@ -1,4 +1,9 @@
-import type { ApiErrorCode, GroupSnapshot, MonitorSummary } from '../shared/contracts.ts';
+import {
+  monitorSummarySchema,
+  type ApiErrorCode,
+  type GroupSnapshot,
+  type MonitorSummary,
+} from '../shared/contracts.ts';
 import type { SiteConfig } from '../../config/schema.ts';
 import {
   findServerGroup,
@@ -26,11 +31,24 @@ function sourceErrorCode(error: unknown): ApiErrorCode {
 
 function extractPeekapingMonitors(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
-  if (!value || typeof value !== 'object') return [];
+  if (!value || typeof value !== 'object')
+    throw new SourceRequestError('Invalid Peekaping response');
   const item = value as Record<string, unknown>;
+  if (item.success === false) throw new SourceRequestError('Peekaping rejected the request');
   if (Array.isArray(item.monitors)) return item.monitors;
-  if (item.data !== value) return extractPeekapingMonitors(item.data);
-  return [];
+  if (item.data !== undefined && item.data !== value) return extractPeekapingMonitors(item.data);
+  throw new SourceRequestError('Invalid Peekaping response');
+}
+
+async function mapLimited<T, R>(items: T[], map: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: Math.min(4, items.length) }, async () => {
+      for (let i = next++; i < items.length; i = next++) results[i] = await map(items[i]);
+    }),
+  );
+  return results;
 }
 
 function applyOverride(
@@ -77,25 +95,35 @@ export async function loadGroupSnapshot(
 
   if (group.source.type === 'peekaping') {
     const source = group.source;
-    await Promise.all(
-      group.subgroups.map(async (subgroup) => {
-        try {
-          if (!subgroup.slug) throw new Error('Missing Peekaping status-page slug');
-          const payload = await fetchPeekapingMonitors(source.baseUrl, subgroup.slug, key, fetcher);
-          const ids: string[] = [];
-          for (const raw of extractPeekapingMonitors(payload)) {
-            const monitor = normalizePeekapingMonitor(raw, group.id, [subgroup.id], fetchedAt);
-            if (!monitor) continue;
-            ids.push(monitor.id);
-            mergeMonitor(monitors, applyOverride(monitor, group));
-          }
-          subgroupIds[subgroup.id] = ids;
-        } catch (error) {
-          subgroupIds[subgroup.id] = [];
-          subgroupErrors.push({ subgroupId: subgroup.id, code: sourceErrorCode(error) });
+    const results = await mapLimited(group.subgroups, async (subgroup) => {
+      try {
+        if (!subgroup.slug) throw new Error('Missing Peekaping status-page slug');
+        const payload = await fetchPeekapingMonitors(source.baseUrl, subgroup.slug, key, fetcher);
+        const selected: MonitorSummary[] = [];
+        for (const raw of extractPeekapingMonitors(payload)) {
+          const monitor = normalizePeekapingMonitor(raw, group.id, [subgroup.id], fetchedAt);
+          if (!monitor || !monitorSummarySchema.safeParse(monitor).success)
+            throw new SourceRequestError('Invalid Peekaping monitor');
+          selected.push(applyOverride(monitor, group));
         }
-      }),
-    );
+        return { subgroup, selected, code: null, retryAt: null };
+      } catch (error) {
+        return {
+          subgroup,
+          selected: [],
+          code: sourceErrorCode(error),
+          retryAt: error instanceof SourceRequestError ? error.retryAt : null,
+        };
+      }
+    });
+    for (const { subgroup, selected, code, retryAt } of results) {
+      const rank = new Map((subgroup.order ?? []).map((id, i) => [id, i]));
+      selected.sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
+      subgroupIds[subgroup.id] = [...new Set(selected.map((m) => m.id))];
+      for (const monitor of selected) mergeMonitor(monitors, monitor);
+      if (code)
+        subgroupErrors.push({ subgroupId: subgroup.id, code, ...(retryAt ? { retryAt } : {}) });
+    }
   } else {
     const refs = configuredMonitorRefs(group);
     const refMap = new Map(refs.map((ref) => [ref.id, ref.subgroupIds]));
@@ -106,6 +134,7 @@ export async function loadGroupSnapshot(
         fetcher,
         {
           includeDetails: true,
+          responseTimesAverage: 30,
           startDate: Math.floor((now.getTime() - 86400000) / 1000),
           endDate: Math.floor(now.getTime() / 1000),
         },
@@ -115,17 +144,31 @@ export async function loadGroupSnapshot(
         const selected = refMap.get(id);
         if (!selected) continue;
         const monitor = normalizeUptimeRobotMonitor(raw, group.id, selected, fetchedAt);
-        if (monitor) mergeMonitor(monitors, applyOverride(monitor, group));
+        if (!monitor || !monitorSummarySchema.safeParse(monitor).success)
+          throw new SourceRequestError('Invalid UptimeRobot monitor');
+        mergeMonitor(monitors, applyOverride(monitor, group));
       }
       for (const subgroup of group.subgroups)
-        subgroupIds[subgroup.id] = refs
-          .filter((ref) => ref.subgroupIds.includes(subgroup.id))
-          .map((ref) => ref.id);
+        subgroupIds[subgroup.id] = [
+          ...new Set([...(subgroup.order ?? []), ...(subgroup.monitorIds ?? [])]),
+        ].filter((id) => monitors.has(id));
+      const ordered = new Map<string, MonitorSummary>();
+      for (const sub of group.subgroups)
+        for (const id of subgroupIds[sub.id]) ordered.set(id, monitors.get(id)!);
+      monitors.clear();
+      for (const [id, monitor] of ordered) monitors.set(id, monitor);
     } catch (error) {
+      monitors.clear();
       const code = sourceErrorCode(error);
       for (const subgroup of group.subgroups) {
         subgroupIds[subgroup.id] = [];
-        subgroupErrors.push({ subgroupId: subgroup.id, code });
+        subgroupErrors.push({
+          subgroupId: subgroup.id,
+          code,
+          ...(error instanceof SourceRequestError && error.retryAt
+            ? { retryAt: error.retryAt }
+            : {}),
+        });
       }
     }
   }

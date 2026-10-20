@@ -21,26 +21,28 @@ export async function requestJson(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetcher(url, { ...init, signal: controller.signal });
-    let payload: unknown = null;
-    try {
-      payload = await response.json();
-    } catch {
-      if (!response.ok)
-        throw new SourceRequestError('Source returned invalid JSON', response.status);
-      throw new SourceRequestError('Source returned invalid JSON', null);
-    }
+    const response = await fetcher(url, { ...init, redirect: 'error', signal: controller.signal });
     if (!response.ok) {
-      const retryAt = response.headers.get('retry-after');
+      const retryAfter = response.headers.get('retry-after');
+      const retryTime =
+        retryAfter && /^\d+$/.test(retryAfter)
+          ? Date.now() + Number(retryAfter) * 1000
+          : Date.parse(retryAfter ?? '');
+      const retryAt =
+        Number.isFinite(retryTime) && Math.abs(retryTime) < 8.64e15
+          ? new Date(retryTime).toISOString()
+          : null;
       throw new SourceRequestError(
         `Source request failed with HTTP ${response.status}`,
         response.status,
-        retryAt && /^\d+$/.test(retryAt)
-          ? new Date(Date.now() + Number(retryAt) * 1000).toISOString()
-          : retryAt,
+        retryAt,
       );
     }
-    return payload;
+    try {
+      return await response.json();
+    } catch {
+      throw new SourceRequestError('Source returned invalid JSON');
+    }
   } catch (error) {
     if (error instanceof SourceRequestError) throw error;
     if (controller.signal.aborted) throw new SourceRequestError('Source request timed out');

@@ -63,7 +63,9 @@ export const groupSnapshotSchema = z.object({
   subgroups: z.array(
     z.object({ id: z.string(), monitorIds: z.array(z.string()), freshness: freshnessSchema }),
   ),
-  subgroupErrors: z.array(z.object({ subgroupId: z.string(), code: apiErrorCodeSchema })),
+  subgroupErrors: z.array(
+    z.object({ subgroupId: z.string(), code: apiErrorCodeSchema, retryAt: utc.optional() }),
+  ),
 });
 const capability = z.enum(['available', 'unsupported', 'unavailable']);
 export const monitorDetailSchema = z.object({
@@ -71,6 +73,7 @@ export const monitorDetailSchema = z.object({
   fetchedAt: utc,
   configVersion: z.string(),
   range: rangeSchema,
+  retryAt: utc.nullable().optional(),
   averageResponse24h: metricSchema,
   certificateExpiresAt: utc.nullable(),
   supportedRanges: z.array(rangeSchema),

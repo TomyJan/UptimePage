@@ -35,7 +35,16 @@ const connection = z.discriminatedUnion('type', [
   z
     .object({
       type: z.literal('peekaping'),
-      baseUrl: z.url().refine((v) => new URL(v).protocol === 'https:', 'HTTPS required'),
+      baseUrl: z.url().refine((v) => {
+        try {
+          const url = new URL(v);
+          return (
+            url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash
+          );
+        } catch {
+          return false;
+        }
+      }, 'Expected an HTTPS base URL without credentials, query or fragment'),
       apiKeyEnv: z.string().regex(/^[A-Z_][A-Z0-9_]*$/),
     })
     .strict(),

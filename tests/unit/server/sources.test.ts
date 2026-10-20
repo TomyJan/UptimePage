@@ -26,7 +26,7 @@ describe('source request clients', () => {
 
   it('fetches all UptimeRobot pages and sends monitor selection in the body', async () => {
     const requests: URLSearchParams[] = [];
-    const value = await fetchUptimeRobotMonitors('ur_secret', ['a', 'b'], async (_url, init) => {
+    const value = await fetchUptimeRobotMonitors('ur_secret', ['1', '2'], async (_url, init) => {
       const body = init?.body;
       requests.push(new URLSearchParams(body as string));
       const offset = Number(new URLSearchParams(body as string).get('offset'));
@@ -41,7 +41,7 @@ describe('source request clients', () => {
     expect(value).toEqual([{ id: '1' }, { id: '2' }]);
     expect(requests.map((request) => request.get('offset'))).toEqual(['0', '1']);
     expect(requests[0].get('api_key')).toBe('ur_secret');
-    expect(requests[0].get('monitors')).toBe('a-b');
+    expect(requests[0].get('monitors')).toBe('1-2');
   });
 
   it('requests response samples and logs for the production detail view', async () => {

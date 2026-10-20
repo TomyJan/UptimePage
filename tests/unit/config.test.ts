@@ -69,4 +69,14 @@ describe('configuration boundary', () => {
     f.groups[0].source.apiKey = 'secret';
     expect(() => parseConfig(f)).toThrow('source');
   });
+  it.each([
+    'not-a-url',
+    'https://user:secret@example.test',
+    'https://example.test?key=secret',
+    'https://example.test#fragment',
+  ])('rejects malformed or credential-bearing source URLs: %s', (url) => {
+    const f = fixture();
+    f.groups[0].source.baseUrl = url;
+    expect(() => parseConfig(f)).toThrow('groups.0.source.baseUrl');
+  });
 });

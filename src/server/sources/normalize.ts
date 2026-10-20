@@ -9,13 +9,26 @@ const iso = (value: unknown): string | null => {
       : typeof value === 'string'
         ? Date.parse(value)
         : NaN;
-  return Number.isFinite(time) ? new Date(time).toISOString() : null;
+  const date = new Date(time);
+  return Number.isFinite(date.getTime()) &&
+    date.getUTCFullYear() >= 1970 &&
+    date.getUTCFullYear() <= 9999
+    ? date.toISOString()
+    : null;
 };
 
 const number = (value: unknown): number | null => {
   const result =
-    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : NaN;
   return Number.isFinite(result) && result >= 0 ? result : null;
+};
+const positive = (value: unknown) => {
+  const n = number(value);
+  return n !== null && n > 0 ? n : null;
 };
 
 function monitorType(value: unknown): string | null {
@@ -41,31 +54,47 @@ function peekapingState(value: unknown): MonitorState {
 function uptime(value: unknown, fetchedAt: string) {
   const parsed = number(value);
   return {
-    value: parsed,
+    value: parsed !== null && parsed <= 100 ? parsed : null,
     from: new Date(Date.parse(fetchedAt) - 86400000).toISOString(),
     until: fetchedAt,
     basis: 'provider' as const,
   };
 }
 
-function heartbeatHistory(raw: unknown): HistoryBucket[] {
+function heartbeatHistory(raw: unknown, fetchedAt: string): HistoryBucket[] {
   if (!Array.isArray(raw)) return [];
-  return raw.flatMap((entry): HistoryBucket[] => {
-    if (!entry || typeof entry !== 'object') return [];
-    const item = entry as Record<string, unknown>;
-    const from = iso(item.time);
-    const until =
-      iso(item.end_time) ?? (from ? new Date(Date.parse(from) + 1000).toISOString() : null);
-    if (!from || !until || Date.parse(until) <= Date.parse(from)) return [];
-    return [
-      {
-        from,
-        until,
-        state: peekapingState(item.status),
-        responseMs: number(item.ping),
-      },
-    ];
-  });
+  return raw
+    .flatMap((entry): HistoryBucket[] => {
+      if (!entry || typeof entry !== 'object') return [];
+      const item = entry as Record<string, unknown>;
+      const from = iso(item.time);
+      const end = iso(item.end_time);
+      const until =
+        end && from && Date.parse(end) > Date.parse(from)
+          ? end
+          : from
+            ? new Date(Date.parse(from) + 1000).toISOString()
+            : null;
+      if (!from || !until || Date.parse(until) <= Date.parse(from)) return [];
+      return [
+        {
+          from,
+          until,
+          state: peekapingState(item.status),
+          responseMs: item.status === 1 ? number(item.ping) : null,
+        },
+      ];
+    })
+    .filter(
+      (b) =>
+        Date.parse(b.from) < Date.parse(fetchedAt) &&
+        Date.parse(b.until) > Date.parse(fetchedAt) - 86400000,
+    )
+    .map((b) => ({
+      ...b,
+      until: Date.parse(b.until) > Date.parse(fetchedAt) ? fetchedAt : b.until,
+    }))
+    .sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
 }
 
 export function normalizePeekapingMonitor(
@@ -79,7 +108,13 @@ export function normalizePeekapingMonitor(
   const id = typeof item.id === 'string' ? item.id : null;
   const name = typeof item.name === 'string' ? item.name : null;
   if (!id || !name) return null;
-  const heartbeats = Array.isArray(item.heartbeats) ? item.heartbeats : [];
+  const heartbeats = Array.isArray(item.heartbeats)
+    ? [...item.heartbeats].sort((a, b) => {
+        const at = (hb: Record<string, unknown>) =>
+          Math.max(Date.parse(iso(hb?.time) ?? '') || 0, Date.parse(iso(hb?.end_time) ?? '') || 0);
+        return at(b) - at(a);
+      })
+    : [];
   const latest =
     heartbeats[0] && typeof heartbeats[0] === 'object'
       ? (heartbeats[0] as Record<string, unknown>)
@@ -93,18 +128,22 @@ export function normalizePeekapingMonitor(
     description: null,
     state: item.active === false ? 'paused' : peekapingState(latest?.status),
     freshness: 'fresh',
-    observedAt: iso(latest?.time),
-    responseMs: number(latest?.ping),
+    observedAt:
+      iso(latest?.end_time) &&
+      Date.parse(iso(latest?.end_time)!) > Date.parse(iso(latest?.time) ?? '')
+        ? iso(latest?.end_time)
+        : iso(latest?.time),
+    responseMs: latest?.status === 1 ? number(latest?.ping) : null,
     type: monitorType(item.type),
-    intervalSeconds: number(item.interval ?? item.monitor_interval),
+    intervalSeconds: positive(item.interval),
     sourceName: 'Peekaping',
     uptime24h: uptime(item.uptime_24h, fetchedAt),
-    history: heartbeatHistory(heartbeats),
+    history: heartbeatHistory(heartbeats, fetchedAt),
   };
 }
 
 function uptimeRobotState(value: unknown): MonitorState {
-  switch (Number(value)) {
+  switch (number(value)) {
     case 0:
       return 'paused';
     case 1:
@@ -119,49 +158,85 @@ function uptimeRobotState(value: unknown): MonitorState {
   }
 }
 
-function uptimeRobotHistory(item: Record<string, unknown>): HistoryBucket[] {
+function uptimeRobotHistory(item: Record<string, unknown>, fetchedAt: string): HistoryBucket[] {
   const points = Array.isArray(item.response_times) ? item.response_times : [];
   const history = points
     .flatMap((entry): { at: string; valueMs: number | null }[] => {
       if (!entry || typeof entry !== 'object') return [];
       const point = entry as Record<string, unknown>;
       const at = iso(point.datetime ?? point.time);
-      if (!at) return [];
+      if (
+        !at ||
+        Date.parse(at) > Date.parse(fetchedAt) ||
+        Date.parse(at) < Date.parse(fetchedAt) - 86400000
+      )
+        return [];
       return [{ at, valueMs: number(point.value ?? point.response_time) }];
     })
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-  const responseHistory: HistoryBucket[] = history.map((point, index) => {
-    const next = history[index + 1]?.at;
-    const until = next ?? new Date(Date.parse(point.at) + 1000).toISOString();
+  const responseHistory: HistoryBucket[] = history.map((point) => {
+    const until = new Date(Date.parse(point.at) + 1000).toISOString();
     return {
       from: point.at,
       until:
         Date.parse(until) > Date.parse(point.at)
           ? until
           : new Date(Date.parse(point.at) + 1000).toISOString(),
-      state: 'operational' as const,
+      state: point.valueMs === null ? ('no-data' as const) : ('operational' as const),
       responseMs: point.valueMs,
     };
   });
   const logs = Array.isArray(item.logs) ? item.logs : [];
+  const latestLogTime = Math.max(
+    ...logs.map((log) =>
+      log && typeof log === 'object' ? Date.parse(iso(log.datetime ?? log.time) ?? '') || 0 : 0,
+    ),
+    0,
+  );
   const incidentHistory = logs.flatMap((entry): HistoryBucket[] => {
     if (!entry || typeof entry !== 'object') return [];
     const log = entry as Record<string, unknown>;
     const from = iso(log.datetime ?? log.time);
     const duration = number(log.duration);
-    if (!from || duration === null || duration <= 0 || Number(log.type) !== 1) return [];
+    if (!from || duration === null || Number(log.type) !== 1) return [];
+    const ongoing = uptimeRobotState(item.status) === 'down' && Date.parse(from) === latestLogTime;
+    const until = ongoing
+      ? fetchedAt
+      : duration > 0
+        ? iso(Date.parse(from) + duration * 1000)
+        : null;
+    if (!until || Date.parse(until) <= Date.parse(from)) return [];
     return [
       {
         from,
-        until: new Date(Date.parse(from) + duration * 1000).toISOString(),
+        until: Date.parse(until) > Date.parse(fetchedAt) ? fetchedAt : until,
         state: 'down',
         responseMs: null,
       },
     ];
   });
-  return [...responseHistory, ...incidentHistory].sort(
-    (a, b) => Date.parse(a.from) - Date.parse(b.from),
-  );
+  // Response samples prove only a point in time. They cannot overwrite an outage
+  // or establish uninterrupted uptime until the next sample.
+  return [
+    ...responseHistory.filter(
+      (point) =>
+        !incidentHistory.some(
+          (incident) =>
+            (Date.parse(point.from) < Date.parse(incident.until) ||
+              (uptimeRobotState(item.status) === 'down' &&
+                point.from === fetchedAt &&
+                incident.until === fetchedAt)) &&
+            Date.parse(point.until) > Date.parse(incident.from),
+        ),
+    ),
+    ...incidentHistory,
+  ]
+    .filter(
+      (b) =>
+        Date.parse(b.from) <= Date.parse(fetchedAt) &&
+        Date.parse(b.until) > Date.parse(fetchedAt) - 86400000,
+    )
+    .sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
 }
 
 export function normalizeUptimeRobotMonitor(
@@ -175,11 +250,21 @@ export function normalizeUptimeRobotMonitor(
   const id = item.id === undefined || item.id === null ? null : String(item.id);
   const name = typeof item.friendly_name === 'string' ? item.friendly_name : null;
   if (!id || !name) return null;
-  const observedAt = iso(item.create_datetime) ?? fetchedAt;
+  const history = uptimeRobotHistory(item, fetchedAt);
+  const points = Array.isArray(item.response_times)
+    ? item.response_times
+        .flatMap((entry) => {
+          if (!entry || typeof entry !== 'object') return [];
+          const at = iso(entry.datetime);
+          return at ? [{ at, value: number(entry.value) }] : [];
+        })
+        .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
+    : [];
+  const latest = points.at(-1);
   const ratio =
-    typeof item.custom_uptime_ratio === 'string'
-      ? item.custom_uptime_ratio.split('-')[0]
-      : item.custom_uptime_ratio;
+    typeof item.custom_uptime_ratios === 'string'
+      ? item.custom_uptime_ratios.split('-')[0]
+      : item.custom_uptime_ratios;
   return {
     id,
     groupId,
@@ -189,17 +274,12 @@ export function normalizeUptimeRobotMonitor(
     description: null,
     state: uptimeRobotState(item.status),
     freshness: 'fresh',
-    observedAt,
-    responseMs: number(item.average_response_time),
+    observedAt: latest?.at ?? null,
+    responseMs: uptimeRobotState(item.status) === 'operational' ? (latest?.value ?? null) : null,
     type: monitorType(item.type),
-    intervalSeconds: number(item.monitor_interval ?? item.interval),
+    intervalSeconds: positive(item.interval),
     sourceName: 'UptimeRobot',
-    uptime24h: {
-      value: number(ratio),
-      from: new Date(Date.parse(fetchedAt) - 86400000).toISOString(),
-      until: fetchedAt,
-      basis: 'provider',
-    },
-    history: uptimeRobotHistory(item),
+    uptime24h: uptime(ratio, fetchedAt),
+    history,
   };
 }
