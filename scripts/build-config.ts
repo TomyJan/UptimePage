@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseConfig, splitConfig } from '../config/schema.ts';
+import { buildMetadata } from './build-metadata.ts';
 const execFileAsync = promisify(execFile);
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -20,15 +21,12 @@ const version = createHash('sha256').update(canonical(config)).digest('hex');
 let commit = process.env.UPTIMEPAGE_COMMIT?.trim() ?? '';
 if (!commit) {
   try {
-    commit = (await execFileAsync('git', ['rev-parse', '--short=7', 'HEAD'])).stdout.trim();
+    commit = (await execFileAsync('git', ['rev-parse', 'HEAD'])).stdout.trim();
   } catch {
-    commit = 'dev';
+    commit = '';
   }
 }
-const { publicConfig, serverConfig } = splitConfig(config, version, {
-  commit,
-  commitUrl: `https://github.com/TomyJan/UptimePage/commit/${commit}`,
-});
+const { publicConfig, serverConfig } = splitConfig(config, version, buildMetadata(commit));
 await mkdir('.generated', { recursive: true });
 for (const [name, data] of [
   ['public', publicConfig],

@@ -691,6 +691,7 @@ input {
 .footer-default,
 .footer-custom {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .footer-custom {
   text-align: right;
