@@ -11,6 +11,7 @@ const version=createHash('sha256').update(canonical(config)).digest('hex');
 const {publicConfig,serverConfig}=splitConfig(config,version);
 await mkdir('.generated',{recursive:true});
 for(const [name,data] of [['public',publicConfig],['server',serverConfig]] as const){
- await writeFile(`.generated/${name}-config.ts`,`// Generated; do not edit.\nexport default ${JSON.stringify(data,null,2)};\n`);
+ const header=name==='public'?"import type { PublicConfig } from '../src/shared/config.ts';\nconst config:PublicConfig = ":'const config = ';
+ await writeFile(`.generated/${name}-config.ts`,`// Generated; do not edit.\n${header}${JSON.stringify(data,null,2)};\nexport default config;\n`);
 }
 console.log(`Configuration generated (${version.slice(0,8)})`);

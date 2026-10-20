@@ -9,7 +9,12 @@
   "scripts": {
     "generate": "node scripts/build-config.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "dev": "npm run generate && vite",
+    "dev:demo": "npm run generate && node scripts/dev-demo.mjs",
+    "build": "npm run generate && npm run typecheck && vite build",
+    "preview": "vite preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "2.2.1",

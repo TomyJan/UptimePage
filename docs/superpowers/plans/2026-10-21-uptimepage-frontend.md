@@ -117,11 +117,11 @@ interface ApiClient {
 
 **文件：** 创建 `index.html`、`vite.config.ts`、`src/main.tsx`、`src/app/App.tsx`、`src/app/providers.tsx`、`src/styles/tokens.css`、`src/styles/global.css`、`src/features/preferences/{store.ts,locale.ts,PreferencesMenu.tsx}`、`src/components/{Dropdown.tsx,StatusBadge.tsx}`、`tests/unit/preferences.test.ts`、`tests/e2e/shell.spec.ts`、`playwright.config.ts`。
 
-- [ ] **步骤 1：写失败测试。** `resolveLocale(['fr-FR','zh-Hant','en-US'])` 回退英文，`['zh-CN','en']` 取简中，`['zh-SG']` 取简中；繁中不误当简中。无 Intl 时区 / 非法持久化时区回退 UTC；localStorage 不可用、JSON 损坏不能使页面崩溃。E2E 验证三个菜单的键盘选择、Esc 和焦点恢复。
-- [ ] **步骤 2：运行 `npm run test -- tests/unit/preferences.test.ts`，确认规则尚未实现时失败。**
-- [ ] **步骤 3：实现 `resolveLocale(languages:readonly string[]):Locale`、`resolveTimeZone(preference:string|null):string` 和偏好 Store。** 使用 `navigator.languages` 顺序；`zh`、`zh-CN`、`zh-SG`、`zh-Hans` 及其地区变体匹配简中；英文含地区变体均匹配英文。主题首屏初始化避免闪色，`auto` 监听浏览器变化。用 Radix 做自绘菜单；从原型提取 Token，不引入原型工具栏。Router 配置首页、详情和不可用页，展示静态导航 / 页脚。
-- [ ] **步骤 4：运行单元测试、`npm run test:e2e -- tests/e2e/shell.spec.ts`、`npm run build`，确认页面可运行、菜单无原生 select / title。** `build` 按 `generate → typecheck → vite build` 执行；构建中不导入服务端配置。
-- [ ] **步骤 5：提交 `feat(界面): 建立应用外壳与访客偏好`。**
+- [x] **步骤 1：写失败测试。** `resolveLocale(['fr-FR','zh-Hant','en-US'])` 回退英文，`['zh-CN','en']` 取简中，`['zh-SG']` 取简中；繁中不误当简中。无 Intl 时区 / 非法持久化时区回退 UTC；localStorage 不可用、JSON 损坏不能使页面崩溃。E2E 验证三个菜单的键盘选择、Esc 和焦点恢复。
+- [x] **步骤 2：运行 `npm run test -- tests/unit/preferences.test.ts`，确认规则尚未实现时失败。**
+- [x] **步骤 3：实现 `resolveLocale(languages:readonly string[]):Locale`、`resolveTimeZone(preference:string|null):string` 和偏好 Store。** 使用 `navigator.languages` 顺序；`zh`、`zh-CN`、`zh-SG`、`zh-Hans` 及其地区变体匹配简中；英文含地区变体均匹配英文。主题首屏初始化避免闪色，`auto` 监听浏览器变化。用 Radix 做自绘菜单；从原型提取 Token，不引入原型工具栏。Router 配置首页、详情和不可用页，展示静态导航 / 页脚。
+- [x] **步骤 4：运行单元测试、`npm run test:e2e -- tests/e2e/shell.spec.ts`、`npm run build`，确认页面可运行、菜单无原生 select / title。** `build` 按 `generate → typecheck → vite build` 执行；构建中不导入服务端配置。
+- [x] **步骤 5：提交 `feat(界面): 建立应用外壳与访客偏好`。**
 
 ## 任务 3：同源客户端、开发数据与刷新调度
 
