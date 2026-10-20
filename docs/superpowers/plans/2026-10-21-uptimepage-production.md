@@ -33,14 +33,14 @@
 | 文件 / 目录                         | 职责                                         |
 | ----------------------------------- | -------------------------------------------- |
 | `src/server/config.ts`              | 读取生成的服务端配置、环境变量和公开范围索引 |
-| `src/server/sources/types.ts`       | 来源适配器输入、分页和统一中间结构           |
+| `src/server/sources/normalize.ts`   | 来源状态、统计和历史归一化                   |
 | `src/server/sources/peekaping.ts`   | Peekaping 状态页与监控详情请求、名单过滤     |
 | `src/server/sources/uptimerobot.ts` | UptimeRobot 表单 API、分页和监控选择         |
-| `src/server/contract.ts`            | 统一快照、详情和错误响应构造                 |
+| `src/server/snapshot.ts`            | 统一分组快照和公开字段筛选                   |
 | `src/server/cache.ts`               | Cache API 与可选 KV 的短期快照封装           |
-| `functions/api/v1/**`               | EdgeOne HTTP 路由和参数校验                  |
+| `edge-functions/api/v1/**`          | EdgeOne 函数入口                            |
 | `tests/unit/server/**`              | 配置、来源、缓存和安全边界测试               |
-| `tests/e2e/production-api.spec.ts`  | 生产预览 HTTP 路由与降级验证                 |
+| `tests/unit/deployment.test.ts`     | 部署验收器的 HTTP 集成与失败路径             |
 | `edgeone.json`                      | 函数入口、静态输出和 SPA fallback 配置       |
 
 ## 任务
@@ -67,8 +67,8 @@
 
 ### 任务 4：平台预览与上线门禁
 
-- [ ] 更新 EdgeOne 配置、环境变量说明和生产预览测试。
-- [ ] 验证无 KV、KV 故障、上游限流、深层路由和公私配置隔离。
-- [ ] 提交 `chore(部署): 完成 EdgeOne 预览验证`。
+- [x] 更新 EdgeOne 配置、环境变量说明，提供 `pnpm run verify:deployment`。
+- [x] 本地验证真实函数入口的无 KV / KV / KV 故障，以及受控 HTTP、来源限流、深层路由和公私配置隔离。
+- [ ] 使用真实来源与 EdgeOne 预览地址完成平台验收；当前没有可用的真实配置、密钥和预览地址，不将本地结果当作平台验证。
 
-本次生产审查已修复来源字段、历史语义、名单与缓存降级，并完成本地单元及浏览器回归。首页使用上游聚合采样，原始详情按需获取。实际 EdgeOne 预览和真实来源联调尚未执行，以上平台任务保持未完成；具体边界见[生产审查记录](../../production-review.md)。
+本地实现与验收工具已完成。实际平台步骤见[部署指南](../../deployment.md)，能力边界见[数据与接口](../../data-api.md)，已有验证见[生产审查记录](../../production-review.md)。

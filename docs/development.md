@@ -1,75 +1,52 @@
-# 本地开发
+# 开发与测试
 
-使用 Node.js 22 LTS（≥22.18）和 pnpm。版本分别声明在 `package.json` 的 `engines.node` 和 `packageManager`，依赖由 `pnpm-lock.yaml` 锁定。若本机尚未启用 pnpm，可先运行 `corepack enable`，由 Corepack 读取项目声明的版本。
+使用 `package.json` 声明的 Node.js 和 pnpm 版本。首次启用 pnpm 可运行 `corepack enable`。
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm run dev:demo
 ```
 
-打开终端输出的本地地址。演示模式只在开发服务器启用，数据是固定样例，包含故障、过期、缺失能力和历史缺口。可用 `?demoCount=200` 检查大列表，`?demoPartial=1` 检查部分失败；这些参数不进入生产实现。
+演示样例的相对时间随当前时钟移动；形状和状态固定。`?demoCount=200` 检查大列表，`?demoPartial=1` 检查部分失败。单元测试保留固定参考时间。演示入口不进入生产包。
 
-`pnpm run dev` 和生产构建使用同源 API。Vite 开发服务器不启动 EdgeOne 函数，直接访问真实接口时会显示获取失败；SPA fallback 返回 HTML 也视为无效数据，不会回退到演示数据。
+`pnpm run dev` 使用真实同源 API，但 Vite 不启动 EdgeOne 函数；没有函数时显示获取失败，不会回退到演示。真实数据在 EdgeOne 预览环境联调，见[部署指南](deployment.md)。
 
-生产接口已放在 `edge-functions/api/v1/[[default]].ts`，提供只读的组快照和监控详情：
-
-- `GET /api/v1/groups/:groupId`
-- `GET /api/v1/groups/:groupId/monitors/:monitorId?range=24h`
-
-EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变量读取 `apiKeyEnv` 指定的密钥。详情接口当前只接受 `24h`，不将它冒充 `7d` 或 `30d`；证书暂未接入。
-
-- Peekaping 使用状态页接口最近 100 条心跳及来源计算的 24 小时可用率；历史不保证覆盖完整一天，状态页未提供的间隔显示为缺失。
-- UptimeRobot 首页请求 30 分钟聚合响应采样和故障日志，列表延迟是最近一组采样的均值。打开详情后才请求单个监控的原始响应采样和日志；保留实际历史缺口，响应采样不当作连续正常区间。实际可获取的历史还受上游套餐限制。
-- 节点缓存按配置版本、组与详情路径隔离，只缓存成功结果。新鲜期 30 秒，旧数据最长使用至快照生成后 5 分钟。无关查询参数不产生新缓存键。
-- 详情返回前检查公开名单，Peekaping 名单更新失败时拒绝详情请求；UptimeRobot 仍受配置白名单约束。来源失败返回 `unavailable` / `rate-limited`，不会伪装成监控已移除的 404。
-- 对浏览器和 CDN 返回 `no-store`，缓存由函数显式管理，避免独立详情缓存绕过名单检查。
-- 限流退避时间随错误、旧缓存及部分成功结果传递到页面，自动刷新按该时间推迟。
-- 同一函数实例内的组快照和详情在途请求会合并，直到上游加载及缓存写入完成；按配置版本、路由和来源凭证隔离，不保留完成结果。跨节点仍分别受上游限流约束。
-- 部分子组失败时，成功子组的实时监控状态继续显示并参与统计；整次刷新失败或旧缓存中的监控均明确标旧，不据此报告当前正常。
-
-部署前至少配置 `PEEKAPING_API_KEY` 和 `UPTIMEROBOT_API_KEY`（或配置文件中对应的其他变量名），并将 `config/site.json` 的上游地址、状态页别名和 UptimeRobot 监控 ID 改为真实值。EdgeOne 的函数环境变量应使用服务端密钥配置，不能写入 JSON 或前端环境变量。
-
-## 配置边界
-
-默认读取 `config/site.json`。私有配置可保存为 `*.local.json`，通过 `UPTIMEPAGE_CONFIG` 指定路径。不要在 JSON 中放实际 API Key：连接配置只保存 `apiKeyEnv` 环境变量名，密钥在服务端运行时解析。Peekaping 地址必须为 HTTPS，不能带账号密码、查询参数或片段。
-
-- `cache.kvBinding`（可选）：EdgeOne 项目绑定的 KV 变量名；不配置时只使用节点 Cache。KV 失败会自动降级，不影响实时请求。
-- `site`：站点名称、Logo、导航、页脚自定义内容、刷新周期、异常优先初值，在构建时生成静态内容。页脚左侧的 UptimePage、构建短 hash、TomyJan 署名由程序固定生成；`site.footer` 只渲染在右侧。
-- `groups`：大分组与子分组各有独立 `id/name/logo`。Peekaping 子组用 `slug`，UptimeRobot 子组用 `monitorIds`；`order` 可指定顺序，`monitors` 可覆盖展示信息。
-- 多语言名称支持字符串或 `{ "en": "Services", "zh-CN": "服务" }`，英文必填。`all` 是自动生成的保留子组。
-- 生成器输出两个独立文件：`.generated/public-config.ts` 与 `server-config.ts`。浏览器仅导入前者；私有选择规则、连接和环境变量引用不进入静态资源。
-- 修改配置需重新构建。浏览器语言、时区、外观、刷新频率属于访客偏好，单独保存在 localStorage；存储不可用时仍可使用。
-
-构建默认读取 Git 的完整提交 ID，页脚仅显示前 7 位，链接指向完整提交。源码归档没有 Git 元数据时显示 `dev` 并链接到项目历史；可用构建环境变量 `UPTIMEPAGE_COMMIT` 指定提交 hash，不接受任意 URL 或文本。
-
-KV 使用 SHA-256 键控制长度，保存带版本和截止时间的响应信封。每个路由在不同配置版本间复用存储槽位，读取时仍核对完整版本；旧部署覆盖只会造成缓存未命中，不会串用数据。EdgeOne KV 没有原生 TTL，超过截止时间的数据不再使用；删除过的分组或详情键可在控制台清理。可选缓存读写最多等待 1 秒，不因存储故障阻断实时来源。
-
-公开 API 契约见 `src/shared/contracts.ts`。`null` 表示缺失；`0` 是有效数值。时间统一使用 UTC ISO 8601，页面按访客时区格式化。来源标签 `sourceName` 是可选的公开展示字段，不包含上游连接地址。
-
-## 验证
+## 检查命令
 
 ```sh
-pnpm run generate
+pnpm run format:check
 pnpm test
 pnpm run typecheck
 pnpm run build
 pnpm run verify:public-build
 pnpm run test:e2e
-pnpm run format:check
+pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 ```
 
-首次运行浏览器测试：`pnpm exec playwright install chromium`。默认使用 Playwright 自带浏览器，可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定已有 Chromium。测试会自动启动开发演示服务器与生产预览服务器，分别使用 5173、4173 端口；不要让其他服务器占用这些端口。生产预览测试通过受控 HTTP 响应验证首次限流、刷新失败和 HTML fallback。
+首次浏览器测试前运行 `pnpm exec playwright install chromium`；Linux CI 使用 `pnpm exec playwright install --with-deps chromium`。也可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定本机已有 Chromium。
 
-构建隔离检查使用独立临时配置和输出目录，并在 finally 中恢复生成文件，不覆盖用户私密文件。即使设置 `VITE_DEMO=true`，生产包也不包含演示数据。视觉验收截图保存在 `test-results/`，覆盖首页、详情、中英文、深浅色、桌面和手机。
+浏览器测试使用 5173（开发演示）和 4173（生产静态预览），不要让其他服务器占用端口。测试包含中英文、深浅色、手机、动效、刷新失败与浏览器过期；截图和失败 trace 保存在 `test-results/`。
 
-## EdgeOne 与后续阶段
+生成器、构建、产物隔离与浏览器测试都会处理 `.generated/`，请顺序执行。公开产物检查使用临时私有哨兵配置，并在 `finally` 恢复生成文件；同时验证 `VITE_DEMO=true` 也不会把演示代码打包进生产。
 
-`edgeone.json` 通过 `nodeVersion` 选择 Node 22.21.1，并配置静态产物与 SPA fallback。安装、构建命令仅执行 pnpm，不在命令中指定版本。pnpm 版本由 `package.json` 的 `packageManager` 决定；平台版本支持见 [EdgeOne 构建指南](https://pages.edgeone.ai/document/build-guide)。本地通过不代表平台网络或运行时已经验证。
+## 代码入口
 
-当前已完成真实来源请求、响应/事件字段映射、公开范围检查、节点 Cache、可选 KV 和 EdgeOne 只读接口。平台预览和真实来源联调仍属于上线前步骤；本地测试使用上游格式的受控响应，不能替代真实密钥、上游套餐和平台运行时验证。审查记录见[生产审查](production-review.md)。
+| 目录 | 内容 |
+| --- | --- |
+| `src/features/` | 页面、偏好、刷新和通知 |
+| `src/shared/` | 前后端共用类型和响应校验 |
+| `src/server/` | 来源适配、公开范围和缓存 |
+| `edge-functions/api/v1/[[default]].ts` | EdgeOne 函数入口 |
+| `config/`、`scripts/build-config.ts` | 配置校验与公私拆分 |
+| `scripts/verify-deployment.ts` | 线上 / 预览 HTTP 验收 |
+| `tests/unit/server/edge-entry.test.ts` | 真实入口、环境变量和可选存储的本地集成测试 |
 
-## 自动检查与依赖更新
+浏览器只导入 `.generated/public-config.ts`；服务端连接、选择规则和变量引用在 `.generated/server-config.ts`，不能从前端导入。不要提交 `.env`、`*.local.json`、生成物或真实密钥。
 
-`.github/workflows/code-check.yml` 在推送到 `master`、面向 `master` 的 PR 和手动运行时执行：生产依赖安全审计、格式、类型、单元测试、构建、私有配置隔离及浏览器回归。失败或取消时保留浏览器测试结果 7 天。CI 从 `package.json` 读取 Node 与 pnpm 版本，使用冻结锁文件安装。
+## 自动检查
 
-Dependabot 每日检查 npm / pnpm 依赖，每周检查 GitHub Actions；React 与 React DOM 一起更新。`pnpm-workspace.yaml` 明确采用隔离依赖布局，并为迁移时已锁定的 `lucide-react@1.60.0` 保留精确发布冷却期例外，其余依赖继续使用 pnpm 默认策略。
+GitHub Actions 对 `master` 推送、PR 和手动触发运行格式、类型、单元测试、构建、产物隔离、浏览器回归和生产依赖审计。失败或取消时保留浏览器产物 7 天。
+
+Dependabot 每日检查 pnpm 依赖、每周检查 Actions；React 和 React DOM 一起更新。版本在 `package.json` / `edgeone.json` 中声明，命令不指定版本。锁文件迁移时的发布冷却期例外见 `pnpm-workspace.yaml`。
+
+配置见[配置指南](configuration.md)，数据口径见[数据与接口](data-api.md)，完整审查结果见[审查记录](production-review.md)。
