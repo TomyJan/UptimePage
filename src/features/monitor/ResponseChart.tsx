@@ -76,6 +76,12 @@ export function ResponseChart({
             <span>{time(g.from, true)}</span>
             <span>{time(g.until, true)}</span>
           </div>
+          {(g.segments.length > 1 || points.some((p) => p.valueMs === null)) && (
+            <div className="chart-note">
+              <span aria-hidden="true" />
+              {t('missingSamples')}
+            </div>
+          )}
         </>
       ) : (
         <div className="empty">{t('noData')}</div>

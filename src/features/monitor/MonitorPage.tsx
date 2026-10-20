@@ -1,8 +1,9 @@
 import { toastStore } from '../toasts/store.ts';
 import { TransitionLink } from '../../components/TransitionLink.tsx';
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
+import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import type { MonitorDetail, Range } from '../../shared/contracts.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useMonitorQuery } from '../../data/hooks.ts';
@@ -91,6 +92,12 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       ? { ...data, monitor: { ...data.monitor, freshness: 'stale' as const } }
       : data,
     name = localize(d.monitor.name, locale);
+  const chartState =
+    q.isError && (!q.data || data.range !== range)
+      ? 'error'
+      : q.isPlaceholderData || data.range !== range
+        ? 'loading'
+        : d.capabilities.response;
   return (
     <div className="detail-content">
       {back}
@@ -131,22 +138,24 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
             ))}
           </div>
         </div>
-        {q.isError && (!q.data || data.range !== range) ? (
-          <div className="empty" role="status">
-            <p>{t('loadError')}</p>
-            <button className="retry" onClick={() => void refresh().catch(() => {})}>
-              {t('retry')}
-            </button>
-          </div>
-        ) : q.isPlaceholderData || data.range !== range ? (
-          <div className="chart-loading" aria-busy="true" />
-        ) : d.capabilities.response === 'available' ? (
-          <ResponseChart points={d.response} animationKey={`${groupId}:${monitorId}:${range}`} />
-        ) : (
-          <div className="empty">
-            {t(d.capabilities.response === 'unsupported' ? 'unsupported' : 'noData')}
-          </div>
-        )}
+        <AnimatedHeight className="chart-body" contentKey={`${range}:${chartState}`}>
+          {chartState === 'error' ? (
+            <div className="empty" role="status">
+              <p>{t('loadError')}</p>
+              <button className="retry" onClick={() => void refresh().catch(() => {})}>
+                {t('retry')}
+              </button>
+            </div>
+          ) : chartState === 'loading' ? (
+            <div className="chart-loading" aria-busy="true" />
+          ) : chartState === 'available' ? (
+            <ResponseChart points={d.response} animationKey={`${groupId}:${monitorId}:${range}`} />
+          ) : (
+            <div className="empty">
+              {t(d.capabilities.response === 'unsupported' ? 'unsupported' : 'noData')}
+            </div>
+          )}
+        </AnimatedHeight>
       </section>
       <section className="panel">
         <div className="panel-top">
@@ -154,19 +163,21 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
             {t('checks')} <span className="muted">{t('history')}</span>
           </h2>
         </div>
-        {d.capabilities.history === 'available' ? (
-          <>
-            <HistoryBars history={d.monitor.history} until={d.fetchedAt} />
-            <div className="history-meta">
-              <span>{t('ago')}</span>
-              <span>{t('now')}</span>
-            </div>
-          </>
-        ) : (
-          <p className="muted">
-            {t(d.capabilities.history === 'unsupported' ? 'unsupported' : 'noData')}
-          </p>
-        )}
+        <AnimatedHeight contentKey={d.capabilities.history}>
+          {d.capabilities.history === 'available' ? (
+            <>
+              <HistoryBars history={d.monitor.history} until={d.fetchedAt} />
+              <div className="history-meta">
+                <span>{t('ago')}</span>
+                <span>{t('now')}</span>
+              </div>
+            </>
+          ) : (
+            <p className="muted">
+              {t(d.capabilities.history === 'unsupported' ? 'unsupported' : 'noData')}
+            </p>
+          )}
+        </AnimatedHeight>
       </section>
       <div className="detail-bottom">
         <MonitorEvents detail={d} />

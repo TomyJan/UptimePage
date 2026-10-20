@@ -3,6 +3,7 @@ import { toastStore } from '../toasts/store.ts';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Search } from 'lucide-react';
+import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import { useGroupQuery } from '../../data/hooks.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useCopy } from '../preferences/copy.ts';
@@ -65,69 +66,74 @@ export function StatusPage() {
         label={t('groups')}
         counts={{ [id]: snapshot?.monitors.length }}
       />
-      {snapshot ? (
-        <>
-          <StatusSummary
-            snapshot={snapshot}
-            pinned={pinned}
-            onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
-          />
-          {(q.isError || snapshot.freshness !== 'fresh') && (
-            <p className="detail-alert" role="status">
-              {t('staleNote')}
-            </p>
-          )}
-          {snapshot.subgroupErrors.length > 0 && (
-            <p className="detail-alert" role="status">
-              {t('partialError')}
-            </p>
-          )}
-          <div className="sub-row">
-            <GroupTabs
-              sub
-              items={[
-                { id: 'all', name: { en: 'All', 'zh-CN': '全部' }, logo: null },
-                ...group.subgroups,
-              ]}
-              selected={sub}
-              onChange={(s) => transition('monitor-list', () => update({ s }))}
-              label={t('subgroups')}
-              counts={Object.fromEntries([
-                ['all', snapshot.monitors.length],
-                ...snapshot.subgroups.map((s) => [s.id, new Set(s.monitorIds).size]),
-              ])}
+      <AnimatedHeight
+        className="status-body"
+        contentKey={`${id}:${snapshot ? 'loaded' : q.isError ? 'error' : 'loading'}`}
+      >
+        {snapshot ? (
+          <>
+            <StatusSummary
+              snapshot={snapshot}
+              pinned={pinned}
+              onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
             />
-            <label className="search">
-              <Search size={14} />
-              <input
-                type="search"
-                value={search}
-                aria-label={t('search')}
-                placeholder={t('search')}
-                onChange={(e) => update({ q: e.target.value })}
+            {(q.isError || snapshot.freshness !== 'fresh') && (
+              <p className="detail-alert" role="status">
+                {t('staleNote')}
+              </p>
+            )}
+            {snapshot.subgroupErrors.length > 0 && (
+              <p className="detail-alert" role="status">
+                {t('partialError')}
+              </p>
+            )}
+            <div className="sub-row">
+              <GroupTabs
+                sub
+                items={[
+                  { id: 'all', name: { en: 'All', 'zh-CN': '全部' }, logo: null },
+                  ...group.subgroups,
+                ]}
+                selected={sub}
+                onChange={(s) => transition('monitor-list', () => update({ s }))}
+                label={t('subgroups')}
+                counts={Object.fromEntries([
+                  ['all', snapshot.monitors.length],
+                  ...snapshot.subgroups.map((s) => [s.id, new Set(s.monitorIds).size]),
+                ])}
               />
-            </label>
+              <label className="search">
+                <Search size={14} />
+                <input
+                  type="search"
+                  value={search}
+                  aria-label={t('search')}
+                  placeholder={t('search')}
+                  onChange={(e) => update({ q: e.target.value })}
+                />
+              </label>
+            </div>
+            <MonitorList
+              monitors={monitors}
+              until={snapshot.fetchedAt}
+              searching={Boolean(search.trim())}
+            />
+          </>
+        ) : q.isError ? (
+          <div className="empty">
+            <p>{t('loadError')}</p>
+            <button className="retry" onClick={() => void refresh().catch(() => {})}>
+              {t('retry')}
+            </button>
           </div>
-          <MonitorList
-            monitors={monitors}
-            until={snapshot.fetchedAt}
-            searching={Boolean(search.trim())}
-          />
-        </>
-      ) : q.isError ? (
-        <div className="empty">
-          <p>{t('loadError')}</p>
-          <button className="retry" onClick={() => void refresh().catch(() => {})}>
-            {t('retry')}
-          </button>
-        </div>
-      ) : (
-        <div className="skeleton" aria-busy="true">
-          <div />
-          <div />
-          <div />
-        </div>
-      )}
+        ) : (
+          <div className="skeleton" aria-busy="true">
+            <div />
+            <div />
+            <div />
+          </div>
+        )}
+      </AnimatedHeight>
     </>
   );
 }

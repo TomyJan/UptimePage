@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { HistoryBucket, Metric } from '../../shared/contracts.ts';
 import { DataTooltip } from '../../components/DataTooltip.tsx';
 import { usePreferences } from '../preferences/store.ts';
@@ -20,7 +20,8 @@ export function useFormatTime() {
 export function HistoryBars({ history, until }: { history: HistoryBucket[]; until: string }) {
   const t = useCopy(),
     time = useFormatTime(),
-    [active, setActive] = useState(0);
+    [active, setActive] = useState(0),
+    activeBar = useRef<HTMLSpanElement>(null);
   const segments = buildHistorySegments(
       history,
       new Date(Date.parse(until) - 86400000).toISOString(),
@@ -30,6 +31,7 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
   if (!selected) return <span>{t('noData')}</span>;
   return (
     <DataTooltip
+      anchorRef={activeBar}
       content={
         <>
           <div className="tip-time">
@@ -73,6 +75,8 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
         {segments.map((s, i) => (
           <span
             key={`${s.from}-${s.until}`}
+            ref={s === selected ? activeBar : undefined}
+            data-active={s === selected}
             className={`bar ${s.state === 'no-data' || s.state === 'unknown' || s.state === 'paused' ? 'none' : s.state}`}
             style={{ flex: s.duration }}
             data-state={s.state}
