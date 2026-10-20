@@ -20,6 +20,8 @@ export type ApiRuntime = {
   fetcher?: JsonFetcher;
   now?: Date;
   cache?: ResponseCache;
+  /** Shared only by requests handled by the same server instance. */
+  inFlight?: Map<string, Promise<unknown>>;
 };
 const freshMs = 30_000;
 const retainMs = 300_000;
@@ -155,6 +157,20 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
   // upstream requests and old per-monitor entries cannot bypass membership.
   const key = new Request(`${url.origin}/api/v1/groups/${encodeURIComponent(group.id)}`);
   const now = runtime.now ?? new Date();
+  const sourceCredential = runtime.environment[group.source.apiKeyEnv];
+  function coalesce<T>(route: string, load: () => Promise<T>): Promise<T> {
+    const pending = runtime.inFlight;
+    if (!pending) return load();
+    // A key rotation or deployment must never join an older credential's load.
+    const flightKey = JSON.stringify([runtime.config.configVersion, route, sourceCredential]);
+    const existing = pending.get(flightKey);
+    if (existing) return existing as Promise<T>;
+    const task = Promise.resolve()
+      .then(load)
+      .finally(() => pending.delete(flightKey));
+    pending.set(flightKey, task);
+    return task;
+  }
   let cached: GroupSnapshot | null = null;
   let cachedDetail: MonitorDetail | null = null;
   const detailKey = new Request(`${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}`);
@@ -198,26 +214,34 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
   try {
     let snapshot = cached && now.getTime() - Date.parse(cached.fetchedAt) < freshMs ? cached : null;
     if (!snapshot) {
-      snapshot = groupSnapshotSchema.parse(
-        await loadGroupSnapshot(
-          runtime.config,
-          group.id,
-          runtime.environment,
-          runtime.fetcher,
-          now,
-        ),
-      );
-      if (snapshot.freshness === 'fresh') {
-        const stored = new Response(JSON.stringify(snapshot), {
-          headers: {
-            'content-type': 'application/json',
-            'cache-control': `public, max-age=${retainMs / 1000}`,
-          },
-        });
-        await writeCache(runtime.cache, key, runtime.config.configVersion, stored);
-      } else if (
+      snapshot = await coalesce(key.url, async () => {
+        const loaded = groupSnapshotSchema.parse(
+          await loadGroupSnapshot(
+            runtime.config,
+            group.id,
+            runtime.environment,
+            runtime.fetcher,
+            now,
+          ),
+        );
+        if (loaded.freshness === 'fresh') {
+          const stored = new Response(JSON.stringify(loaded), {
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': `public, max-age=${retainMs / 1000}`,
+            },
+          });
+          // Keep the load in flight through the cache write, closing the gap
+          // between source completion and the next visitor's cache read.
+          await writeCache(runtime.cache, key, runtime.config.configVersion, stored);
+        }
+        return loaded;
+      });
+      if (
         snapshot.freshness === 'unavailable' ||
-        (isDetail && !snapshot.monitors.some((m) => m.id === parts[3]))
+        (snapshot.freshness !== 'fresh' &&
+          isDetail &&
+          !snapshot.monitors.some((m) => m.id === parts[3]))
       ) {
         const retryAt =
           snapshot.subgroupErrors
@@ -238,52 +262,55 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
       // Membership is checked above even when the detail cache is newer.
       if (cachedDetail && now.getTime() - Date.parse(cachedDetail.fetchedAt) < freshMs)
         return json(cachedDetail);
-      const raw = await fetchUptimeRobotMonitors(
-        requireSecret(runtime.environment, group.source.apiKeyEnv),
-        [member.id],
-        runtime.fetcher,
-        {
-          includeDetails: true,
-          startDate: Math.floor((now.getTime() - 86400000) / 1000),
-          endDate: Math.floor(now.getTime() / 1000),
-        },
-      );
-      const record = raw.find(
-        (m) => m && typeof m === 'object' && 'id' in m && String(m.id) === member.id,
-      );
-      if (!record) return errorResponse('not-found');
-      const normalized = normalizeUptimeRobotMonitor(
-        record,
-        group.id,
-        member.subgroupIds,
-        now.toISOString(),
-      );
-      if (!normalized) throw new SourceRequestError('Invalid UptimeRobot monitor');
-      const monitor = {
-        ...normalized,
-        name: member.name,
-        logo: member.logo,
-        description: member.description,
-      };
-      const detail = detailFromSnapshot(
-        { ...snapshot, fetchedAt: now.toISOString(), monitors: [monitor] },
-        member.id,
-      )!;
-      detail.capabilities.events = Array.isArray((record as Record<string, unknown>).logs)
-        ? 'available'
-        : 'unavailable';
-      await writeCache(
-        runtime.cache,
-        detailKey,
-        runtime.config.configVersion,
-        new Response(JSON.stringify(detail), {
-          headers: {
-            'content-type': 'application/json',
-            'cache-control': `public, max-age=${retainMs / 1000}`,
+      const detail = await coalesce<MonitorDetail | null>(detailKey.url, async () => {
+        const raw = await fetchUptimeRobotMonitors(
+          requireSecret(runtime.environment, group.source.apiKeyEnv),
+          [member.id],
+          runtime.fetcher,
+          {
+            includeDetails: true,
+            startDate: Math.floor((now.getTime() - 86400000) / 1000),
+            endDate: Math.floor(now.getTime() / 1000),
           },
-        }),
-      );
-      return json(detail);
+        );
+        const record = raw.find(
+          (m) => m && typeof m === 'object' && 'id' in m && String(m.id) === member.id,
+        );
+        if (!record) return null;
+        const normalized = normalizeUptimeRobotMonitor(
+          record,
+          group.id,
+          member.subgroupIds,
+          now.toISOString(),
+        );
+        if (!normalized) throw new SourceRequestError('Invalid UptimeRobot monitor');
+        const monitor = {
+          ...normalized,
+          name: member.name,
+          logo: member.logo,
+          description: member.description,
+        };
+        const detail = detailFromSnapshot(
+          { ...snapshot, fetchedAt: now.toISOString(), monitors: [monitor] },
+          member.id,
+        )!;
+        detail.capabilities.events = Array.isArray((record as Record<string, unknown>).logs)
+          ? 'available'
+          : 'unavailable';
+        await writeCache(
+          runtime.cache,
+          detailKey,
+          runtime.config.configVersion,
+          new Response(JSON.stringify(detail), {
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': `public, max-age=${retainMs / 1000}`,
+            },
+          }),
+        );
+        return detail;
+      });
+      return detail ? json(detail) : errorResponse('not-found');
     }
     return json(detailFromSnapshot(snapshot, parts[3]));
   } catch (error) {

@@ -13,6 +13,8 @@ type EdgeContext = {
   env?: Record<string, string | undefined>;
 };
 
+const inFlight = new Map<string, Promise<unknown>>();
+
 export default function onRequest(context: EdgeContext) {
   const edgeCaches = globalThis as typeof globalThis & { caches?: { default?: Cache } };
   const bindings = globalThis as typeof globalThis & Record<string, unknown>;
@@ -33,5 +35,6 @@ export default function onRequest(context: EdgeContext) {
     config: serverConfig as ServerConfig,
     environment: context.env ?? {},
     cache: new LayeredResponseCache(layers),
+    inFlight,
   });
 }
