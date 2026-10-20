@@ -1,6 +1,21 @@
 import { test, expect } from '@playwright/test';
 import { groupFixture } from '../../src/demo/fixtures.ts';
 test.use({ baseURL: 'http://127.0.0.1:4173' });
+test('a failed subgroup preserves confirmed states from successful subgroups', async ({ page }) => {
+  const snapshot = groupFixture('core', 2);
+  snapshot.freshness = 'stale';
+  snapshot.subgroupErrors = [{ subgroupId: 'infra', code: 'unavailable' }];
+  snapshot.subgroups = snapshot.subgroups.map((subgroup) =>
+    subgroup.id === 'infra' ? { ...subgroup, monitorIds: [], freshness: 'unavailable' } : subgroup,
+  );
+  await page.route('**/api/v1/groups/core', (route) => route.fulfill({ json: snapshot }));
+  await page.goto('/');
+  await expect(page.locator('.monitor')).toHaveCount(2);
+  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+  await expect(page.locator('.monitor .state.down')).toHaveCount(1);
+  await expect(page.locator('.overview-counts .failure strong')).toHaveText('1');
+  await expect(page.getByText('Some groups are unavailable')).toBeVisible();
+});
 test('a stale or partial successful snapshot retains the source retry deadline', async ({
   page,
 }) => {

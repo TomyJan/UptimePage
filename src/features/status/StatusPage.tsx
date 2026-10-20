@@ -22,7 +22,13 @@ export function StatusPage() {
     search = params.get('q') ?? '';
   const q = useGroupQuery(id),
     snapshot = q.data
-      ? { ...q.data, freshness: q.isError ? ('stale' as const) : q.data.freshness }
+      ? {
+          ...q.data,
+          freshness: q.isError ? ('stale' as const) : q.data.freshness,
+          monitors: q.isError
+            ? q.data.monitors.map((m) => ({ ...m, freshness: 'stale' as const }))
+            : q.data.monitors,
+        }
       : null;
   const update = (patch: Record<string, string>) =>
     setParams(
@@ -36,11 +42,7 @@ export function StatusPage() {
     const result = await q.refetch();
     if (result.error) throw result.error;
   };
-  const monitors = snapshot
-    ? selectMonitors(snapshot, sub, search, pinned).map((m) =>
-        snapshot.freshness === 'fresh' ? m : { ...m, freshness: 'stale' as const },
-      )
-    : [];
+  const monitors = snapshot ? selectMonitors(snapshot, sub, search, pinned) : [];
   return (
     <>
       <section className="intro">

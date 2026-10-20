@@ -45,7 +45,7 @@ export function summarize(snapshot: GroupSnapshot) {
   let up = 0,
     down = 0;
   for (const m of monitors) {
-    if (snapshot.freshness !== 'fresh' || m.freshness !== 'fresh') continue;
+    if (m.freshness !== 'fresh') continue;
     if (m.state === 'operational') up++;
     if (m.state === 'down') down++;
   }
@@ -54,6 +54,10 @@ export function summarize(snapshot: GroupSnapshot) {
     down,
     other: monitors.length - up - down,
     total: monitors.length,
-    healthy: monitors.length > 0 && up === monitors.length && snapshot.subgroupErrors.length === 0,
+    healthy:
+      snapshot.freshness === 'fresh' &&
+      monitors.length > 0 &&
+      up === monitors.length &&
+      snapshot.subgroupErrors.length === 0,
   };
 }
