@@ -9,6 +9,9 @@ node_modules/
 dist/
 coverage/
 .vite/
+.generated/
+test-results/
+playwright-report/
 
 # Local tooling and scratch files
 .edgeone/

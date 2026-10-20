@@ -1,0 +1,7 @@
+{
+ "site":{"name":"UptimePage","footer":"UptimePage","refreshIntervalSeconds":60,"pinAbnormal":false},
+ "groups":[
+  {"id":"core","name":{"en":"Our services","zh-CN":"自有服务"},"source":{"type":"peekaping","baseUrl":"https://peekaping.example.com","apiKeyEnv":"PEEKAPING_API_KEY"},"subgroups":[{"id":"web","name":{"en":"Websites","zh-CN":"网站"},"slug":"web"},{"id":"api","name":{"en":"API","zh-CN":"接口"},"slug":"api"},{"id":"infra","name":{"en":"Infrastructure","zh-CN":"基础设施"},"slug":"infra"}]},
+  {"id":"external","name":{"en":"External services","zh-CN":"外部服务"},"source":{"type":"uptimerobot","apiKeyEnv":"UPTIMEROBOT_API_KEY"},"subgroups":[{"id":"tools","name":{"en":"Tools","zh-CN":"工具"},"monitorIds":["example-1"]},{"id":"cloud","name":{"en":"Cloud","zh-CN":"云服务"},"monitorIds":["example-2"]}]}
+ ]
+}

@@ -107,11 +107,11 @@ interface ApiClient {
 
 **文件：** 创建 `package.json`、锁文件、`tsconfig.json`、`vitest.config.ts`、`config/site.json`、`config/schema.ts`、`scripts/build-config.ts`、`src/shared/config.ts`、`src/shared/contracts.ts`、`tests/unit/config.test.ts`、`tests/unit/contracts.test.ts`；修改 `.gitignore` 忽略 `.generated/`。
 
-- [ ] **步骤 1：建立最小 TypeScript / Vitest 工具配置并写失败测试。** `splitConfig_doesNotExposeServerFields` 使用 `private.example.test`、`PRIVATE_PEEK_KEY` 和私有 slug 作为哨兵，断言公开结果均不包含；`validateConfig_reportsPath` 覆盖重复组 ID、重复子组 ID、保留 `all`、错误引用、非法 Logo 和根 `groups` 为空；重复跨子组监控合法。契约测试验证 `responseMs:0` 与 `null` 保持区别。
-- [ ] **步骤 2：运行 `npm run test -- tests/unit/config.test.ts tests/unit/contracts.test.ts`，确认因实现缺失失败。** 配置错误必须包含 JSON 路径，不是联网错误。
-- [ ] **步骤 3：实现 `parseConfig(input:unknown):SiteConfig`、`splitConfig(config:SiteConfig):{publicConfig:PublicConfig;serverConfig:ServerConfig}` 和上面的契约。** 构建脚本用 Node 内置 TS 擦除运行、`node:crypto` 生成规范化配置的 SHA-256 版本，不取实际密钥，不联网，写入两个不同生成文件；不创建同时导出公私配置的 barrel。
-- [ ] **步骤 4：运行上述测试、`npm run generate` 和 `npm run typecheck`，确认通过且示例可编译。** npm 脚本提供 `generate/typecheck/test`；后续任务补 `dev:demo/build/preview/test:e2e`。
-- [ ] **步骤 5：提交 `feat(配置): 添加配置校验与公开数据契约`。**
+- [x] **步骤 1：建立最小 TypeScript / Vitest 工具配置并写失败测试。** `splitConfig_doesNotExposeServerFields` 使用 `private.example.test`、`PRIVATE_PEEK_KEY` 和私有 slug 作为哨兵，断言公开结果均不包含；`validateConfig_reportsPath` 覆盖重复组 ID、重复子组 ID、保留 `all`、错误引用、非法 Logo 和根 `groups` 为空；重复跨子组监控合法。契约测试验证 `responseMs:0` 与 `null` 保持区别。
+- [x] **步骤 2：运行 `npm run test -- tests/unit/config.test.ts tests/unit/contracts.test.ts`，确认因实现缺失失败。** 配置错误必须包含 JSON 路径，不是联网错误。
+- [x] **步骤 3：实现 `parseConfig(input:unknown):SiteConfig`、`splitConfig(config:SiteConfig):{publicConfig:PublicConfig;serverConfig:ServerConfig}` 和上面的契约。** 构建脚本用 Node 内置 TS 擦除运行、`node:crypto` 生成规范化配置的 SHA-256 版本，不取实际密钥，不联网，写入两个不同生成文件；不创建同时导出公私配置的 barrel。
+- [x] **步骤 4：运行上述测试、`npm run generate` 和 `npm run typecheck`，确认通过且示例可编译。** npm 脚本提供 `generate/typecheck/test`；后续任务补 `dev:demo/build/preview/test:e2e`。
+- [x] **步骤 5：提交 `feat(配置): 添加配置校验与公开数据契约`。**
 
 ## 任务 2：可运行的应用外壳与访客偏好
 
