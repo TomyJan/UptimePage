@@ -9,6 +9,7 @@
 - [需求与基础架构](docs/superpowers/specs/2026-10-20-uptimepage-foundation-design.md)
 - [UI 设计方向与交互原型](design/README.md)
 - [已确认的页面设计](docs/superpowers/specs/2026-10-21-uptimepage-ui-design.md)
+- [第一阶段实现计划](docs/superpowers/plans/2026-10-21-uptimepage-frontend.md)：正式前端、配置隔离与交互还原。
 - 技术栈：React、Vite、TypeScript、Tailwind CSS、EdgeOne 边缘函数。
 - 数据来源：Peekaping、UptimeRobot。
 - 本站只负责展示，上游负责监控检查和告警。
