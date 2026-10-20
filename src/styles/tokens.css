@@ -1,2 +1,55 @@
-:root{view-transition-name:none;--bg:#f7f7f8;--surface:#fff;--surface-soft:#fafafa;--ink:#242428;--muted:#68686f;--line:#e7e7eb;--hover:#f0f0f3;--accent:#4558d4;--brand:#5266eb;--accent-bg:#eef0ff;--accent-on:#fff;--chart-ink:#5266eb;--good:#237b52;--good-bg:#edf7f0;--bad:#bd354f;--bad-bg:#fff0f3;--warn:#976018;--warn-bg:#fff5e4;--blue:#7757b0;--blue-bg:#f4effb;--history-up:#4b9d71;--history-none:#cdd0d3;--shadow:0 2px 8px #20202804,0 1px 2px #20202804;--shadow-hover:0 9px 26px #2020280c,0 2px 6px #20202806;--float-shadow:0 14px 44px #20202819,0 3px 10px #20202808;--ease:cubic-bezier(.22,.75,.25,1)}
-[data-theme=dark]{--bg:#161618;--surface:#202023;--surface-soft:#242427;--ink:#ededf1;--muted:#b0b0b8;--line:#353539;--hover:#2b2b30;--accent:#a5b1ff;--brand:#a5b1ff;--accent-bg:#2c3050;--accent-on:#191a28;--chart-ink:#a5b1ff;--good:#7bcea0;--good-bg:#25382d;--bad:#ff95a9;--bad-bg:#432831;--warn:#edbc77;--warn-bg:#3c3224;--blue:#c2a7ed;--blue-bg:#352d45;--history-none:#515158;--shadow:0 2px 8px #0002;--shadow-hover:0 12px 30px #0003;--float-shadow:0 16px 44px #0005,0 0 0 1px #ffffff08}
+:root {
+  view-transition-name: none;
+  --bg: #f7f7f8;
+  --surface: #fff;
+  --surface-soft: #fafafa;
+  --ink: #242428;
+  --muted: #68686f;
+  --line: #e7e7eb;
+  --hover: #f0f0f3;
+  --accent: #4558d4;
+  --brand: #5266eb;
+  --accent-bg: #eef0ff;
+  --accent-on: #fff;
+  --chart-ink: #5266eb;
+  --good: #237b52;
+  --good-bg: #edf7f0;
+  --bad: #bd354f;
+  --bad-bg: #fff0f3;
+  --warn: #976018;
+  --warn-bg: #fff5e4;
+  --blue: #7757b0;
+  --blue-bg: #f4effb;
+  --history-up: #4b9d71;
+  --history-none: #cdd0d3;
+  --shadow: 0 2px 8px #20202804, 0 1px 2px #20202804;
+  --shadow-hover: 0 9px 26px #2020280c, 0 2px 6px #20202806;
+  --float-shadow: 0 14px 44px #20202819, 0 3px 10px #20202808;
+  --ease: cubic-bezier(0.22, 0.75, 0.25, 1);
+}
+[data-theme='dark'] {
+  --bg: #161618;
+  --surface: #202023;
+  --surface-soft: #242427;
+  --ink: #ededf1;
+  --muted: #b0b0b8;
+  --line: #353539;
+  --hover: #2b2b30;
+  --accent: #a5b1ff;
+  --brand: #a5b1ff;
+  --accent-bg: #2c3050;
+  --accent-on: #191a28;
+  --chart-ink: #a5b1ff;
+  --good: #7bcea0;
+  --good-bg: #25382d;
+  --bad: #ff95a9;
+  --bad-bg: #432831;
+  --warn: #edbc77;
+  --warn-bg: #3c3224;
+  --blue: #c2a7ed;
+  --blue-bg: #352d45;
+  --history-none: #515158;
+  --shadow: 0 2px 8px #0002;
+  --shadow-hover: 0 12px 30px #0003;
+  --float-shadow: 0 16px 44px #0005, 0 0 0 1px #ffffff08;
+}

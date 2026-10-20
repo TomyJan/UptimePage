@@ -1,1 +1,1 @@
-export {default as publicConfig} from '../../.generated/public-config.ts';
+export { default as publicConfig } from '../../.generated/public-config.ts';

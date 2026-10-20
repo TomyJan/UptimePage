@@ -1,0 +1,11 @@
+{
+  "installCommand": "npx --yes --package=node@22.21.0 --package=npm@10.9.4 -- npm ci",
+  "buildCommand": "npx --yes --package=node@22.21.0 --package=npm@10.9.4 -- npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/*",
+      "destination": "/index.html"
+    }
+  ]
+}

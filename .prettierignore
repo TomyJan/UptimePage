@@ -1,0 +1,9 @@
+node_modules
+dist
+.generated
+.superpowers
+work
+design/prototypes
+package-lock.json
+test-results
+playwright-report

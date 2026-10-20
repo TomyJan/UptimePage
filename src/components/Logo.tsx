@@ -1,1 +1,25 @@
-export function Logo({src,name,className='logo'}:{src:string|null;name:string;className?:string}){return src?<img className={className} src={src} alt="" loading="lazy" onError={event=>{event.currentTarget.style.visibility='hidden'}}/>:<span className={className} aria-hidden="true">{name.slice(0,2).toLocaleUpperCase()}</span>}
+export function Logo({
+  src,
+  name,
+  className = 'logo',
+}: {
+  src: string | null;
+  name: string;
+  className?: string;
+}) {
+  return src ? (
+    <img
+      className={className}
+      src={src}
+      alt=""
+      loading="lazy"
+      onError={(event) => {
+        event.currentTarget.style.visibility = 'hidden';
+      }}
+    />
+  ) : (
+    <span className={className} aria-hidden="true">
+      {name.slice(0, 2).toLocaleUpperCase()}
+    </span>
+  );
+}

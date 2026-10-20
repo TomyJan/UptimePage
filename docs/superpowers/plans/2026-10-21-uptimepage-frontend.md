@@ -167,11 +167,11 @@ interface ApiClient {
 
 **文件：** 创建 `edgeone.json`、`scripts/verify-public-build.ts`、`tests/e2e/visual.spec.ts`、`docs/development.md`；修改 `README.md`、`.gitignore` 和 npm 验证脚本。
 
-- [ ] **步骤 1：编写构建检查。** 使用临时私有测试配置生成生产包；断言 `dist/` 的 HTML、JS、CSS、JSON、sourcemap 均没有任务 1 的哨兵、服务端配置字段和 `UPTIMEPAGE_DEMO_ONLY`。测试配置恢复在 finally 中完成，不覆盖用户本地文件。
-- [ ] **步骤 2：实现 `verify-public-build.ts` 与 `edgeone.json`。** 针对文档列出的预装 Node 22.11.0，`installCommand` 使用 `npx --yes --package=node@22.21.0 --package=npm@10.9.4 -- npm ci`，`buildCommand` 使用同一前缀加 `npm run build`，`outputDirectory` 为 `dist`。先在本地验证引导后的 `node --version` 为 `v22.21.0`，第二阶段再验证平台安装权限和网络；不可只填写未验证的自定义 `nodeVersion`。SPA 使用官方精确 fallback `{"source":"/*","destination":"/index.html"}`，后续函数匹配优先。第一阶段无函数时，API 客户端收到 fallback HTML 必须判为无数据，不能当成成功 JSON。
-- [ ] **步骤 3：运行 `npm run typecheck`、`npm run test`、`npm run build`、`npm run verify:public-build`、`npm run test:e2e`。** 用 Playwright 固定时钟与样例，比较 1440 / 768 / 390 px × 中英文 × 深浅色；另外检查 320 px 和 568 × 320 横屏无页面 / 弹层溢出。截图前等待实际动画结束，不只推进 JS 假时钟。
-- [ ] **步骤 4：人工对照确认提交 `4d313b1` 的原型截图。** 检查层级、留白、圆角、阴影、固定绿色、曲线右端、菜单、提示、Toast 和回顶，排除布局与交互退化。文档写明 `dev:demo`、无真实接口时的行为和当前能力边界。
-- [ ] **步骤 5：提交 `chore(工程): 完成前端构建隔离与验收`。** 本阶段不推送、不部署；更新完成记录后进入第二阶段计划。
+- [x] **步骤 1：编写构建检查。** 使用临时私有测试配置生成生产包；断言 `dist/` 的 HTML、JS、CSS、JSON、sourcemap 均没有任务 1 的哨兵、服务端配置字段和 `UPTIMEPAGE_DEMO_ONLY`。测试配置恢复在 finally 中完成，不覆盖用户本地文件。
+- [x] **步骤 2：实现 `verify-public-build.ts` 与 `edgeone.json`。** 针对文档列出的预装 Node 22.11.0，`installCommand` 使用 `npx --yes --package=node@22.21.0 --package=npm@10.9.4 -- npm ci`，`buildCommand` 使用同一前缀加 `npm run build`，`outputDirectory` 为 `dist`。先在本地验证引导后的 `node --version` 为 `v22.21.0`，第二阶段再验证平台安装权限和网络；不可只填写未验证的自定义 `nodeVersion`。SPA 使用官方精确 fallback `{"source":"/*","destination":"/index.html"}`，后续函数匹配优先。第一阶段无函数时，API 客户端收到 fallback HTML 必须判为无数据，不能当成成功 JSON。
+- [x] **步骤 3：运行 `npm run typecheck`、`npm run test`、`npm run build`、`npm run verify:public-build`、`npm run test:e2e`。** 用 Playwright 固定时钟与样例，比较 1440 / 768 / 390 px × 中英文 × 深浅色；另外检查 320 px 和 568 × 320 横屏无页面 / 弹层溢出。截图前等待实际动画结束，不只推进 JS 假时钟。
+- [x] **步骤 4：人工对照确认提交 `4d313b1` 的原型截图。** 检查层级、留白、圆角、阴影、固定绿色、曲线右端、菜单、提示、Toast 和回顶，排除布局与交互退化。文档写明 `dev:demo`、无真实接口时的行为和当前能力边界。
+- [x] **步骤 5：提交 `chore(工程): 完成前端构建隔离与验收`。** 本阶段不推送、不部署；更新完成记录后进入第二阶段计划。
 
 ## 后续阶段与已核对事项
 
