@@ -1,8 +1,13 @@
-import { requestJson, type JsonFetcher } from './http.ts';
+import { requestJson, SourceRequestError, type JsonFetcher } from './http.ts';
 
 const endpoint = 'https://api.uptimerobot.com/v2/getMonitors';
 
-type Page = { monitors?: unknown[]; pagination?: { total?: number } };
+type Page = {
+  stat?: unknown;
+  error?: unknown;
+  monitors?: unknown[];
+  pagination?: { total?: unknown };
+};
 
 export type UptimeRobotRequestOptions = {
   /** Unix timestamps in seconds used for the response-time window. */
@@ -39,16 +44,31 @@ export async function fetchUptimeRobotMonitors(
       body.set('response_times_limit', '1000');
       body.set('logs', '1');
       body.set('logs_limit', '100');
-      if (options.startDate !== undefined)
+      if (options.startDate !== undefined) {
         body.set('response_times_start_date', String(options.startDate));
-      if (options.endDate !== undefined)
+        body.set('logs_start_date', String(options.startDate));
+      }
+      if (options.endDate !== undefined) {
         body.set('response_times_end_date', String(options.endDate));
+        body.set('logs_end_date', String(options.endDate));
+      }
     }
-    const page = asPage(await requestJson(fetcher, endpoint, { method: 'POST', body }));
+    const page = asPage(
+      await requestJson(fetcher, endpoint, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+        body,
+      }),
+    );
+    if (page.stat === 'fail')
+      throw new SourceRequestError(
+        typeof page.error === 'string' ? page.error : 'UptimeRobot rejected the request',
+      );
     const monitors = Array.isArray(page.monitors) ? page.monitors : [];
     result.push(...monitors);
-    total =
-      typeof page.pagination?.total === 'number' ? page.pagination.total : offset + monitors.length;
+    total = Number.isFinite(Number(page.pagination?.total))
+      ? Number(page.pagination?.total)
+      : offset + monitors.length;
     if (!monitors.length) break;
     offset += monitors.length;
   }

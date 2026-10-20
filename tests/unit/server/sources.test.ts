@@ -59,6 +59,8 @@ describe('source request clients', () => {
     expect(body?.get('response_times_start_date')).toBe('100');
     expect(body?.get('response_times_end_date')).toBe('200');
     expect(body?.get('logs')).toBe('1');
+    expect(body?.get('logs_start_date')).toBe('100');
+    expect(body?.get('logs_end_date')).toBe('200');
   });
 
   it('maps rate limits and malformed responses to server-safe errors', async () => {
@@ -82,5 +84,25 @@ describe('source request clients', () => {
         async () => new Response('not-json', { status: 200 }),
       ),
     ).rejects.toBeInstanceOf(SourceRequestError);
+  });
+
+  it('continues pagination when UptimeRobot returns a string total and surfaces API failures', async () => {
+    let calls = 0;
+    await expect(
+      fetchUptimeRobotMonitors('secret', undefined, async () => {
+        calls += 1;
+        return new Response(
+          JSON.stringify({ monitors: [{ id: calls }], pagination: { total: '2' } }),
+        );
+      }),
+    ).resolves.toHaveLength(2);
+    expect(calls).toBe(2);
+    await expect(
+      fetchUptimeRobotMonitors(
+        'secret',
+        undefined,
+        async () => new Response(JSON.stringify({ stat: 'fail', error: 'bad key' })),
+      ),
+    ).rejects.toMatchObject({ message: 'bad key' });
   });
 });
