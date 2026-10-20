@@ -16,7 +16,7 @@ pnpm run dev:demo
 - `GET /api/v1/groups/:groupId`
 - `GET /api/v1/groups/:groupId/monitors/:monitorId?range=24h`
 
-EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变量读取 `apiKeyEnv` 指定的密钥。当前详情接口只返回来源实际提供的 24 小时数据；不支持的范围、证书和历史能力会明确标记，不填充模拟值。Edge Cache 按配置版本、路径和查询参数隔离，来源失败时有旧缓存才返回 `stale` 数据。
+EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变量读取 `apiKeyEnv` 指定的密钥。详情接口当前统一提供 24 小时范围：Peekaping 使用状态页心跳，UptimeRobot 请求响应时间采样和故障日志；证书及来源未提供的范围会明确标记，不填充模拟值。Edge Cache 按配置版本、路径和查询参数隔离，来源失败时有旧缓存才返回 `stale` 数据。
 
 部署前至少配置 `PEEKAPING_API_KEY` 和 `UPTIMEROBOT_API_KEY`（或配置文件中对应的其他变量名），并将 `config/site.json` 的上游地址、状态页别名和 UptimeRobot 监控 ID 改为真实值。EdgeOne 的函数环境变量应使用服务端密钥配置，不能写入 JSON 或前端环境变量。
 
@@ -52,7 +52,7 @@ pnpm run format:check
 
 `edgeone.json` 通过 `nodeVersion` 选择 Node 22.21.1，并配置静态产物与 SPA fallback。安装、构建命令仅执行 pnpm，不在命令中指定版本。pnpm 版本由 `package.json` 的 `packageManager` 决定；平台版本支持见 [EdgeOne 构建指南](https://pages.edgeone.ai/document/build-guide)。本地通过不代表平台网络或运行时已经验证。
 
-当前已完成真实来源请求、字段映射、公开范围检查、基础 Edge Cache 和 EdgeOne 只读接口；可选 KV、平台预览和部署验证仍属于上线前步骤。当前代码不应在未配置真实来源和未完成 EdgeOne 预览验证前直接上线。
+当前已完成真实来源请求、响应/事件字段映射、公开范围检查、基础 Edge Cache 和 EdgeOne 只读接口；可选 KV、平台预览和部署验证仍属于上线前步骤。当前代码不应在未配置真实来源和未完成 EdgeOne 预览验证前直接上线。
 
 ## 自动检查与依赖更新
 
