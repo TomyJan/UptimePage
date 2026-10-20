@@ -15,6 +15,7 @@ import { PreferencesMenu } from '../features/preferences/PreferencesMenu.tsx';
 import { useCopy } from '../features/preferences/copy.ts';
 import { usePreferences } from '../features/preferences/store.ts';
 import { localize } from '../features/preferences/locale.ts';
+import { Footer } from '../components/Footer.tsx';
 export function Unavailable() {
   const t = useCopy();
   return (
@@ -90,7 +91,9 @@ export function App() {
           <Route path="*" element={<Unavailable />} />
         </Routes>
       </main>
-      <footer className="site-footer">{localize(publicConfig.site.footer, locale)}</footer>
+      <footer className="site-footer">
+        <Footer value={localize(publicConfig.site.footer, locale)} />
+      </footer>
       <BackToTop visible={chrome.topVisible} onClick={chrome.toTop} />
       <ToastViewport topVisible={chrome.topVisible} />
     </BrowserRouter>
