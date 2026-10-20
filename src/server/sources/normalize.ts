@@ -215,20 +215,38 @@ function uptimeRobotHistory(item: Record<string, unknown>, fetchedAt: string): H
       },
     ];
   });
+  // Build a union of outage intervals once. Comparing each response sample
+  // against every log repeatedly parsed timestamps and exhausted edge CPU
+  // budgets on flapping monitors.
+  const windows: { from: number; until: number }[] = [];
+  for (const incident of incidentHistory
+    .map((bucket) => ({ from: Date.parse(bucket.from), until: Date.parse(bucket.until) }))
+    .filter((window) => window.until > window.from)
+    .sort((a, b) => a.from - b.from)) {
+    const previous = windows.at(-1);
+    if (previous && incident.from <= previous.until)
+      previous.until = Math.max(previous.until, incident.until);
+    else windows.push(incident);
+  }
+  let incidentIndex = 0;
+  const fetchedTime = Date.parse(fetchedAt);
+  const currentlyDown = uptimeRobotState(item.status) === 'down';
   // Response samples prove only a point in time. They cannot overwrite an outage
   // or establish uninterrupted uptime until the next sample.
   return [
-    ...responseHistory.filter(
-      (point) =>
-        !incidentHistory.some(
-          (incident) =>
-            (Date.parse(point.from) < Date.parse(incident.until) ||
-              (uptimeRobotState(item.status) === 'down' &&
-                point.from === fetchedAt &&
-                incident.until === fetchedAt)) &&
-            Date.parse(point.until) > Date.parse(incident.from),
-        ),
-    ),
+    ...responseHistory.filter((point) => {
+      const from = Date.parse(point.from),
+        until = Date.parse(point.until);
+      const includeCurrentBoundary = currentlyDown && from === fetchedTime;
+      while (
+        incidentIndex < windows.length &&
+        (windows[incidentIndex].until < from ||
+          (windows[incidentIndex].until === from && !includeCurrentBoundary))
+      )
+        incidentIndex++;
+      const incident = windows[incidentIndex];
+      return !incident || incident.from >= until;
+    }),
     ...incidentHistory,
   ]
     .filter(
