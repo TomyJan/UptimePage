@@ -157,11 +157,11 @@ interface ApiClient {
 
 **文件：** 创建 `src/features/scroll/{useScrollChrome.ts,BackToTop.tsx}`、`src/features/toasts/{store.ts,ToastViewport.tsx}`、`src/app/transitions.ts`、`tests/unit/toasts.test.ts`、`tests/e2e/motion.spec.ts`；修改导航、页面切换、刷新结果提示。
 
-- [ ] **步骤 1：写失败测试。** 连续 12 条仅保留最新可容纳的消息；关闭后旧消息不补回；计时、悬停 / 焦点暂停和挤出后的清理独立。E2E 检查下翻收导航、上翻展开与显示回顶，停止后保留，继续下翻 / 到顶隐藏；按钮层级高于通知且不重叠。
-- [ ] **步骤 2：运行 `npm run test -- tests/unit/toasts.test.ts`，确认失败。**
-- [ ] **步骤 3：按页面规格实现 Store、滚动状态与动效。** 复用原型已验证的行为，不直接搬用全局 DOM 脚本。滚动以 rAF 合并，方向反转承接实际动画位置；Toast 使用 Portal、实际卡片高度与独立退出层，外层无背景或滚动条。React 路由使用局部页面过渡，过渡 API 不支持时淡入退化；清理 ResizeObserver、动画和计时器。
-- [ ] **步骤 4：运行单元测试和 `npm run test:e2e -- tests/e2e/motion.spec.ts`。** 覆盖快速连续菜单 / 子组 / 路由切换、通知爆发、聚焦消息被挤出、短横屏、减少动态效果和无 View Transition API；自动刷新不发 Toast。
-- [ ] **步骤 5：提交 `feat(交互): 完善滚动导航通知与页面动效`。**
+- [x] **步骤 1：写失败测试。** 连续 12 条仅保留最新可容纳的消息；关闭后旧消息不补回；计时、悬停 / 焦点暂停和挤出后的清理独立。E2E 检查下翻收导航、上翻展开与显示回顶，停止后保留，继续下翻 / 到顶隐藏；按钮层级高于通知且不重叠。
+- [x] **步骤 2：运行 `npm run test -- tests/unit/toasts.test.ts`，确认失败。**
+- [x] **步骤 3：按页面规格实现 Store、滚动状态与动效。** 复用原型已验证的行为，不直接搬用全局 DOM 脚本。滚动以 rAF 合并，方向反转承接实际动画位置；Toast 使用 Portal、实际卡片高度与独立退出层，外层无背景或滚动条。React 路由使用局部页面过渡，过渡 API 不支持时淡入退化；清理 ResizeObserver、动画和计时器。
+- [x] **步骤 4：运行单元测试和 `npm run test:e2e -- tests/e2e/motion.spec.ts`。** 覆盖快速连续菜单 / 子组 / 路由切换、通知爆发、聚焦消息被挤出、短横屏、减少动态效果和无 View Transition API；自动刷新不发 Toast。
+- [x] **步骤 5：提交 `feat(交互): 完善滚动导航通知与页面动效`。**
 
 ## 任务 7：构建隔离与第一阶段验收
 
