@@ -18,6 +18,18 @@ const number = (value: unknown): number | null => {
   return Number.isFinite(result) && result >= 0 ? result : null;
 };
 
+function monitorType(value: unknown): string | null {
+  const types: Record<number, string> = {
+    1: 'HTTP',
+    2: 'Keyword',
+    3: 'Ping',
+    4: 'Port',
+    5: 'Heartbeat',
+  };
+  if (typeof value === 'string' && value.trim()) return value;
+  return typeof value === 'number' ? (types[value] ?? String(value)) : null;
+}
+
 function peekapingState(value: unknown): MonitorState {
   if (value === 1) return 'operational';
   if (value === 0) return 'down';
@@ -83,6 +95,9 @@ export function normalizePeekapingMonitor(
     freshness: 'fresh',
     observedAt: iso(latest?.time),
     responseMs: number(latest?.ping),
+    type: monitorType(item.type),
+    intervalSeconds: number(item.interval ?? item.monitor_interval),
+    sourceName: 'Peekaping',
     uptime24h: uptime(item.uptime_24h, fetchedAt),
     history: heartbeatHistory(heartbeats),
   };
@@ -176,6 +191,9 @@ export function normalizeUptimeRobotMonitor(
     freshness: 'fresh',
     observedAt,
     responseMs: number(item.average_response_time),
+    type: monitorType(item.type),
+    intervalSeconds: number(item.monitor_interval ?? item.interval),
+    sourceName: 'UptimeRobot',
     uptime24h: {
       value: number(ratio),
       from: new Date(Date.parse(fetchedAt) - 86400000).toISOString(),

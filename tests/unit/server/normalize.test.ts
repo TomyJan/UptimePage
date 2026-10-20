@@ -13,6 +13,8 @@ describe('source normalization', () => {
         id: 'm1',
         name: 'API',
         active: true,
+        type: 1,
+        interval: 60,
         uptime_24h: 99.5,
         heartbeats: [
           {
@@ -33,6 +35,9 @@ describe('source normalization', () => {
       subgroupIds: ['web'],
       state: 'operational',
       responseMs: 42,
+      type: 'HTTP',
+      intervalSeconds: 60,
+      sourceName: 'Peekaping',
       uptime24h: { value: 99.5, basis: 'provider' },
     });
     expect(monitor?.history).toHaveLength(1);
@@ -44,6 +49,8 @@ describe('source normalization', () => {
         id: 42,
         friendly_name: 'Website',
         status: 9,
+        type: 1,
+        monitor_interval: 300,
         custom_uptime_ratio: '98.25-99.10',
         average_response_time: null,
       },
@@ -55,6 +62,9 @@ describe('source normalization', () => {
       id: '42',
       state: 'down',
       responseMs: null,
+      type: 'HTTP',
+      intervalSeconds: 300,
+      sourceName: 'UptimeRobot',
       uptime24h: { value: 98.25 },
     });
   });

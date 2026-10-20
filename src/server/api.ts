@@ -86,9 +86,9 @@ function detailFromSnapshot(
     },
     response,
     events,
-    type: null,
-    intervalSeconds: null,
-    sourceName: null,
+    type: monitor.type ?? null,
+    intervalSeconds: monitor.intervalSeconds ?? null,
+    sourceName: monitor.sourceName ?? null,
   };
 }
 

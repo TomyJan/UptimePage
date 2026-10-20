@@ -48,6 +48,9 @@ export const monitorSummarySchema = z.object({
   freshness: freshnessSchema,
   observedAt: utc.nullable(),
   responseMs: finite.nonnegative().nullable(),
+  type: z.string().nullable().optional(),
+  intervalSeconds: finite.positive().nullable().optional(),
+  sourceName: z.string().nullable().optional(),
   uptime24h: metricSchema,
   history: z.array(historyBucketSchema),
 });
