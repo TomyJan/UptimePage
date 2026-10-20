@@ -84,3 +84,8 @@ body{padding-top:var(--nav-height)}
 @keyframes tooltip-in{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
 .sub-tabs .logo{display:grid;width:18px;height:18px;font-size:8px}.group-tabs,.sub-tabs{max-width:100%}.sub-row>.sub-tabs{min-width:0}.service-logo,.logo,.brand-mark{object-fit:contain}.retry{margin-top:16px;color:var(--accent);padding:8px 16px;border-radius:8px;background:var(--accent-bg)}.skeleton{display:grid;gap:14px}.skeleton>div{height:88px;border-radius:16px;background:var(--hover);animation:pulse 1.8s ease infinite}@keyframes pulse{50%{opacity:.4}}
 @media(max-width:360px){.shell{padding-left:12px;padding-right:12px}.nav-inner{padding:0 12px}.brand{font-size:15px}.intro h1{font-size:21px}.refresh-main time{font-size:10px}.overview{padding:14px}.overview-title{font-size:13px}}
+
+.chart-host{min-width:0;width:100%}.chart-reveal{transform-box:fill-box;transform-origin:left;animation:chart-reveal 1450ms cubic-bezier(.3,.1,.2,1) both}@keyframes chart-reveal{from{transform:scaleX(0)}to{transform:scaleX(1)}}.detail-content{max-width:1000px;margin:auto}.detail-title{min-width:0}.detail-title>div:last-child{min-width:0}.detail-title h1{overflow-wrap:anywhere}.detail-heading .refresh-control{margin-left:auto}.metric-detail{display:block;text-align:left}.window-tabs button:disabled{cursor:not-allowed}.bar.pending{background:var(--warn)}
+@media(max-width:800px){.detail-heading{flex-direction:row;flex-wrap:wrap;align-items:center}.detail-title{flex:1 1 calc(100% - 100px)}.detail-heading .refresh-control{margin-left:0}.detail-metrics strong{font-size:20px}.chart{height:190px}}
+
+.chart-loading{height:218px;background:var(--hover);border-radius:10px;animation:pulse 1.8s ease infinite}

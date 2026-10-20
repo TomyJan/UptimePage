@@ -147,11 +147,11 @@ interface ApiClient {
 
 **文件：** 创建 `src/features/monitor/{MonitorPage.tsx,MetricGrid.tsx,ResponseChart.tsx,chartGeometry.ts,MonitorEvents.tsx,MonitorFacts.tsx}`、`tests/unit/chartGeometry.test.ts`、`tests/e2e/detail.spec.ts`；修改应用路由和列表返回状态。
 
-- [ ] **步骤 1：写失败测试。** `buildResponsePaths(points,width)` 不跨 null / 时间缺口连线，插值不越相邻采样极值，首尾坐标在裁切内；详情 ID 改名仍稳定，返回保持组 / 子组 / 搜索；不支持范围禁用，404 清掉旧详情而不是继续展示旧卡片。
-- [ ] **步骤 2：运行 `npm run test -- tests/unit/chartGeometry.test.ts`，确认失败。**
-- [ ] **步骤 3：实现详情及 `buildResponsePaths`。** 原生 SVG + 单调三次插值 + ResizeObserver，不引入大型图表库；按能力与覆盖范围渲染指标、事件、历史和证书。裁切揭示仅在首次进入 / 切范围播放，刷新与换主题保持曲线节点与进度。
-- [ ] **步骤 4：运行单元测试和 `npm run test:e2e -- tests/e2e/detail.spec.ts`。** 覆盖直接访问、刷新页面、返回、未知 ID、快速切范围、中英文、UTC / 非 UTC 及 320 px；检查时间只在服务信息中出现一次。
-- [ ] **步骤 5：提交 `feat(详情): 实现监控详情与响应趋势`。**
+- [x] **步骤 1：写失败测试。** `buildResponsePaths(points,width)` 不跨 null / 时间缺口连线，插值不越相邻采样极值，首尾坐标在裁切内；详情 ID 改名仍稳定，返回保持组 / 子组 / 搜索；不支持范围禁用，404 清掉旧详情而不是继续展示旧卡片。
+- [x] **步骤 2：运行 `npm run test -- tests/unit/chartGeometry.test.ts`，确认失败。**
+- [x] **步骤 3：实现详情及 `buildResponsePaths`。** 原生 SVG + 单调三次插值 + ResizeObserver，不引入大型图表库；按能力与覆盖范围渲染指标、事件、历史和证书。裁切揭示仅在首次进入 / 切范围播放，刷新与换主题保持曲线节点与进度。
+- [x] **步骤 4：运行单元测试和 `npm run test:e2e -- tests/e2e/detail.spec.ts`。** 覆盖直接访问、刷新页面、返回、未知 ID、快速切范围、中英文、UTC / 非 UTC 及 320 px；检查时间只在服务信息中出现一次。
+- [x] **步骤 5：提交 `feat(详情): 实现监控详情与响应趋势`。**
 
 ## 任务 6：滚动导航、通知替换与完整动效
 

@@ -30,7 +30,7 @@ export const monitorDetailSchema=z.object({
  capabilities:z.object({history:capability,response:capability,events:capability,certificate:capability}),
  response:z.array(z.object({at:utc,valueMs:finite.nonnegative().nullable()})),
  events:z.array(z.object({id:z.string(),from:utc,until:utc.nullable(),state:monitorStateSchema})),
- type:z.string().nullable(),intervalSeconds:finite.positive().nullable(),
+ type:z.string().nullable(),intervalSeconds:finite.positive().nullable(),sourceName:z.string().nullable().default(null),
 });
 export type Locale=z.infer<typeof localeSchema>;
 export type LocalizedText=z.infer<typeof localizedTextSchema>;
