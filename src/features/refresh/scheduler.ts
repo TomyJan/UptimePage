@@ -60,7 +60,9 @@ export class RefreshScheduler {
       .then(this.request)
       .then(
         () => {
-          this.retryAt = 0;
+          // A successful HTTP response may still contain stale/partial data
+          // with a source retry deadline. Manual refresh must not erase it.
+          if (this.retryAt <= Date.now()) this.retryAt = 0;
           return { ok: true };
         },
         (error: unknown) => {
