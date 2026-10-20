@@ -1,6 +1,7 @@
 {
-  "installCommand": "npx --yes --package=node@22.21.0 --package=npm@10.9.4 -- npm ci",
-  "buildCommand": "npx --yes --package=node@22.21.0 --package=npm@10.9.4 -- npm run build",
+  "nodeVersion": "22.21.1",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
   "rewrites": [
     {

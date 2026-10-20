@@ -16,7 +16,7 @@
 - JSON 配置在构建时拆分为公开内容和服务端配置；实际密钥放服务端环境变量。
 - KV 仅作为可选短期缓存，不保存长期历史。
 
-本地预览：`npm ci` 后运行 `npm run dev:demo`。配置、验证和能力边界见[开发说明](docs/development.md)。
+本地预览：`pnpm install --frozen-lockfile` 后运行 `pnpm run dev:demo`。Node 与 pnpm 版本见 `package.json`，配置、验证和能力边界见[开发说明](docs/development.md)。
 
 ## 分支
 

@@ -33,12 +33,13 @@ try {
   }
   const config = join(scratch, 'site.local.json');
   await writeFile(config, JSON.stringify(input));
-  const npm = process.env.npm_execpath;
-  if (!npm) throw new Error('Run with npm run verify:public-build');
+  const pnpm = process.env.npm_execpath;
+  if (!pnpm) throw new Error('Run with pnpm run verify:public-build');
+  const pnpmIsScript = /\.(?:c|m)?js$/i.test(pnpm);
   await new Promise<void>((done, fail) => {
     const child = spawn(
-      process.execPath,
-      [npm, 'run', 'build', '--', '--outDir', join(scratch, 'dist')],
+      pnpmIsScript ? process.execPath : pnpm,
+      [...(pnpmIsScript ? [pnpm] : []), 'run', 'build', '--outDir', join(scratch, 'dist')],
       {
         cwd: root,
         stdio: 'inherit',

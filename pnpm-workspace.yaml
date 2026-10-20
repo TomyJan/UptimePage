@@ -1,0 +1,6 @@
+# 保持各环境使用隔离依赖布局，不继承本机的 hoisted 配置。
+nodeLinker: isolated
+
+# 迁移时保留现有锁文件中的图标库版本；其余依赖沿用默认发布冷却期。
+minimumReleaseAgeExclude:
+  - lucide-react@1.60.0

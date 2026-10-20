@@ -4,6 +4,6 @@ dist
 .superpowers
 work
 design/prototypes
-package-lock.json
+pnpm-lock.yaml
 test-results
 playwright-report

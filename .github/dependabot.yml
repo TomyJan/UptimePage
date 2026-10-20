@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # npm 生态同时支持 pnpm 锁文件。
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      react-runtime:
+        patterns:
+          - react
+          - react-dom
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
