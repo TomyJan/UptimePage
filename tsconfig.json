@@ -13,5 +13,14 @@
     "erasableSyntaxOnly": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "config", "scripts", "tests", "*.config.ts", ".generated/public-config.ts"]
+  "include": [
+    "src",
+    "config",
+    "scripts",
+    "tests",
+    "edge-functions",
+    "*.config.ts",
+    ".generated/public-config.ts",
+    ".generated/server-config.ts"
+  ]
 }
