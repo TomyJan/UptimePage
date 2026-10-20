@@ -1,15 +1,15 @@
 import { expect, it } from 'vitest';
 import { buildResponsePaths } from '../../src/features/monitor/chartGeometry.ts';
 const at = (h: number) => new Date(Date.UTC(2026, 9, 21, h)).toISOString();
-it('breaks at null and missing time without extending the last sample', () => {
+it('breaks at null without extending the last sample', () => {
   const points = [0, 1, 2, 3, 4, 9, 10].map((h, i) => ({
     at: at(h),
     valueMs: i === 2 ? null : 100 + i * 10,
   }));
   const g = buildResponsePaths(points, 500);
-  expect(g.segments.map((s) => s.points.length)).toEqual([2, 2, 2]);
+  expect(g.segments.map((s) => s.points.length)).toEqual([2, 4]);
   expect(g.segments[0].points[0].x).toBe(40);
-  expect(g.segments[2].points.at(-1)!.x).toBe(492);
+  expect(g.segments[1].points.at(-1)!.x).toBe(492);
   expect(g.segments.every((s) => s.line.endsWith(`${s.points.at(-1)!.y}`))).toBeTruthy();
 });
 it('keeps cubic controls between adjacent extrema, even with flat sections', () => {
@@ -43,10 +43,10 @@ it('supports empty, singleton, duplicate time and zero values', () => {
   expect(g.segments[0].line).not.toContain('NaN');
 });
 
-it('breaks across a single identifiable missing sample', () => {
+it('keeps irregular sampling together when no explicit sample is missing', () => {
   const g = buildResponsePaths(
     [0, 1, 3, 4].map((h) => ({ at: at(h), valueMs: 100 })),
     320,
   );
-  expect(g.segments.map((s) => s.points.length)).toEqual([2, 2]);
+  expect(g.segments.map((s) => s.points.length)).toEqual([4]);
 });

@@ -38,3 +38,12 @@ it('rejects invalid responses and sanitizes upstream failures', async () => {
     retryAt: '2026-10-21T08:00:00Z',
   });
 });
+
+it('does not turn authorization failures into public removal', async () => {
+  for (const status of [401, 403]) {
+    const client = createHttpClient('/api/v1', async () => new Response('{}', { status }));
+    await expect(client.getGroup('a', new AbortController().signal)).rejects.toMatchObject({
+      code: 'unavailable',
+    });
+  }
+});

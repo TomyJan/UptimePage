@@ -32,7 +32,10 @@ export function createHttpClient(basePath = '/api/v1', fetcher: typeof fetch = f
       if (signal.aborted) throw e;
       throw new ApiClientError('unavailable');
     }
-    if ([401, 403, 404].includes(response.status)) throw new ApiClientError('not-found');
+    // Only a missing route proves that a monitor was removed from the public set.
+    // Auth or policy failures must keep the cached monitor visible as stale.
+    if (response.status === 404) throw new ApiClientError('not-found');
+    if (response.status === 401 || response.status === 403) throw new ApiClientError('unavailable');
     let data: unknown;
     try {
       data = await response.json();

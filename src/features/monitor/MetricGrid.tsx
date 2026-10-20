@@ -62,7 +62,10 @@ export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
               </>
             }
           >
-            <button className="metric-detail">
+            <button
+              className="metric-detail"
+              aria-label={`${t('average')} ${formatMetric(d.averageResponse24h.value, ' ms')}`}
+            >
               <strong>{formatMetric(d.averageResponse24h.value, ' ms')}</strong>
             </button>
           </DataTooltip>

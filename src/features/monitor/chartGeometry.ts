@@ -22,17 +22,8 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
   const max = Math.max(50, Math.ceil(Math.max(0, ...values) / 50) * 50);
   const start = sorted[0]?.[0] ?? 0,
     end = sorted.at(-1)?.[0] ?? start;
-  const intervals = sorted
-    .slice(1)
-    .map(([at], i) => at - sorted[i][0])
-    .filter((n) => n > 0)
-    .sort((a, b) => a - b);
-  // Conservatively split identifiable missing samples. The backend must supply nulls
-  // for gaps that cannot be inferred from timestamps (e.g. aggregated responses).
-  const cadence = intervals[0] ?? Infinity;
   const chunks: PlotPoint[][] = [];
   let chunk: PlotPoint[] = [];
-  let previous: number | null = null;
   const flush = () => {
     if (chunk.length) chunks.push(chunk);
     chunk = [];
@@ -40,10 +31,8 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
   for (const [at, p] of sorted) {
     if (p.valueMs === null || !Number.isFinite(p.valueMs)) {
       flush();
-      previous = null;
       continue;
     }
-    if (previous !== null && at - previous > cadence * 1.5) flush();
     chunk.push({
       x:
         end === start ? (left + right) / 2 : left + ((at - start) / (end - start)) * (right - left),
@@ -51,7 +40,6 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
       at: p.at,
       value: p.valueMs,
     });
-    previous = at;
   }
   flush();
   const segments = chunks.map((points) => {

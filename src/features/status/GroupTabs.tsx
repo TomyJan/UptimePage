@@ -64,7 +64,6 @@ export function GroupTabs({
           key={item.id}
           id={`${id}-${item.id}`}
           aria-selected={selected === item.id}
-          aria-controls="monitor-content"
           tabIndex={selected === item.id ? 0 : -1}
           className={selected === item.id ? 'active' : ''}
           onClick={() => onChange(item.id)}
