@@ -37,7 +37,7 @@ for (const [name, data] of [
   const header =
     name === 'public'
       ? "import type { PublicConfig } from '../src/shared/config.ts';\nconst config:PublicConfig = "
-      : 'const config = ';
+      : "import type { ServerConfig } from '../src/server/config.ts';\nconst config:ServerConfig = ";
   await writeFile(
     `.generated/${name}-config.ts`,
     `// Generated; do not edit.\n${header}${JSON.stringify(data, null, 2)};\nexport default config;\n`,

@@ -5,6 +5,7 @@ import type { ServerConfig } from '../../../src/server/config.ts';
 
 const config = (type: 'peekaping' | 'uptimerobot'): ServerConfig => ({
   configVersion: 'version-a',
+  cache: {},
   groups: parseConfig({
     site: { name: 'Test' },
     groups: [

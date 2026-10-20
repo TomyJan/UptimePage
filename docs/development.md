@@ -24,6 +24,7 @@ EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变
 
 默认读取 `config/site.json`。私有配置可保存为 `*.local.json`，通过 `UPTIMEPAGE_CONFIG` 指定路径。不要在 JSON 中放实际 API Key：连接配置只保存 `apiKeyEnv` 环境变量名，密钥在下一阶段的服务端运行时解析。
 
+- `cache.kvBinding`（可选）：EdgeOne 项目绑定的 KV 变量名；不配置时只使用节点 Cache。KV 失败会自动降级，不影响实时请求。
 - `site`：站点名称、Logo、导航、页脚自定义内容、刷新周期、异常优先初值，在构建时生成静态内容。页脚左侧的 UptimePage、构建短 hash、TomyJan 署名由程序固定生成；`site.footer` 只渲染在右侧。
 - `groups`：大分组与子分组各有独立 `id/name/logo`。Peekaping 子组用 `slug`，UptimeRobot 子组用 `monitorIds`；`order` 可指定顺序，`monitors` 可覆盖展示信息。
 - 多语言名称支持字符串或 `{ "en": "Services", "zh-CN": "服务" }`，英文必填。`all` 是自动生成的保留子组。

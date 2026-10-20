@@ -6,6 +6,7 @@ import type { ResponseCache } from '../../../src/server/cache.ts';
 
 const config: ServerConfig = {
   configVersion: 'version-a',
+  cache: {},
   groups: parseConfig({
     site: { name: 'Test' },
     groups: [

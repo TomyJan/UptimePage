@@ -2,6 +2,7 @@ import type { SiteConfig } from '../../config/schema.ts';
 
 export type ServerConfig = {
   configVersion: string;
+  cache: SiteConfig['cache'];
   groups: SiteConfig['groups'];
 };
 

@@ -12,6 +12,15 @@ const publicUrl = z
   );
 const logo = publicUrl.nullable().default(null);
 const footerText = z.union([z.literal(''), localizedTextSchema]).default('');
+const cacheConfig = z
+  .object({
+    kvBinding: z
+      .string()
+      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+      .optional(),
+  })
+  .strict()
+  .default({});
 const opaqueId = z.string().min(1);
 const common = { id, name: localizedTextSchema, logo };
 const selector = z
@@ -36,6 +45,7 @@ const connection = z.discriminatedUnion('type', [
 ]);
 const schema = z
   .object({
+    cache: cacheConfig,
     site: z
       .object({
         name: localizedTextSchema,
@@ -99,6 +109,7 @@ const schema = z
 export type SiteConfig = z.infer<typeof schema>;
 export interface ServerConfig {
   configVersion: string;
+  cache: SiteConfig['cache'];
   groups: SiteConfig['groups'];
 }
 export function parseConfig(input: unknown): SiteConfig {
@@ -131,6 +142,6 @@ export function splitConfig(
         subgroups: group.subgroups.map((sub) => ({ id: sub.id, name: sub.name, logo: sub.logo })),
       })),
     },
-    serverConfig: { configVersion, groups: config.groups },
+    serverConfig: { configVersion, cache: config.cache, groups: config.groups },
   };
 }

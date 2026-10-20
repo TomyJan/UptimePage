@@ -10,6 +10,7 @@ import {
 
 const config = (): ServerConfig => ({
   configVersion: 'version-a',
+  cache: {},
   groups: parseConfig({
     site: { name: 'Test' },
     groups: [
