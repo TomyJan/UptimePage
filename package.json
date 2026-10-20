@@ -9,8 +9,8 @@
   },
   "scripts": {
     "generate": "node scripts/build-config.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "pnpm run generate && tsc --noEmit",
+    "test": "pnpm run generate && vitest run",
     "dev": "pnpm run generate && vite",
     "dev:demo": "pnpm run generate && node scripts/dev-demo.mjs",
     "build": "pnpm run generate && pnpm run typecheck && vite build",
