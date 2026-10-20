@@ -67,6 +67,20 @@ main:focus{outline:none}
 @media(max-width:800px){.intro{gap:12px;align-items:flex-start}.intro h1{min-width:0}.refresh-main{gap:6px;padding:7px 8px}.refresh-prefix{display:none}.refresh-cycle:before{display:none}.refresh-cycle{font-size:9px;min-width:0;padding-left:6px}.refresh-options{width:25px}.refresh-control{min-height:34px}.overview-heading{gap:8px 10px}.overview .pin-toggle{font-size:9px;padding:5px 7px;min-height:27px}}
 @media(max-width:600px){.toast{right:max(12px,env(safe-area-inset-right));width:calc(100vw - 24px);padding:12px;gap:8px}}
 
+/* Scroll controls share the menu/card motion and neutral surfaces. */
+:root{--nav-height:77px}
+body{padding-top:var(--nav-height)}
+.site-nav{position:fixed;inset:0 0 auto;z-index:60;transform:translate3d(0,calc(-1px * var(--nav-shift,0)),0);will-change:transform}
+.site-nav.is-settling{transition:transform 320ms var(--ease),background-color 320ms ease,color 280ms ease,border-color 300ms ease,box-shadow 300ms var(--ease)}
+.site-nav.is-scrolled{box-shadow:var(--shadow)}
+#main{scroll-margin-top:calc(var(--nav-height) + 12px)}
+.back-top{position:fixed;right:max(24px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));z-index:100;width:44px;height:44px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--accent);box-shadow:var(--float-shadow);opacity:0;transform:translateY(12px) scale(.94);visibility:hidden;pointer-events:none;transition:opacity 240ms ease,transform 360ms var(--ease),visibility 0s 360ms,background-color 280ms,border-color 240ms,box-shadow 240ms}
+.back-top.is-visible{opacity:1;transform:translateY(0) scale(1);visibility:visible;pointer-events:auto;transition-delay:0s}
+@media(hover:hover){.back-top:hover{background:var(--accent-bg);border-color:color-mix(in srgb,var(--accent) 30%,var(--line));box-shadow:var(--shadow-hover)}.back-top:hover svg{transform:translateY(-2px)}}
+.back-top svg{transition:transform 260ms var(--ease)}.back-top:active{transform:scale(.95)}
+@media(max-width:800px){:root{--nav-height:65px}}
+@media(max-width:600px){.back-top{right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}}
+
 </style>
 </head>
 <body>
@@ -76,6 +90,7 @@ main:focus{outline:none}
 <div id="floating-menu" class="floating-menu" role="menu" hidden></div>
 <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
 <div id="feedback" role="region" aria-label="通知 / Notifications"></div>
+<button id="back-top" class="back-top" type="button" aria-label="回到顶部" aria-hidden="true" inert><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button>
 <div id="announcements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
 <script>
 
@@ -169,6 +184,7 @@ setInterval(()=>{if(!document.hidden)syncRefreshControl()},1000);
 
 function syncPrototypeControls(){
  $('#toast-demo').textContent=language()==='zh'?'试用提示':'Try toast';$('#toast-demo').onclick=showDemoToast;
+ $('#back-top').setAttribute('aria-label',language()==='zh'?'回到顶部':'Back to top');
  $('#feedback').setAttribute('aria-label',language()==='zh'?'通知':'Notifications');
  $$('.toast-close').forEach(el=>el.setAttribute('aria-label',t('dismiss')));
 }
@@ -201,6 +217,7 @@ function syncChrome(){
  if(!header){$('#app').innerHTML=newNav+'<div id="page-stage"></div>'+footer()}
  else if(renderedNav!==newNav){header.outerHTML=newNav}
  renderedNav=newNav;
+ syncScrollChrome();
  $('#sample-label').textContent=sampleSize+' '+t('quantity');$('#lab-label').textContent='A · '+t('sample');
 }
 function updateTabs(){
@@ -361,9 +378,35 @@ document.addEventListener('keydown',e=>{
  const trigger=e.target.closest('[data-menu]');if(trigger&&['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();openMenu(trigger);return}
  const bars=e.target.closest('[data-history-keyboard]');if(bars&&['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const items=$$('.bar',bars),i=tipTarget&&items.includes(tipTarget)?items.indexOf(tipTarget):items.length-1,next=e.key==='Home'?0:e.key==='End'?items.length-1:Math.max(0,Math.min(items.length-1,i+(e.key==='ArrowRight'?1:-1)));showTooltip(items[next],bars)}
 });
-window.addEventListener('scroll',()=>{hideTooltip(true);closeMenu(false,true)},{passive:true});
+let lastScrollY=Math.max(0,scrollY),navShift=0,scrollFrame=null,scrollSettle=null,backTopVisible=false,lastScrollDirection=0;
+function syncScrollChrome(settling=false){
+ const nav=$('.site-nav');if(!nav)return;
+ const height=nav.offsetHeight;navShift=Math.max(0,Math.min(height,navShift));
+ nav.classList.toggle('is-settling',settling);nav.classList.toggle('is-scrolled',scrollY>1);
+ nav.style.setProperty('--nav-shift',navShift);nav.inert=navShift>=height-1;nav.setAttribute('aria-hidden',String(nav.inert));
+}
+function setBackTop(visible){
+ if(backTopVisible===visible)return;backTopVisible=visible;
+ const button=$('#back-top');button.classList.toggle('is-visible',visible);button.inert=!visible;button.setAttribute('aria-hidden',String(!visible));
+ layoutToasts();
+}
+function updateScrollChrome(){
+ scrollFrame=null;
+ const nav=$('.site-nav');
+ if(nav?.classList.contains('is-settling')){navShift=-new DOMMatrixReadOnly(getComputedStyle(nav).transform).m42;nav.classList.remove('is-settling')}
+ // Clamp overscroll so elastic scrolling at either edge cannot flip direction.
+ const y=Math.max(0,Math.min(scrollY,Math.max(0,document.documentElement.scrollHeight-innerHeight))),delta=y-lastScrollY;
+ lastScrollY=y;
+ if(y<=1){navShift=0;lastScrollDirection=0;setBackTop(false)}
+ else if(Math.abs(delta)>.5){lastScrollDirection=Math.sign(delta);navShift+=delta;setBackTop(delta<0)}
+ syncScrollChrome();clearTimeout(scrollSettle);
+ scrollSettle=setTimeout(()=>{if(!lastScrollDirection)return;const height=$('.site-nav')?.offsetHeight||0;navShift=lastScrollDirection<0||y<height/2?0:height;syncScrollChrome(true)},140);
+}
+window.addEventListener('scroll',()=>{hideTooltip(true);closeMenu(false,true);if(scrollFrame===null)scrollFrame=requestAnimationFrame(updateScrollChrome)},{passive:true});
+document.addEventListener('focusin',e=>{if(e.target.closest('.site-nav')){clearTimeout(scrollSettle);lastScrollDirection=0;navShift=0;syncScrollChrome(true)}});
+$('#back-top').onclick=()=>{if(document.activeElement===$('#back-top'))$('#main')?.focus({preventScroll:true});window.scrollTo({top:0,behavior:reducedMotion()?'instant':'smooth'})};
 let chartResizeFrame;
-window.addEventListener('resize',()=>{hideTooltip(true);closeMenu(false,true);moveIndicator();cancelAnimationFrame(chartResizeFrame);chartResizeFrame=requestAnimationFrame(()=>{fitChart();layoutToasts()})},{passive:true});
+window.addEventListener('resize',()=>{hideTooltip(true);closeMenu(false,true);moveIndicator();cancelAnimationFrame(chartResizeFrame);chartResizeFrame=requestAnimationFrame(()=>{fitChart();layoutToasts();lastScrollY=Math.max(0,scrollY);if(scrollY<=1){navShift=0;setBackTop(false)}syncScrollChrome(true)})},{passive:true});
 window.addEventListener('blur',()=>{hideTooltip(true);closeMenu(false,true)});
 window.addEventListener('hashchange',()=>render({page:true}));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(!prefs.theme||prefs.theme==='auto')applyTheme()});
@@ -373,28 +416,37 @@ const toastEntries=new Map();let toastSequence=0,demoSequence=0;
 function pauseToast(entry){clearTimeout(entry.timer);if(entry.started){entry.remaining=Math.max(0,entry.remaining-(performance.now()-entry.started));entry.started=0}}
 function resumeToast(entry){if(!entry.visible||entry.closing||entry.hovered||entry.focused||document.hidden||entry.started)return;entry.started=performance.now();entry.timer=setTimeout(()=>dismissToast(entry.id),entry.remaining)}
 function layoutToasts(){
- const entries=[...toastEntries.values()],before=new Map(entries.filter(e=>e.visible).map(e=>[e.id,e.el.getBoundingClientRect().top]));
- const edge=innerWidth<=600?12:24,available=innerHeight-edge*2;let occupied=0,visible=0;
+ const entries=[...toastEntries.values()].reverse(),before=new Map(entries.filter(e=>e.visible).map(e=>[e.id,e.el.getBoundingClientRect().top]));
+ const edge=innerWidth<=600?12:24,safeBottom=Math.max(edge,parseFloat(getComputedStyle($('#back-top')).bottom)||0),base=safeBottom+(backTopVisible?56:0),available=innerHeight-base-edge;let occupied=0,visible=0;
  for(const entry of entries){
   const el=entry.el,wasVisible=entry.visible;el.getAnimations().filter(a=>a.id==='toast-layout').forEach(a=>a.cancel());
   el.hidden=false;el.style.visibility='hidden';const height=el.offsetHeight;
-  // Pending notices retain their full timer until a slot becomes available.
+  // Newest stays at the bottom. Overflow expires now, never queues or returns.
   const fits=visible<5&&(occupied+height<=available||visible===0);
-  if(!fits){el.hidden=true;el.style.visibility='';entry.visible=false;pauseToast(entry);continue}
-  el.style.bottom=`calc(max(${edge}px, env(safe-area-inset-bottom)) + ${occupied}px)`;el.style.visibility='';entry.visible=true;occupied+=height+10;visible++;
+  if(!fits){el.style.visibility='';dismissToast(entry.id,{reflow:false});continue}
+  el.style.bottom=`${base+occupied}px`;el.style.visibility='';entry.visible=true;occupied+=height+10;visible++;
   if(!reducedMotion()&&!entry.closing){
-   if(!wasVisible)el.animate([{opacity:0,transform:'translateY(10px) scale(.985)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:320,easing:motion.ease});
+   if(!wasVisible){const a=el.animate([{opacity:0,transform:'translateY(10px) scale(.985)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:320,easing:motion.ease});a.id='toast-enter'}
    else{const delta=before.get(entry.id)-el.getBoundingClientRect().top;if(Math.abs(delta)>.5){const a=el.animate([{translate:`0 ${delta}px`},{translate:'0 0'}],{duration:320,easing:motion.ease});a.id='toast-layout'}}
   }
   if(!wasVisible){$('#announcements').textContent=$('.toast-message',el).textContent;resumeToast(entry)}
  }
 }
-function dismissToast(id){
- const entry=toastEntries.get(id);if(!entry||entry.closing)return;entry.closing=true;pauseToast(entry);entry.el.inert=true;
- const remove=()=>{if(!toastEntries.has(id))return;clearTimeout(entry.cleanup);entry.el.remove();toastEntries.delete(id);layoutToasts()};
- if(!entry.visible||reducedMotion()){remove();return}
- const animation=entry.el.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:'translateX(12px)'}],{duration:200,easing:'ease-out',fill:'forwards'});
- entry.cleanup=setTimeout(remove,260);animation.finished.catch(()=>{}).then(remove);
+function dismissToast(id,{reflow=true}={}){
+ const entry=toastEntries.get(id);if(!entry||entry.closing)return;entry.closing=true;pauseToast(entry);toastEntries.delete(id);
+ const el=entry.el;
+ if(el.contains(document.activeElement)){const next=[...toastEntries.values()].reverse().find(e=>e.visible&&!e.closing)?.el.querySelector('.toast-close')||(entry.origin?.isConnected?entry.origin:$('#toast-demo'));next?.focus({preventScroll:true})}
+ el.inert=true;el.setAttribute('aria-hidden','true');el.classList.add('is-leaving');
+ const opacity=getComputedStyle(el).opacity,rect=el.getBoundingClientRect();
+ // Freeze the outgoing card in viewport space while survivors reflow.
+ el.getAnimations().forEach(a=>a.cancel());
+ Object.assign(el.style,{position:'fixed',left:rect.left+'px',top:rect.top+'px',right:'auto',bottom:'auto',width:rect.width+'px',translate:'none'});
+ const remove=()=>{clearTimeout(entry.cleanup);el.remove()};
+ if(!entry.visible||reducedMotion()||Number(opacity)<.05)remove();
+ else{const animation=el.animate([{opacity,transform:'translateX(0)'},{opacity:0,transform:'translateX(12px)'}],{duration:200,easing:'ease-out',fill:'forwards'});entry.cleanup=setTimeout(remove,260);animation.finished.catch(()=>{}).then(remove)}
+ // Bound outgoing DOM too when a burst arrives during exit animations.
+ $$('.toast.is-leaving').slice(0,-5).forEach(card=>card.remove());
+ if(reflow)layoutToasts();
 }
 function toast(message,{tone='success',duration=5000}={}){
  const id=++toastSequence,el=document.createElement('div');el.className='toast';el.dataset.tone=tone;el.hidden=true;
@@ -403,7 +455,7 @@ function toast(message,{tone='success',duration=5000}={}){
  const entry={id,el,origin:document.activeElement,remaining:duration,started:0,timer:null,closing:false,hovered:false,focused:false,visible:false};toastEntries.set(id,entry);
  el.addEventListener('pointerenter',()=>{entry.hovered=true;pauseToast(entry)});el.addEventListener('pointerleave',()=>{entry.hovered=false;resumeToast(entry)});
  el.addEventListener('focusin',()=>{entry.focused=true;pauseToast(entry)});el.addEventListener('focusout',e=>{entry.focused=el.contains(e.relatedTarget);if(!entry.focused)resumeToast(entry)});
- $('.toast-close',el).onclick=()=>{const next=[...toastEntries.values()].find(e=>e.id!==id&&e.visible&&!e.closing)?.el.querySelector('.toast-close')||(entry.origin?.isConnected?entry.origin:$('#toast-demo'));if(el.contains(document.activeElement))next?.focus({preventScroll:true});dismissToast(id)};
+ $('.toast-close',el).onclick=()=>dismissToast(id);
  $('#feedback').appendChild(el);layoutToasts();return id;
 }
 function showDemoToast(){const samples=[[t('refreshDone'),'success'],[t('demoPreference'),'info'],[t('demoDelayed'),'warning']],item=samples[demoSequence++%samples.length];toast(item[0],{tone:item[1]})}
