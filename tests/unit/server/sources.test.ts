@@ -44,6 +44,23 @@ describe('source request clients', () => {
     expect(requests[0].get('monitors')).toBe('a-b');
   });
 
+  it('requests response samples and logs for the production detail view', async () => {
+    let body: URLSearchParams | undefined;
+    await fetchUptimeRobotMonitors(
+      'ur_secret',
+      ['1'],
+      async (_url, init) => {
+        body = new URLSearchParams(init?.body as string);
+        return new Response(JSON.stringify({ monitors: [], pagination: { total: 0 } }));
+      },
+      { includeDetails: true, startDate: 100, endDate: 200 },
+    );
+    expect(body?.get('response_times')).toBe('1');
+    expect(body?.get('response_times_start_date')).toBe('100');
+    expect(body?.get('response_times_end_date')).toBe('200');
+    expect(body?.get('logs')).toBe('1');
+  });
+
   it('maps rate limits and malformed responses to server-safe errors', async () => {
     await expect(
       fetchPeekapingMonitors(

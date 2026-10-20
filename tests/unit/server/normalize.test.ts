@@ -59,6 +59,25 @@ describe('source normalization', () => {
     });
   });
 
+  it('normalizes UptimeRobot response samples into ordered history buckets', () => {
+    const monitor = normalizeUptimeRobotMonitor(
+      {
+        id: 42,
+        friendly_name: 'Website',
+        status: 2,
+        response_times: [
+          { datetime: 1761048000, value: 250 },
+          { datetime: 1761047940, value: 200 },
+        ],
+      },
+      'external',
+      ['tools'],
+      fetchedAt,
+    );
+    expect(monitor?.history.map((bucket) => bucket.responseMs)).toEqual([200, 250]);
+    expect(monitor?.history[0].from).toBe('2025-10-21T11:59:00.000Z');
+  });
+
   it('rejects malformed upstream records instead of creating fake monitors', () => {
     expect(normalizePeekapingMonitor({ id: 'missing-name' }, 'core', [], fetchedAt)).toBeNull();
     expect(

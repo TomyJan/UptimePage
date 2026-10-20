@@ -104,6 +104,11 @@ export async function loadGroupSnapshot(
         key,
         refs.map((ref) => ref.id),
         fetcher,
+        {
+          includeDetails: true,
+          startDate: Math.floor((now.getTime() - 86400000) / 1000),
+          endDate: Math.floor(now.getTime() / 1000),
+        },
       );
       for (const raw of rawMonitors) {
         const id = raw && typeof raw === 'object' && 'id' in raw ? String(raw.id) : '';

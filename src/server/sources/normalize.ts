@@ -1,8 +1,14 @@
 import type { HistoryBucket, MonitorState, MonitorSummary } from '../../shared/contracts.ts';
 
 const iso = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
-  const time = Date.parse(value);
+  const time =
+    typeof value === 'number'
+      ? value < 10_000_000_000
+        ? value * 1000
+        : value
+      : typeof value === 'string'
+        ? Date.parse(value)
+        : NaN;
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 };
 
@@ -98,6 +104,51 @@ function uptimeRobotState(value: unknown): MonitorState {
   }
 }
 
+function uptimeRobotHistory(item: Record<string, unknown>): HistoryBucket[] {
+  const points = Array.isArray(item.response_times) ? item.response_times : [];
+  const history = points
+    .flatMap((entry): { at: string; valueMs: number | null }[] => {
+      if (!entry || typeof entry !== 'object') return [];
+      const point = entry as Record<string, unknown>;
+      const at = iso(point.datetime ?? point.time);
+      if (!at) return [];
+      return [{ at, valueMs: number(point.value ?? point.response_time) }];
+    })
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const responseHistory: HistoryBucket[] = history.map((point, index) => {
+    const next = history[index + 1]?.at;
+    const until = next ?? new Date(Date.parse(point.at) + 1000).toISOString();
+    return {
+      from: point.at,
+      until:
+        Date.parse(until) > Date.parse(point.at)
+          ? until
+          : new Date(Date.parse(point.at) + 1000).toISOString(),
+      state: 'operational' as const,
+      responseMs: point.valueMs,
+    };
+  });
+  const logs = Array.isArray(item.logs) ? item.logs : [];
+  const incidentHistory = logs.flatMap((entry): HistoryBucket[] => {
+    if (!entry || typeof entry !== 'object') return [];
+    const log = entry as Record<string, unknown>;
+    const from = iso(log.datetime ?? log.time);
+    const duration = number(log.duration);
+    if (!from || duration === null || duration <= 0 || Number(log.type) !== 1) return [];
+    return [
+      {
+        from,
+        until: new Date(Date.parse(from) + duration * 1000).toISOString(),
+        state: 'down',
+        responseMs: null,
+      },
+    ];
+  });
+  return [...responseHistory, ...incidentHistory].sort(
+    (a, b) => Date.parse(a.from) - Date.parse(b.from),
+  );
+}
+
 export function normalizeUptimeRobotMonitor(
   raw: unknown,
   groupId: string,
@@ -131,6 +182,6 @@ export function normalizeUptimeRobotMonitor(
       until: fetchedAt,
       basis: 'provider',
     },
-    history: [],
+    history: uptimeRobotHistory(item),
   };
 }
