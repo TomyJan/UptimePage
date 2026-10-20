@@ -9,12 +9,14 @@ import {
 import type { ServerConfig } from './config.ts';
 import { loadGroupSnapshot, PublicGroupNotFoundError } from './snapshot.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
+import { readCache, writeCache, type ResponseCache } from './cache.ts';
 
 export type ApiRuntime = {
   config: ServerConfig;
   environment: Record<string, string | undefined>;
   fetcher?: JsonFetcher;
   now?: Date;
+  cache?: ResponseCache;
 };
 
 function json(value: unknown, status = 200, headers: Record<string, string> = {}) {
@@ -100,6 +102,22 @@ async function loadSnapshot(runtime: ApiRuntime, groupId: string) {
   );
 }
 
+async function staleResponse(response: Response) {
+  const payload = (await response.json()) as Record<string, unknown>;
+  if (payload.monitor && typeof payload.monitor === 'object') {
+    payload.monitor = { ...(payload.monitor as Record<string, unknown>), freshness: 'stale' };
+  } else if ('freshness' in payload) {
+    payload.freshness = 'stale';
+    if (Array.isArray(payload.monitors))
+      payload.monitors = payload.monitors.map((monitor) =>
+        monitor && typeof monitor === 'object'
+          ? { ...(monitor as Record<string, unknown>), freshness: 'stale' }
+          : monitor,
+      );
+  }
+  return json(payload, 200, { 'cache-control': 'no-store', 'x-uptimepage-cache': 'stale' });
+}
+
 export async function handleApi(request: Request, runtime: ApiRuntime): Promise<Response> {
   if (request.method !== 'GET') return json({ error: { code: 'not-found', retryAt: null } }, 404);
   const parts = splitPath(new URL(request.url).pathname);
@@ -107,17 +125,26 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
     return errorResponse('not-found');
   const groupId = parts[1];
   try {
+    const cached = await readCache(runtime.cache, request, runtime.config.configVersion);
+    if (cached) return cached;
     const snapshot = await loadSnapshot(runtime, groupId);
-    if (parts.length === 2) return json(snapshot, 200, { 'cache-control': 'public, max-age=30' });
+    if (parts.length === 2) {
+      const response = json(snapshot, 200, { 'cache-control': 'public, max-age=30' });
+      await writeCache(runtime.cache, request, runtime.config.configVersion, response);
+      return response;
+    }
     if (parts[2] !== 'monitors' || !parts[3]) return errorResponse('not-found');
     const rangeValue = new URL(request.url).searchParams.get('range') ?? '24h';
     const range = rangeSchema.safeParse(rangeValue);
     if (!range.success) return errorResponse('invalid-response');
     const detail = detailFromSnapshot(snapshot, parts[3], range.data);
-    return detail
-      ? json(detail, 200, { 'cache-control': 'public, max-age=30' })
-      : errorResponse('not-found');
+    if (!detail) return errorResponse('not-found');
+    const response = json(detail, 200, { 'cache-control': 'public, max-age=30' });
+    await writeCache(runtime.cache, request, runtime.config.configVersion, response);
+    return response;
   } catch (error) {
+    const cached = await readCache(runtime.cache, request, runtime.config.configVersion);
+    if (cached) return staleResponse(cached);
     if (error instanceof PublicGroupNotFoundError) return errorResponse('not-found');
     if (error instanceof SourceRequestError)
       return errorResponse(error.status === 429 ? 'rate-limited' : 'unavailable', error.retryAt);

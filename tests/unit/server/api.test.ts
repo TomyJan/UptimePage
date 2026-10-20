@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { parseConfig } from '../../../config/schema.ts';
 import { handleApi } from '../../../src/server/api.ts';
 import type { ServerConfig } from '../../../src/server/config.ts';
+import type { ResponseCache } from '../../../src/server/cache.ts';
 
 const config: ServerConfig = {
   configVersion: 'version-a',
@@ -18,7 +19,7 @@ const config: ServerConfig = {
   }).groups,
 };
 
-const fetcher = async () =>
+const fetcher: typeof fetch = async () =>
   new Response(
     JSON.stringify({
       monitors: [
@@ -33,6 +34,16 @@ const fetcher = async () =>
       pagination: { total: 1 },
     }),
   );
+
+class MemoryCache implements ResponseCache {
+  private readonly values = new Map<string, Response>();
+  async match(request: Request) {
+    return this.values.get(request.url)?.clone();
+  }
+  async put(request: Request, response: Response) {
+    this.values.set(request.url, response.clone());
+  }
+}
 
 it('serves only the configured group and monitor routes', async () => {
   const runtime = { config, environment: { KEY: 'secret' }, fetcher };
@@ -74,4 +85,22 @@ it('rejects unknown groups, monitors and unsupported methods without touching up
       )
     ).status,
   ).toBe(404);
+});
+
+it('uses config-versioned cache entries and avoids a second upstream call', async () => {
+  const cache = new MemoryCache();
+  let calls = 0;
+  const runtime = {
+    config,
+    environment: { KEY: 'secret' },
+    cache,
+    fetcher: async (...args: Parameters<typeof fetch>) => {
+      calls += 1;
+      return fetcher(...args);
+    },
+  };
+  const request = new Request('https://site.test/api/v1/groups/group');
+  expect((await handleApi(request, runtime)).status).toBe(200);
+  expect((await handleApi(request, runtime)).status).toBe(200);
+  expect(calls).toBe(1);
 });
