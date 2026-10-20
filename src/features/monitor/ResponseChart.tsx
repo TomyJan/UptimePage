@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { buildResponsePaths, type ResponsePoint } from './chartGeometry.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { useFormatTime } from '../status/HistoryBars.tsx';
+import { usePreferences } from '../preferences/store.ts';
 export function ResponseChart({
   points,
   animationKey,
@@ -10,6 +11,7 @@ export function ResponseChart({
   animationKey: string;
 }) {
   const t = useCopy(),
+    { timeZone } = usePreferences(),
     time = useFormatTime(),
     host = useRef<HTMLDivElement>(null),
     [width, setWidth] = useState(600),
@@ -75,6 +77,9 @@ export function ResponseChart({
           <div className="chart-labels">
             <span>{time(g.from, true)}</span>
             <span>{time(g.until, true)}</span>
+          </div>
+          <div className="chart-timezone" aria-label={t('timezone')}>
+            {timeZone}
           </div>
           {(g.segments.length > 1 || points.some((p) => p.valueMs === null)) && (
             <div className="chart-note">

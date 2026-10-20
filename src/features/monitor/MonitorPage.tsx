@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
+import { DataTooltip } from '../../components/DataTooltip.tsx';
 import type { MonitorDetail, Range } from '../../shared/contracts.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useMonitorQuery } from '../../data/hooks.ts';
@@ -128,18 +129,28 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
             {t('response')} <span className="muted mono">ms</span>
           </h2>
           <div className="window-tabs" aria-label={t('response')}>
-            {(['24h', '7d', '30d'] as Range[]).map((r) => (
-              <button
-                key={r}
-                aria-pressed={r === range}
-                disabled={!d.supportedRanges.includes(r)}
-                className={r === range ? 'active' : ''}
-                onClick={() => setRange(r)}
-                aria-label={r}
-              >
-                {r}
-              </button>
-            ))}
+            {(['24h', '7d', '30d'] as Range[]).map((r) => {
+              const supported = d.supportedRanges.includes(r);
+              const button = (
+                <button
+                  key={r}
+                  aria-pressed={r === range}
+                  aria-disabled={!supported}
+                  className={r === range ? 'active' : ''}
+                  onClick={() => supported && setRange(r)}
+                  aria-label={r}
+                >
+                  {r}
+                </button>
+              );
+              return supported ? (
+                button
+              ) : (
+                <DataTooltip key={r} content={t('rangeUnsupported')}>
+                  {button}
+                </DataTooltip>
+              );
+            })}
           </div>
         </div>
         <AnimatedHeight className="chart-body" contentKey={`${range}:${chartState}`}>

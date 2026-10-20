@@ -2378,8 +2378,9 @@ body {
   display: block;
   text-align: left;
 }
-.window-tabs button:disabled {
+.window-tabs button[aria-disabled='true'] {
   cursor: not-allowed;
+  opacity: 0.6;
 }
 .bar.pending {
   background: var(--warn);
@@ -2416,9 +2417,16 @@ body {
 .retry:active {
   transform: scale(0.96);
 }
-.window-tabs button:hover:not(:disabled, .active) {
+.window-tabs button:hover:not([aria-disabled='true'], .active) {
   color: var(--ink);
   background: var(--surface-soft);
+}
+.chart-timezone {
+  margin-top: 6px;
+  color: var(--muted);
+  font: 10px var(--mono);
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 .chart-note {
   display: flex;

@@ -29,3 +29,25 @@ test('unknown IDs and unavailable capabilities do not invent data', async ({ pag
   await expect(page.getByText('Service unavailable')).toBeVisible();
   await expect(page.locator('.detail-metrics')).toHaveCount(0);
 });
+
+test('unavailable ranges explain why and chart axes identify the chosen timezone', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('uptimepage.preferences', JSON.stringify({ timeZone: 'UTC' }));
+  });
+  await page.goto('/services/core/m10');
+  const range = page.getByRole('button', { name: '7d', exact: true });
+  await range.focus();
+  await expect(page.getByRole('tooltip')).toHaveText('This source does not provide this range');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: '24h', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.goto('/services/core/m1');
+  await expect(page.locator('.chart-timezone')).toHaveText('UTC');
+  await page.getByRole('button', { name: 'Timezone', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: /Shanghai/ }).click();
+  await expect(page.locator('.chart-timezone')).toHaveText('Asia/Shanghai');
+});
