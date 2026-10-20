@@ -127,11 +127,11 @@ interface ApiClient {
 
 **文件：** 创建 `src/data/{client.ts,queries.ts}`、`src/demo/{client.ts,fixtures.ts}`、`scripts/dev-demo.mjs`、`src/features/refresh/{useRefresh.ts,RefreshControl.tsx}`、`tests/unit/{client.test.ts,refresh.test.tsx}`、`tests/e2e/refresh.spec.ts`；修改 `src/app/providers.tsx`。
 
-- [ ] **步骤 1：写失败测试。** 按契约编码 ID；相同监控 ID 不同组的查询键不同；切组取消旧请求，迟到响应不串组。使用假时钟检查 60 秒自动、手动完成重置、后台暂停 / 恢复补一次、0 关闭、429 暂缓，以及失败不伪造新的成功更新时间。
-- [ ] **步骤 2：运行 `npm run test -- tests/unit/client.test.ts tests/unit/refresh.test.tsx`，确认失败来自未实现行为。**
-- [ ] **步骤 3：实现 `createHttpClient(basePath:'/api/v1'):ApiClient`、上述查询键与 `useRefresh`。** 用 fetch + AbortSignal 和契约校验；刷新由一个调度器驱动，TanStack 自带重复轮询 / 自动聚焦重取关闭，当前查询并发合并。开发入口仅在 `import.meta.env.DEV && import.meta.env.VITE_DEMO==='true'` 动态加载 `src/demo/client.ts`。演示时间固定，模拟正常、缺失、部分失败、过期、限流与乱序，数据中加入唯一哨兵 `UPTIMEPAGE_DEMO_ONLY`。
-- [ ] **步骤 4：运行上述单元测试和 `npm run test:e2e -- tests/e2e/refresh.spec.ts`。** `npm run dev:demo` 通过跨平台 `scripts/dev-demo.mjs` 设置标志并启动 Vite，无需真实密钥。只自动刷新当前组或当前详情；刷新频率菜单及倒计时符合页面规格。
-- [ ] **步骤 5：提交 `feat(数据): 添加页面客户端与统一刷新调度`。**
+- [x] **步骤 1：写失败测试。** 按契约编码 ID；相同监控 ID 不同组的查询键不同；切组取消旧请求，迟到响应不串组。使用假时钟检查 60 秒自动、手动完成重置、后台暂停 / 恢复补一次、0 关闭、429 暂缓，以及失败不伪造新的成功更新时间。
+- [x] **步骤 2：运行 `npm run test -- tests/unit/client.test.ts tests/unit/refresh.test.tsx`，确认失败来自未实现行为。**
+- [x] **步骤 3：实现 `createHttpClient(basePath:'/api/v1'):ApiClient`、上述查询键与 `useRefresh`。** 用 fetch + AbortSignal 和契约校验；刷新由一个调度器驱动，TanStack 自带重复轮询 / 自动聚焦重取关闭，当前查询并发合并。开发入口仅在 `import.meta.env.DEV && import.meta.env.VITE_DEMO==='true'` 动态加载 `src/demo/client.ts`。演示时间固定，模拟正常、缺失、部分失败、过期、限流与乱序，数据中加入唯一哨兵 `UPTIMEPAGE_DEMO_ONLY`。
+- [x] **步骤 4：运行上述单元测试和 `npm run test:e2e -- tests/e2e/refresh.spec.ts`。** `npm run dev:demo` 通过跨平台 `scripts/dev-demo.mjs` 设置标志并启动 Vite，无需真实密钥。只自动刷新当前组或当前详情；刷新频率菜单及倒计时符合页面规格。
+- [x] **步骤 5：提交 `feat(数据): 添加页面客户端与统一刷新调度`。**
 
 ## 任务 4：首页、分组和历史组件
 

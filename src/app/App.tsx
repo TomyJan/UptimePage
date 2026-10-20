@@ -1,3 +1,4 @@
+import { StatusPage } from '../features/status/StatusPage.tsx';
 import { useEffect } from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router';
 import { Activity } from 'lucide-react';
@@ -11,6 +12,6 @@ export function App(){
  const {preferences,locale}=usePreferences(),t=useCopy();
  useEffect(()=>{const media=matchMedia('(prefers-color-scheme: dark)');const sync=()=>document.documentElement.dataset.theme=preferences.theme==='auto'?(media.matches?'dark':'light'):preferences.theme;sync();media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[preferences.theme]);
  useEffect(()=>{document.documentElement.lang=locale;document.title=localize(publicConfig.site.name,locale)},[locale]);
- return <BrowserRouter><a className="skip" href="#main">{t('skip')}</a><header className="site-nav"><div className="nav-inner"><Link to="/" className="brand">{publicConfig.site.logo?<img className="brand-mark" src={publicConfig.site.logo} alt=""/>:<span className="brand-mark"><Activity size={23}/></span>}{localize(publicConfig.site.name,locale)}</Link><div className="nav-links">{publicConfig.site.nav.map(item=><a key={item.href} href={item.href}>{localize(item.label,locale)}</a>)}</div><PreferencesMenu/></div></header><main id="main" className="shell" tabIndex={-1}><Routes><Route path="/" element={<section className="intro"><h1>{t('title')}</h1></section>}/><Route path="/services/:groupId/:monitorId" element={<Unavailable/>}/><Route path="*" element={<Unavailable/>}/></Routes></main><footer className="site-footer">{localize(publicConfig.site.footer,locale)}</footer></BrowserRouter>;
+ return <BrowserRouter><a className="skip" href="#main">{t('skip')}</a><header className="site-nav"><div className="nav-inner"><Link to="/" className="brand">{publicConfig.site.logo?<img className="brand-mark" src={publicConfig.site.logo} alt=""/>:<span className="brand-mark"><Activity size={23}/></span>}{localize(publicConfig.site.name,locale)}</Link><div className="nav-links">{publicConfig.site.nav.map(item=><a key={item.href} href={item.href}>{localize(item.label,locale)}</a>)}</div><PreferencesMenu/></div></header><main id="main" className="shell" tabIndex={-1}><Routes><Route path="/" element={<StatusPage/>}/><Route path="/services/:groupId/:monitorId" element={<Unavailable/>}/><Route path="*" element={<Unavailable/>}/></Routes></main><footer className="site-footer">{localize(publicConfig.site.footer,locale)}</footer></BrowserRouter>;
 }
 
