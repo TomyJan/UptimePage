@@ -137,11 +137,11 @@ interface ApiClient {
 
 **文件：** 创建 `src/features/status/{StatusPage.tsx,GroupTabs.tsx,StatusSummary.tsx,MonitorList.tsx,selectors.ts,HistoryBars.tsx}`、`src/components/{MonitorCard.tsx,DataTooltip.tsx}`、`tests/unit/{selectors.test.ts,history.test.tsx}`、`tests/e2e/home.spec.ts`。
 
-- [ ] **步骤 1：写失败测试。** 首组 / 全部默认、同组去重且首次位置保留、跨组不合并、名称覆盖一致、不同子组的独立顺序、稳定异常排序；空查询、空子组、部分失败分别反馈。过期正常不计当前正常，未覆盖历史不得变绿；0% 和缺失的显示不同。
-- [ ] **步骤 2：运行 `npm run test -- tests/unit/selectors.test.ts tests/unit/history.test.tsx`，确认失败。**
-- [ ] **步骤 3：实现 `selectMonitors(snapshot:GroupSnapshot,subgroupId:string,query:string,pinAbnormal:boolean):MonitorSummary[]` 和页面组件。** “全部”使用 `snapshot.monitors` 的服务端合并顺序，子组使用 `snapshot.subgroups[].monitorIds` 的独立顺序；前端只做选择、搜索与稳定排序。历史组件按 UTC 区间绘制，保留缺口；自定义提示立即出现、随条块更新，可键盘和触屏操作。行卡采用独立的详情链接与历史控件，禁止可交互元素嵌套在链接内。
-- [ ] **步骤 4：运行上述测试和 `npm run test:e2e -- tests/e2e/home.spec.ts`。** 固定样例对照原型；切换 200 条样例不截断数据，320 px 不横向溢出；两类分组显示各自的名称和 Logo。
-- [ ] **步骤 5：提交 `feat(首页): 实现分组与监控行卡`。**
+- [x] **步骤 1：写失败测试。** 首组 / 全部默认、同组去重且首次位置保留、跨组不合并、名称覆盖一致、不同子组的独立顺序、稳定异常排序；空查询、空子组、部分失败分别反馈。过期正常不计当前正常，未覆盖历史不得变绿；0% 和缺失的显示不同。
+- [x] **步骤 2：运行 `npm run test -- tests/unit/selectors.test.ts tests/unit/history.test.tsx`，确认失败。**
+- [x] **步骤 3：实现 `selectMonitors(snapshot:GroupSnapshot,subgroupId:string,query:string,pinAbnormal:boolean):MonitorSummary[]` 和页面组件。** “全部”使用 `snapshot.monitors` 的服务端合并顺序，子组使用 `snapshot.subgroups[].monitorIds` 的独立顺序；前端只做选择、搜索与稳定排序。历史组件按 UTC 区间绘制，保留缺口；自定义提示立即出现、随条块更新，可键盘和触屏操作。行卡采用独立的详情链接与历史控件，禁止可交互元素嵌套在链接内。
+- [x] **步骤 4：运行上述测试和 `npm run test:e2e -- tests/e2e/home.spec.ts`。** 固定样例对照原型；切换 200 条样例不截断数据，320 px 不横向溢出；两类分组显示各自的名称和 Logo。
+- [x] **步骤 5：提交 `feat(首页): 实现分组与监控行卡`。**
 
 ## 任务 5：详情、真实口径的曲线和缺失能力
 
