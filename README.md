@@ -2,7 +2,7 @@
 
 面向 EdgeOne Makers 的多来源监控状态展示页。
 
-正式前端和真实来源基础链路已实现：多分组首页、监控详情、中英文、深浅色、刷新、Peekaping / UptimeRobot 数据适配和 EdgeOne 只读函数。可在本地运行演示；可选 KV 和 EdgeOne 平台验证仍需上线前完成。
+正式前端和真实来源基础链路已实现：多分组首页、监控详情、中英文、深浅色、刷新、Peekaping / UptimeRobot 数据适配、EdgeOne 只读函数和可选 KV。可在本地运行演示；上线前仍需配置真实来源并完成 EdgeOne 平台预览验证。
 
 ## 设计
 

@@ -16,13 +16,20 @@ pnpm run dev:demo
 - `GET /api/v1/groups/:groupId`
 - `GET /api/v1/groups/:groupId/monitors/:monitorId?range=24h`
 
-EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变量读取 `apiKeyEnv` 指定的密钥。详情接口当前统一提供 24 小时范围：Peekaping 使用状态页心跳，UptimeRobot 请求响应时间采样和故障日志；证书及来源未提供的范围会明确标记，不填充模拟值。Edge Cache 按配置版本、路径和查询参数隔离，来源失败时有旧缓存才返回 `stale` 数据。
+EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变量读取 `apiKeyEnv` 指定的密钥。详情接口当前只接受 `24h`，不将它冒充 `7d` 或 `30d`；证书暂未接入。
+
+- Peekaping 使用状态页接口最近 100 条心跳及来源计算的 24 小时可用率；历史不保证覆盖完整一天，状态页未提供的间隔显示为缺失。
+- UptimeRobot 首页请求 30 分钟聚合响应采样和故障日志，列表延迟是最近一组采样的均值。打开详情后才请求单个监控的原始响应采样和日志；保留实际历史缺口，响应采样不当作连续正常区间。实际可获取的历史还受上游套餐限制。
+- 节点缓存按配置版本、组与详情路径隔离，只缓存成功结果。新鲜期 30 秒，旧数据最长使用至快照生成后 5 分钟。无关查询参数不产生新缓存键。
+- 详情返回前检查公开名单，Peekaping 名单更新失败时拒绝详情请求；UptimeRobot 仍受配置白名单约束。来源失败返回 `unavailable` / `rate-limited`，不会伪装成监控已移除的 404。
+- 对浏览器和 CDN 返回 `no-store`，缓存由函数显式管理，避免独立详情缓存绕过名单检查。
+- 限流退避时间随错误、旧缓存及部分成功结果传递到页面，自动刷新按该时间推迟。
 
 部署前至少配置 `PEEKAPING_API_KEY` 和 `UPTIMEROBOT_API_KEY`（或配置文件中对应的其他变量名），并将 `config/site.json` 的上游地址、状态页别名和 UptimeRobot 监控 ID 改为真实值。EdgeOne 的函数环境变量应使用服务端密钥配置，不能写入 JSON 或前端环境变量。
 
 ## 配置边界
 
-默认读取 `config/site.json`。私有配置可保存为 `*.local.json`，通过 `UPTIMEPAGE_CONFIG` 指定路径。不要在 JSON 中放实际 API Key：连接配置只保存 `apiKeyEnv` 环境变量名，密钥在下一阶段的服务端运行时解析。
+默认读取 `config/site.json`。私有配置可保存为 `*.local.json`，通过 `UPTIMEPAGE_CONFIG` 指定路径。不要在 JSON 中放实际 API Key：连接配置只保存 `apiKeyEnv` 环境变量名，密钥在服务端运行时解析。Peekaping 地址必须为 HTTPS，不能带账号密码、查询参数或片段。
 
 - `cache.kvBinding`（可选）：EdgeOne 项目绑定的 KV 变量名；不配置时只使用节点 Cache。KV 失败会自动降级，不影响实时请求。
 - `site`：站点名称、Logo、导航、页脚自定义内容、刷新周期、异常优先初值，在构建时生成静态内容。页脚左侧的 UptimePage、构建短 hash、TomyJan 署名由程序固定生成；`site.footer` 只渲染在右侧。
@@ -30,6 +37,10 @@ EdgeOne 函数从生成的服务端配置读取连接定义，从函数环境变
 - 多语言名称支持字符串或 `{ "en": "Services", "zh-CN": "服务" }`，英文必填。`all` 是自动生成的保留子组。
 - 生成器输出两个独立文件：`.generated/public-config.ts` 与 `server-config.ts`。浏览器仅导入前者；私有选择规则、连接和环境变量引用不进入静态资源。
 - 修改配置需重新构建。浏览器语言、时区、外观、刷新频率属于访客偏好，单独保存在 localStorage；存储不可用时仍可使用。
+
+构建默认读取 Git 的完整提交 ID，页脚仅显示前 7 位，链接指向完整提交。源码归档没有 Git 元数据时显示 `dev` 并链接到项目历史；可用构建环境变量 `UPTIMEPAGE_COMMIT` 指定提交 hash，不接受任意 URL 或文本。
+
+KV 使用 SHA-256 键控制长度，保存带版本和截止时间的响应信封。每个路由在不同配置版本间复用存储槽位，读取时仍核对完整版本；旧部署覆盖只会造成缓存未命中，不会串用数据。EdgeOne KV 没有原生 TTL，超过截止时间的数据不再使用；删除过的分组或详情键可在控制台清理。可选缓存读写最多等待 1 秒，不因存储故障阻断实时来源。
 
 公开 API 契约见 `src/shared/contracts.ts`。`null` 表示缺失；`0` 是有效数值。时间统一使用 UTC ISO 8601，页面按访客时区格式化。来源标签 `sourceName` 是可选的公开展示字段，不包含上游连接地址。
 
@@ -53,7 +64,7 @@ pnpm run format:check
 
 `edgeone.json` 通过 `nodeVersion` 选择 Node 22.21.1，并配置静态产物与 SPA fallback。安装、构建命令仅执行 pnpm，不在命令中指定版本。pnpm 版本由 `package.json` 的 `packageManager` 决定；平台版本支持见 [EdgeOne 构建指南](https://pages.edgeone.ai/document/build-guide)。本地通过不代表平台网络或运行时已经验证。
 
-当前已完成真实来源请求、响应/事件字段映射、公开范围检查、基础 Edge Cache 和 EdgeOne 只读接口；可选 KV、平台预览和部署验证仍属于上线前步骤。当前代码不应在未配置真实来源和未完成 EdgeOne 预览验证前直接上线。
+当前已完成真实来源请求、响应/事件字段映射、公开范围检查、节点 Cache、可选 KV 和 EdgeOne 只读接口。平台预览和真实来源联调仍属于上线前步骤；本地测试使用上游格式的受控响应，不能替代真实密钥、上游套餐和平台运行时验证。审查记录见[生产审查](production-review.md)。
 
 ## 自动检查与依赖更新
 
