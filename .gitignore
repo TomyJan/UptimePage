@@ -12,6 +12,7 @@ coverage/
 
 # Local tooling and scratch files
 .edgeone/
+.superpowers/
 work/
 *.log
 .DS_Store
