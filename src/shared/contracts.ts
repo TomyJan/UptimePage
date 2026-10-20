@@ -36,7 +36,7 @@ export const historyBucketSchema = z
     state: z.union([monitorStateSchema, z.enum(['partial', 'no-data'])]),
     responseMs: finite.nonnegative().nullable(),
   })
-  .refine((b) => b.from < b.until, 'History interval must be ordered');
+  .refine((b) => Date.parse(b.from) < Date.parse(b.until), 'History interval must be ordered');
 export const monitorSummarySchema = z.object({
   id: z.string().min(1),
   groupId: z.string().min(1),

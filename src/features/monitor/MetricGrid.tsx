@@ -10,12 +10,36 @@ export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
     d.certificateExpiresAt !== null && d.capabilities.certificate === 'available'
       ? Math.ceil((Date.parse(d.certificateExpiresAt) - Date.now()) / 86400000)
       : null;
+  const uptime = d.monitor.uptime24h;
+  const partial =
+    uptime.from !== null &&
+    uptime.until !== null &&
+    (Date.parse(uptime.from) > Date.parse(d.fetchedAt) - 86400000 ||
+      Date.parse(uptime.until) < Date.parse(d.fetchedAt));
   return (
     <div className="detail-metrics">
       <div>
-        <small>{t('periodUptime')}</small>
-        <strong>{formatMetric(d.monitor.uptime24h.value, '%')}</strong>
-        <span>{t(d.monitor.uptime24h.basis === 'provider' ? 'provider' : 'samples')}</span>
+        <small>{t(partial ? 'uptime' : 'periodUptime')}</small>
+        <DataTooltip
+          content={
+            <>
+              <div>
+                {t('coverage')}: {time(uptime.from, true)} – {time(uptime.until, true)}
+              </div>
+              <div className="tip-note">
+                {t(uptime.basis === 'provider' ? 'provider' : 'samples')}
+              </div>
+            </>
+          }
+        >
+          <button
+            className="metric-detail"
+            aria-label={`${t('uptime')} ${formatMetric(uptime.value, '%')}`}
+          >
+            <strong>{formatMetric(uptime.value, '%')}</strong>
+          </button>
+        </DataTooltip>
+        <span>{t(partial ? 'partial' : uptime.basis === 'provider' ? 'provider' : 'samples')}</span>
       </div>
       <div>
         <small>{t('latestResponse')}</small>

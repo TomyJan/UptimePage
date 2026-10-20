@@ -1,7 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query';
-import type { ApiClient, Range } from '../shared/contracts.ts';
+import type { ApiClient, GroupSnapshot, Range } from '../shared/contracts.ts';
 import { ApiClientError } from './client.ts';
 import { publicConfig } from './config.ts';
+import { groupKey } from './queries.ts';
 export async function loadMonitor(
   cache: QueryClient,
   client: ApiClient,
@@ -22,6 +23,18 @@ export async function loadMonitor(
     return data;
   } catch (error) {
     if (error instanceof ApiClientError && error.code === 'not-found') {
+      cache.setQueryData<GroupSnapshot>(
+        groupKey(publicConfig.configVersion, group),
+        (old) =>
+          old && {
+            ...old,
+            monitors: old.monitors.filter((m) => m.id !== id),
+            subgroups: old.subgroups.map((s) => ({
+              ...s,
+              monitorIds: s.monitorIds.filter((member) => member !== id),
+            })),
+          },
+      );
       const queries = cache
         .getQueryCache()
         .findAll({ queryKey: ['monitor', publicConfig.configVersion, group, id] });

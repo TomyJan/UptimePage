@@ -42,3 +42,11 @@ it('supports empty, singleton, duplicate time and zero values', () => {
   expect(g.segments[0].points).toHaveLength(1);
   expect(g.segments[0].line).not.toContain('NaN');
 });
+
+it('breaks across a single identifiable missing sample', () => {
+  const g = buildResponsePaths(
+    [0, 1, 3, 4].map((h) => ({ at: at(h), valueMs: 100 })),
+    320,
+  );
+  expect(g.segments.map((s) => s.points.length)).toEqual([2, 2]);
+});

@@ -1,9 +1,9 @@
 import { toastStore } from '../toasts/store.ts';
 import { TransitionLink } from '../../components/TransitionLink.tsx';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-import type { Range } from '../../shared/contracts.ts';
+import type { MonitorDetail, Range } from '../../shared/contracts.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useMonitorQuery } from '../../data/hooks.ts';
 import { ApiClientError } from '../../data/client.ts';
@@ -28,6 +28,10 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
     t = useCopy(),
     { locale } = usePreferences(),
     location = useLocation();
+  const [known, setKnown] = useState<MonitorDetail | null>(null);
+  useEffect(() => {
+    if (q.data && !q.isPlaceholderData) setKnown(q.data);
+  }, [q.data, q.isPlaceholderData]);
   const returnTo =
     typeof location.state?.returnTo === 'string' && location.state.returnTo.startsWith('/?')
       ? location.state.returnTo
@@ -39,6 +43,22 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
     </TransitionLink>
   );
   const denied = q.error instanceof ApiClientError && q.error.code === 'not-found';
+  const data = q.data ?? known;
+  const refresh = async () => {
+    const result = await q.refetch();
+    if (result.error) throw result.error;
+  };
+  const refreshControl = (
+    <RefreshControl
+      fetchedAt={data?.fetchedAt ?? null}
+      identity={`${groupId}:${monitorId}:${range}`}
+      error={q.error}
+      refresh={refresh}
+      onResult={(ok) =>
+        toastStore.push(t(ok ? 'refreshDone' : 'refreshFailed'), 5000, ok ? 'success' : 'warning')
+      }
+    />
+  );
   if (!publicConfig.groups.some((g) => g.id === groupId) || denied)
     return (
       <>
@@ -46,10 +66,11 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         <div className="empty">{t('notFound')}</div>
       </>
     );
-  if (!q.data)
+  if (!data)
     return (
       <>
         {back}
+        <section className="intro">{refreshControl}</section>
         {q.isError ? (
           <div className="empty">
             <p>{t('loadError')}</p>
@@ -67,13 +88,9 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       </>
     );
   const d = q.isError
-      ? { ...q.data, monitor: { ...q.data.monitor, freshness: 'stale' as const } }
-      : q.data,
+      ? { ...data, monitor: { ...data.monitor, freshness: 'stale' as const } }
+      : data,
     name = localize(d.monitor.name, locale);
-  const refresh = async () => {
-    const result = await q.refetch();
-    if (result.error) throw result.error;
-  };
   return (
     <div className="detail-content">
       {back}
@@ -86,19 +103,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
           </div>
         </div>
         <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
-        <RefreshControl
-          fetchedAt={d.fetchedAt}
-          identity={`${groupId}:${monitorId}:${range}`}
-          error={q.error}
-          refresh={refresh}
-          onResult={(ok) =>
-            toastStore.push(
-              t(ok ? 'refreshDone' : 'refreshFailed'),
-              5000,
-              ok ? 'success' : 'warning',
-            )
-          }
-        />
+        {refreshControl}
       </section>
       {d.monitor.freshness !== 'fresh' && (
         <div className="detail-alert" role="status">
@@ -126,7 +131,14 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
             ))}
           </div>
         </div>
-        {q.isPlaceholderData ? (
+        {q.isError && (!q.data || data.range !== range) ? (
+          <div className="empty" role="status">
+            <p>{t('loadError')}</p>
+            <button className="retry" onClick={() => void refresh().catch(() => {})}>
+              {t('retry')}
+            </button>
+          </div>
+        ) : q.isPlaceholderData || data.range !== range ? (
           <div className="chart-loading" aria-busy="true" />
         ) : d.capabilities.response === 'available' ? (
           <ResponseChart points={d.response} animationKey={`${groupId}:${monitorId}:${range}`} />

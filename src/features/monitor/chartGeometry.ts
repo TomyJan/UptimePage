@@ -27,7 +27,9 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
     .map(([at], i) => at - sorted[i][0])
     .filter((n) => n > 0)
     .sort((a, b) => a - b);
-  const cadence = intervals.length ? intervals[Math.floor((intervals.length - 1) / 2)] : Infinity;
+  // Conservatively split identifiable missing samples. The backend must supply nulls
+  // for gaps that cannot be inferred from timestamps (e.g. aggregated responses).
+  const cadence = intervals[0] ?? Infinity;
   const chunks: PlotPoint[][] = [];
   let chunk: PlotPoint[] = [];
   let previous: number | null = null;
@@ -41,7 +43,7 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
       previous = null;
       continue;
     }
-    if (previous !== null && at - previous > cadence * 2.5) flush();
+    if (previous !== null && at - previous > cadence * 1.5) flush();
     chunk.push({
       x:
         end === start ? (left + right) / 2 : left + ((at - start) / (end - start)) * (right - left),
@@ -75,5 +77,15 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
     const area = line + ` L ${points.at(-1)!.x} ${bottom} L ${points[0].x} ${bottom} Z`;
     return { line, area, points };
   });
-  return { segments, max, left, right, top, bottom, width };
+  return {
+    segments,
+    max,
+    left,
+    right,
+    top,
+    bottom,
+    width,
+    from: sorted[0]?.[1].at ?? null,
+    until: sorted.at(-1)?.[1].at ?? null,
+  };
 }

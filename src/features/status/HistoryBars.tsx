@@ -44,6 +44,9 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
     >
       <div
         className="bars"
+        style={{
+          columnGap: `min(3px, ${(Math.min(...segments.map((s) => s.duration)) / 86400000) * 25}%)`,
+        }}
         role="slider"
         tabIndex={0}
         aria-label={`${t('checks')} · ${t('focusHistory')}`}

@@ -5,12 +5,22 @@ import { createHttpClient } from './client.ts';
 import { publicConfig } from './config.ts';
 import { groupKey, monitorKey } from './queries.ts';
 import { loadMonitor } from './loaders.ts';
+import { ApiClientError } from './client.ts';
 export const ApiContext = createContext<ApiClient>(createHttpClient());
 export function useGroupQuery(id: string) {
   const client = useContext(ApiContext);
   return useQuery({
     queryKey: groupKey(publicConfig.configVersion, id),
-    queryFn: ({ signal }) => client.getGroup(id, signal),
+    queryFn: async ({ signal }) => {
+      const data = await client.getGroup(id, signal);
+      if (
+        data.groupId !== id ||
+        data.configVersion !== publicConfig.configVersion ||
+        data.monitors.some((m) => m.groupId !== id)
+      )
+        throw new ApiClientError('invalid-response');
+      return data;
+    },
   });
 }
 export function useMonitorQuery(group: string, id: string, range: Range) {

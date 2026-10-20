@@ -98,3 +98,53 @@ test('without the transition API navigation works and eviction moves focus to a 
   await page.getByRole('link', { name: 'Website', exact: true }).click();
   await expect(page.locator('h1')).toHaveText('Website');
 });
+
+// Touch must open a tooltip without the Radix click handler closing it again.
+test('touch history and uptime tooltips toggle and dismiss', async ({ browser }) => {
+  const context = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 390, height: 844 },
+    locale: 'en-US',
+  });
+  const page = await context.newPage();
+  await page.goto('http://127.0.0.1:5173/');
+  await expect(page.locator('.monitor')).toHaveCount(10);
+  for (const target of [page.locator('.bars').first(), page.locator('.uptime').first()]) {
+    await target.tap();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await target.tap();
+    await expect(page.getByRole('tooltip')).toBeHidden();
+    await target.tap();
+    await expect(page.getByRole('tooltip')).toBeVisible();
+    await page.locator('h1').tap();
+    await expect(page.getByRole('tooltip')).toBeHidden();
+    await target.tap();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('tooltip')).toBeHidden();
+  }
+  await context.close();
+});
+
+test('toast eviction during a busy refresh restores focus after the new toast commits', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 320 });
+  await page.goto('/');
+  await expect(page.locator('.monitor')).toHaveCount(10);
+  await page.evaluate(async () => {
+    const { toastStore } = await import(
+      /* @vite-ignore */ '/src/features/toasts/store.ts' as string
+    );
+    toastStore.push('Old notice '.repeat(30), 10000);
+  });
+  await page.locator('.toast-close').first().focus();
+  await page.evaluate(async () => {
+    const { toastStore } = await import(
+      /* @vite-ignore */ '/src/features/toasts/store.ts' as string
+    );
+    document.querySelector<HTMLButtonElement>('.refresh-main')!.disabled = true;
+    toastStore.push('New notice '.repeat(30), 10000);
+  });
+  await expect(page.locator('.toast-position:not(.is-exiting) .toast-close')).toBeFocused();
+});

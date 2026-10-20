@@ -12,6 +12,7 @@ export function ToastViewport({ topVisible }: { topVisible: boolean }) {
     items = useSyncExternalStore(toastStore.subscribe, toastStore.getSnapshot),
     host = useRef<HTMLDivElement>(null),
     previous = useRef<Toast[]>([]),
+    restoreFocus = useRef(false),
     positions = useRef(new Map<number, number>());
   const [offsets, setOffsets] = useState<Record<number, number>>({}),
     [exits, setExits] = useState<Exit[]>([]),
@@ -25,18 +26,7 @@ export function ToastViewport({ topVisible }: { topVisible: boolean }) {
       if (!active) return;
       const live = toastStore.getSnapshot();
       if (live.some((t) => t.id === Number(active.dataset.toastId))) return;
-      const other = Array.from(
-        host.current?.querySelectorAll<HTMLButtonElement>('.toast-close') ?? [],
-      ).find((b) =>
-        live.some(
-          (t) => t.id === Number(b.closest<HTMLElement>('[data-toast-id]')?.dataset.toastId),
-        ),
-      );
-      (
-        other ??
-        document.querySelector<HTMLButtonElement>('.refresh-main') ??
-        document.getElementById('main')
-      )?.focus({ preventScroll: true });
+      restoreFocus.current = true;
     });
     return () => {
       document.removeEventListener('visibilitychange', visibility);
@@ -45,6 +35,23 @@ export function ToastViewport({ topVisible }: { topVisible: boolean }) {
     };
   }, []);
   useLayoutEffect(() => {
+    if (restoreFocus.current) {
+      restoreFocus.current = false;
+      const candidates = [
+        ...Array.from(
+          host.current?.querySelectorAll<HTMLElement>(
+            '.toast-position:not(.is-exiting) .toast-close',
+          ) ?? [],
+        ),
+        ...Array.from(document.querySelectorAll<HTMLElement>('.refresh-main')),
+        document.getElementById('main'),
+      ];
+      for (const candidate of candidates) {
+        if (!candidate || candidate.closest('[inert]') || candidate.matches(':disabled')) continue;
+        candidate.focus({ preventScroll: true });
+        if (document.activeElement === candidate) break;
+      }
+    }
     const removed = previous.current.filter((old) => !items.some((item) => item.id === old.id));
     if (removed.length) {
       const leaving = removed.map((toast) => ({

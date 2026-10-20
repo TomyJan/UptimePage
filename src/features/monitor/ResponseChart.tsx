@@ -73,8 +73,8 @@ export function ResponseChart({
             </g>
           </svg>
           <div className="chart-labels">
-            <span>{time(points[0]?.at ?? null, true)}</span>
-            <span>{time(points.at(-1)?.at ?? null, true)}</span>
+            <span>{time(g.from, true)}</span>
+            <span>{time(g.until, true)}</span>
           </div>
         </>
       ) : (

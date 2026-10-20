@@ -573,11 +573,13 @@ input {
   background: var(--blue-bg);
 }
 .state.paused,
+.state.unavailable,
 .state.unknown {
   color: var(--muted);
   background: var(--hover);
 }
-.state.stale {
+.state.stale,
+.state.pending {
   color: var(--warn);
   background: var(--warn-bg);
 }
@@ -2249,7 +2251,8 @@ body {
 .detail-title > div:last-child {
   min-width: 0;
 }
-.detail-title h1 {
+.detail-title h1,
+.detail-title p {
   overflow-wrap: anywhere;
 }
 .detail-heading .refresh-control {

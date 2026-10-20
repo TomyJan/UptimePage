@@ -6,6 +6,11 @@ test('preference menus support keyboard, escape and focus restoration', async ({
     await trigger.focus();
     await page.keyboard.press('ArrowDown');
     await expect(page.getByRole('menu')).toBeVisible();
+    // Visibility can precede Radix's focus effect during the opening animation.
+    // Send Escape only once this menu owns keyboard input.
+    await expect
+      .poll(() => page.getByRole('menu').evaluate((el) => el.contains(document.activeElement)))
+      .toBe(true);
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
   }
