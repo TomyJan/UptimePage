@@ -7,6 +7,7 @@ import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import type { MonitorDetail, Range } from '../../shared/contracts.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useMonitorQuery } from '../../data/hooks.ts';
+import { useSnapshotExpired } from '../../data/useSnapshotExpired.ts';
 import { ApiClientError } from '../../data/client.ts';
 import { Logo } from '../../components/Logo.tsx';
 import { StatusBadge } from '../../components/StatusBadge.tsx';
@@ -45,6 +46,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
   );
   const denied = q.error instanceof ApiClientError && q.error.code === 'not-found';
   const data = q.data ?? known;
+  const expired = useSnapshotExpired(data?.fetchedAt ?? null);
   const refresh = async () => {
     const result = await q.refetch();
     if (result.error) throw result.error;
@@ -89,9 +91,10 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         )}
       </>
     );
-  const d = q.isError
-      ? { ...data, monitor: { ...data.monitor, freshness: 'stale' as const } }
-      : data,
+  const d =
+      q.isError || expired
+        ? { ...data, monitor: { ...data.monitor, freshness: 'stale' as const } }
+        : data,
     name = localize(d.monitor.name, locale);
   const chartState =
     q.isError && (!q.data || data.range !== range)

@@ -23,6 +23,7 @@ export const demoClient: ApiClient = {
     const data = groupFixture(
       id,
       Number(new URLSearchParams(location.search).get('demoCount')) || 10,
+      Date.now(),
     );
     if (new URLSearchParams(location.search).has('demoPartial'))
       data.subgroupErrors = [{ subgroupId: data.subgroups.at(-1)!.id, code: 'unavailable' }];
@@ -33,7 +34,7 @@ export const demoClient: ApiClient = {
     if (!publicConfig.groups.some((g) => g.id === group)) throw new ApiClientError('not-found');
     if (id === marker)
       throw new ApiClientError('rate-limited', new Date(Date.now() + 60000).toISOString());
-    const data = detailFixture(group, id, range);
+    const data = detailFixture(group, id, range, Date.now());
     if (!data) throw new ApiClientError('not-found');
     return data;
   },

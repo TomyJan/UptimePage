@@ -3,7 +3,7 @@ import { publicConfig } from '../data/config.ts';
 export const marker = 'UPTIMEPAGE_DEMO_ONLY';
 export const demoNow = Date.parse('2026-10-21T12:00:00Z');
 const iso = (n: number) => new Date(n).toISOString();
-export function groupFixture(groupId: string, count = 10): GroupSnapshot {
+export function groupFixture(groupId: string, count = 10, now = demoNow): GroupSnapshot {
   const group = publicConfig.groups.find((g) => g.id === groupId)!;
   const labels = [
     'Website',
@@ -44,20 +44,20 @@ export function groupFixture(groupId: string, count = 10): GroupSnapshot {
       description: null,
       state,
       freshness,
-      observedAt: i === 9 ? null : iso(demoNow - (i === 4 ? 720000 : 0)),
+      observedAt: i === 9 ? null : iso(now - (i === 4 ? 720000 : 0)),
       responseMs: i === 1 || i === 9 ? null : i === 2 ? 0 : 100 + i * 17,
       uptime24h: {
         value: i === 9 ? null : i === 1 ? 98.42 : i === 2 ? 0 : 100,
-        from: i === 9 ? null : iso(demoNow - 86400000),
-        until: i === 9 ? null : iso(demoNow),
+        from: i === 9 ? null : iso(now - 86400000),
+        until: i === 9 ? null : iso(now),
         basis: 'provider',
       },
       history:
         i === 9
           ? []
           : Array.from({ length: i === 4 ? 28 : 48 }, (_, j) => ({
-              from: iso(demoNow - 86400000 + j * 1800000),
-              until: iso(demoNow - 86400000 + (j + 1) * 1800000),
+              from: iso(now - 86400000 + j * 1800000),
+              until: iso(now - 86400000 + (j + 1) * 1800000),
               state:
                 state === 'down' && j > 43
                   ? 'down'
@@ -70,7 +70,7 @@ export function groupFixture(groupId: string, count = 10): GroupSnapshot {
   });
   return {
     groupId,
-    fetchedAt: iso(demoNow),
+    fetchedAt: iso(now),
     configVersion: publicConfig.configVersion,
     freshness: 'fresh',
     monitors,
@@ -82,22 +82,27 @@ export function groupFixture(groupId: string, count = 10): GroupSnapshot {
     subgroupErrors: [],
   };
 }
-export function detailFixture(groupId: string, id: string, range: Range): MonitorDetail | null {
-  const m = groupFixture(groupId).monitors.find((m) => m.id === id);
+export function detailFixture(
+  groupId: string,
+  id: string,
+  range: Range,
+  now = demoNow,
+): MonitorDetail | null {
+  const m = groupFixture(groupId, 10, now).monitors.find((m) => m.id === id);
   if (!m) return null;
   const days = range === '24h' ? 1 : range === '7d' ? 7 : 30;
   return {
     monitor: m,
-    fetchedAt: iso(demoNow),
+    fetchedAt: iso(now),
     configVersion: publicConfig.configVersion,
     range,
     averageResponse24h: {
       value: m.responseMs === null ? null : 133.6,
-      from: iso(demoNow - 86400000),
-      until: iso(demoNow),
+      from: iso(now - 86400000),
+      until: iso(now),
       basis: 'observed-samples',
     },
-    certificateExpiresAt: m.id === 'm10' ? null : iso(demoNow + 54 * 86400000),
+    certificateExpiresAt: m.id === 'm10' ? null : iso(now + 54 * 86400000),
     supportedRanges: m.id === 'm10' ? ['24h'] : ['24h', '7d', '30d'],
     capabilities: {
       history: 'available',
@@ -109,7 +114,7 @@ export function detailFixture(groupId: string, id: string, range: Range): Monito
       m.responseMs === null
         ? []
         : Array.from({ length: 65 }, (_, i) => ({
-            at: iso(demoNow - days * 86400000 + (i / 64) * days * 86400000),
+            at: iso(now - days * 86400000 + (i / 64) * days * 86400000),
             valueMs:
               i === 29 || i === 30
                 ? null
@@ -117,7 +122,7 @@ export function detailFixture(groupId: string, id: string, range: Range): Monito
           })),
     events:
       m.state === 'down'
-        ? [{ id: 'incident-1', from: iso(demoNow - 3600000), until: null, state: 'down' }]
+        ? [{ id: 'incident-1', from: iso(now - 3600000), until: null, state: 'down' }]
         : [],
     type: 'HTTP',
     intervalSeconds: 60,

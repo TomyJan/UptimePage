@@ -5,6 +5,7 @@ import { useSearchParams } from 'react-router';
 import { Search } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import { useGroupQuery } from '../../data/hooks.ts';
+import { useSnapshotExpired } from '../../data/useSnapshotExpired.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
@@ -21,13 +22,15 @@ export function StatusPage() {
   const sub = group.subgroups.some((s) => s.id === params.get('s')) ? params.get('s')! : 'all',
     search = params.get('q') ?? '';
   const q = useGroupQuery(id),
+    expired = useSnapshotExpired(q.data?.fetchedAt ?? null),
     snapshot = q.data
       ? {
           ...q.data,
-          freshness: q.isError ? ('stale' as const) : q.data.freshness,
-          monitors: q.isError
-            ? q.data.monitors.map((m) => ({ ...m, freshness: 'stale' as const }))
-            : q.data.monitors,
+          freshness: q.isError || expired ? ('stale' as const) : q.data.freshness,
+          monitors:
+            q.isError || expired
+              ? q.data.monitors.map((m) => ({ ...m, freshness: 'stale' as const }))
+              : q.data.monitors,
         }
       : null;
   const update = (patch: Record<string, string>) =>
