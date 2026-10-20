@@ -20,7 +20,14 @@ export default function onRequest(context: EdgeContext) {
   const kv = kvBinding ? bindings[kvBinding] : undefined;
   const layers = [
     edgeCaches.caches?.default,
-    kv && typeof kv === 'object' ? createKvCache(kv as KvNamespace) : undefined,
+    kv &&
+    typeof kv === 'object' &&
+    'get' in kv &&
+    typeof kv.get === 'function' &&
+    'put' in kv &&
+    typeof kv.put === 'function'
+      ? createKvCache(kv as KvNamespace)
+      : undefined,
   ].filter((layer): layer is ResponseCache => Boolean(layer));
   return handleApi(context.request, {
     config: serverConfig as ServerConfig,

@@ -28,7 +28,7 @@ const fetcher: typeof fetch = async () =>
           id: 1,
           friendly_name: 'Website',
           status: 2,
-          custom_uptime_ratio: '100.00',
+          custom_uptime_ratios: '100.00',
           average_response_time: 42,
         },
       ],

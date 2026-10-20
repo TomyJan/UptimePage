@@ -49,6 +49,10 @@ export function StatusPage() {
           fetchedAt={q.data?.fetchedAt ?? null}
           identity={id}
           error={q.error}
+          retryAt={snapshot?.subgroupErrors
+            .flatMap((e) => (e.code === 'rate-limited' && e.retryAt ? [e.retryAt] : []))
+            .sort()
+            .at(-1)}
           refresh={refresh}
           onResult={(ok) =>
             toastStore.push(

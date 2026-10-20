@@ -17,8 +17,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "verify:public-build": "node scripts/verify-public-build.ts",
-    "format": "prettier --write src config scripts tests .github *.ts *.json *.yaml index.html",
-    "format:check": "prettier --check src config scripts tests .github *.ts *.json *.yaml index.html"
+    "format": "prettier --write src config scripts tests edge-functions .github *.ts *.json *.yaml index.html",
+    "format:check": "prettier --check src config scripts tests edge-functions .github *.ts *.json *.yaml index.html"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "2.2.1",

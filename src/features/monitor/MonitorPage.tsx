@@ -54,6 +54,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       fetchedAt={data?.fetchedAt ?? null}
       identity={`${groupId}:${monitorId}:${range}`}
       error={q.error}
+      retryAt={data?.retryAt}
       refresh={refresh}
       onResult={(ok) =>
         toastStore.push(t(ok ? 'refreshDone' : 'refreshFailed'), 5000, ok ? 'success' : 'warning')

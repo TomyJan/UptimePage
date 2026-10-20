@@ -10,19 +10,27 @@ export function RefreshControl({
   identity,
   onResult,
   error,
+  retryAt,
 }: {
   fetchedAt: string | null;
   refresh: () => Promise<unknown>;
   identity: string;
   onResult?: (ok: boolean) => void;
   error?: unknown;
+  retryAt?: string | null;
 }) {
   const t = useCopy(),
     { preferences, timeZone, locale } = usePreferences(),
     { busy, remaining, seconds, run } = useRefresh(
       refresh,
       identity,
-      error instanceof ApiClientError && error.code === 'rate-limited' ? error.retryAt : null,
+      [
+        retryAt,
+        error instanceof ApiClientError && error.code === 'rate-limited' ? error.retryAt : null,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) ?? null,
     );
   const time = fetchedAt
     ? new Intl.DateTimeFormat(locale, {

@@ -1,9 +1,30 @@
 export type ResponseCache = Pick<Cache, 'match' | 'put'>;
 
+/** Optional storage must not hold up a live source request indefinitely. */
+export async function cacheOperation<T>(
+  operation: () => Promise<T>,
+  fallback: T,
+  timeoutMs = 1000,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(operation),
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), timeoutMs);
+      }),
+    ]);
+  } catch {
+    return fallback;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function cacheRequest(request: Request, configVersion: string): Request {
   const url = new URL(request.url);
   return new Request(
-    `https://uptimepage-cache.invalid/${encodeURIComponent(configVersion)}${url.pathname}${url.search}`,
+    `${url.origin}/__uptimepage_cache/${encodeURIComponent(configVersion)}${url.pathname}`,
     { method: 'GET' },
   );
 }
@@ -14,7 +35,7 @@ export async function readCache(
   version: string,
 ) {
   if (!cache) return null;
-  return cache.match(cacheRequest(request, version));
+  return cacheOperation(() => cache.match(cacheRequest(request, version)), undefined);
 }
 
 export async function writeCache(
@@ -24,5 +45,8 @@ export async function writeCache(
   response: Response,
 ) {
   if (!cache) return;
-  await cache.put(cacheRequest(request, version), response.clone());
+  await cacheOperation(
+    () => cache.put(cacheRequest(request, version), response.clone()),
+    undefined,
+  );
 }
