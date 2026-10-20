@@ -92,7 +92,11 @@ export function App() {
         </Routes>
       </main>
       <footer className="site-footer">
-        <Footer value={localize(publicConfig.site.footer, locale)} />
+        <Footer
+          value={localize(publicConfig.site.footer, locale)}
+          commit={publicConfig.build.commit}
+          commitUrl={publicConfig.build.commitUrl}
+        />
       </footer>
       <BackToTop visible={chrome.topVisible} onClick={chrome.toTop} />
       <ToastViewport topVisible={chrome.topVisible} />

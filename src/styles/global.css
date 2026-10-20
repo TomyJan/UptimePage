@@ -688,6 +688,13 @@ input {
 .footer-brand {
   font-weight: 500;
 }
+.footer-default,
+.footer-custom {
+  min-width: 0;
+}
+.footer-custom {
+  text-align: right;
+}
 .floating-menu {
   position: fixed;
   z-index: 70;

@@ -9,11 +9,15 @@ export interface PublicGroup extends PublicSubgroup {
 }
 export interface PublicConfig {
   configVersion: string;
+  build: {
+    commit: string;
+    commitUrl: string;
+  };
   site: {
     name: LocalizedText;
     logo: string | null;
     nav: { label: LocalizedText; href: string }[];
-    footer: LocalizedText;
+    footer: LocalizedText | '';
     refreshIntervalSeconds: number;
     pinAbnormal: boolean;
   };

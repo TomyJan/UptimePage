@@ -11,6 +11,7 @@ const publicUrl = z
     'Expected local path or HTTPS URL',
   );
 const logo = publicUrl.nullable().default(null);
+const footerText = z.union([z.literal(''), localizedTextSchema]).default('');
 const opaqueId = z.string().min(1);
 const common = { id, name: localizedTextSchema, logo };
 const selector = z
@@ -42,7 +43,7 @@ const schema = z
         nav: z
           .array(z.object({ label: localizedTextSchema, href: publicUrl }).strict())
           .default([]),
-        footer: localizedTextSchema.default('UptimePage'),
+        footer: footerText,
         refreshIntervalSeconds: z.number().int().nonnegative().default(60),
         pinAbnormal: z.boolean().default(false),
       })
@@ -113,10 +114,15 @@ export function parseConfig(input: unknown): SiteConfig {
 export function splitConfig(
   config: SiteConfig,
   configVersion: string,
+  build: { commit: string; commitUrl: string } = {
+    commit: 'dev',
+    commitUrl: 'https://github.com/TomyJan/UptimePage/commits/master',
+  },
 ): { publicConfig: PublicConfig; serverConfig: ServerConfig } {
   return {
     publicConfig: {
       configVersion,
+      build,
       site: config.site,
       groups: config.groups.map((group) => ({
         id: group.id,

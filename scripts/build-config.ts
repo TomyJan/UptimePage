@@ -1,6 +1,9 @@
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { parseConfig, splitConfig } from '../config/schema.ts';
+const execFileAsync = promisify(execFile);
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
   if (value !== null && typeof value === 'object')
@@ -14,7 +17,18 @@ const config = parseConfig(
   JSON.parse(await readFile(process.env.UPTIMEPAGE_CONFIG || 'config/site.json', 'utf8')),
 );
 const version = createHash('sha256').update(canonical(config)).digest('hex');
-const { publicConfig, serverConfig } = splitConfig(config, version);
+let commit = process.env.UPTIMEPAGE_COMMIT?.trim() ?? '';
+if (!commit) {
+  try {
+    commit = (await execFileAsync('git', ['rev-parse', '--short=7', 'HEAD'])).stdout.trim();
+  } catch {
+    commit = 'dev';
+  }
+}
+const { publicConfig, serverConfig } = splitConfig(config, version, {
+  commit,
+  commitUrl: `https://github.com/TomyJan/UptimePage/commit/${commit}`,
+});
 await mkdir('.generated', { recursive: true });
 for (const [name, data] of [
   ['public', publicConfig],

@@ -19,6 +19,31 @@ export function renderFooter(value: string): ReactNode[] {
   return nodes;
 }
 
-export function Footer({ value }: { value: string }) {
-  return <>{renderFooter(value)}</>;
+export function Footer({
+  value,
+  commit,
+  commitUrl,
+}: {
+  value: string;
+  commit: string;
+  commitUrl: string;
+}) {
+  return (
+    <>
+      <span className="footer-default">
+        Powered by{' '}
+        <a href="https://github.com/TomyJan/UptimePage" target="_blank" rel="noreferrer">
+          UptimePage
+        </a>{' '}
+        <a href={commitUrl} target="_blank" rel="noreferrer">
+          {commit}
+        </a>{' '}
+        <span aria-hidden="true">|</span>{' '}
+        <a href="https://vov.moe" target="_blank" rel="noreferrer">
+          TomyJan
+        </a>
+      </span>
+      {value ? <span className="footer-custom">{renderFooter(value)}</span> : null}
+    </>
+  );
 }

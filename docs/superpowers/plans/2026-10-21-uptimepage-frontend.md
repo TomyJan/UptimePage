@@ -98,7 +98,7 @@ interface ApiClient {
 - 同源端点：`GET /api/v1/groups/:groupId` 和 `GET /api/v1/groups/:groupId/monitors/:monitorId?range=24h|7d|30d`。成功返回契约对象；失败返回 `{error:{code:ApiErrorCode,retryAt:string|null}}`。只读接口不接受浏览器提交的上游 URL 或凭证。
 - `ApiClientError` 只暴露 `code`、`retryAt`，不向页面透传上游错误。401 / 403 / 404 对详情统一按不可用处理并移除旧缓存；429 按 `retryAt` 暂缓自动请求。
 - 查询键分别为 `['group', configVersion, groupId]`、`['monitor', configVersion, groupId, monitorId, range]`，不以名称或单独上游 ID 为键。
-- 配置根为 `{site, groups}`；`site` 包含 `name/logo/nav/footer/refreshIntervalSeconds/pinAbnormal`。每个组包含 `id/name/logo/source/subgroups/monitors`；`source.type` 为 `peekaping`（`baseUrl,apiKeyEnv`）或 `uptimerobot`（`apiKeyEnv`），子分组选择器分别为状态页 `slug` 或 `monitorIds`。
+- 配置根为 `{site, groups}`；`site` 包含 `name/logo/nav/footer/refreshIntervalSeconds/pinAbnormal`。`footer` 仅是右侧自定义内容，左侧固定署名和构建短 hash 由构建时注入。每个组包含 `id/name/logo/source/subgroups/monitors`；`source.type` 为 `peekaping`（`baseUrl,apiKeyEnv`）或 `uptimerobot`（`apiKeyEnv`），子分组选择器分别为状态页 `slug` 或 `monitorIds`。
 - `monitors` 为按上游 ID 索引的展示覆盖 `{name?,logo?,description?}`；子分组可配置 `order: string[]`。静态公开模块只包含站点设置、组和子组的 ID / 名称 / Logo、配置版本；选择器、上游 ID 清单、覆盖规则、连接和密钥引用仅进入服务端模块。
 - 组 ID 和子组 ID 用非空小写字母 / 数字 / 连字符，子组 `all` 为保留值；上游 ID 当作不透明字符串，不要求数字或 MongoDB 格式。多语言对象必须提供英文回退。Logo 只允许本地资源路径或 HTTPS URL。
 - 默认配置路径 `config/site.json`，可用 `UPTIMEPAGE_CONFIG` 指向被忽略的 `*.local.json`。实际密钥在边缘运行时解析，不在构建时读取。

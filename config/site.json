@@ -1,7 +1,7 @@
 {
   "site": {
     "name": "UptimePage",
-    "footer": "Powered by [UptimePage](https://github.com/TomyJan/UptimePage) [31d2870](https://github.com/TomyJan/UptimePage/commit/31d2870) | [TomyJan](https://vov.moe)",
+    "footer": "",
     "refreshIntervalSeconds": 60,
     "pinAbnormal": false
   },
