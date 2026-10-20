@@ -17,6 +17,7 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "verify:public-build": "node scripts/verify-public-build.ts",
+    "verify:deployment": "pnpm run build && node scripts/verify-deployment.ts",
     "format": "prettier --write src config scripts tests edge-functions .github *.ts *.json *.yaml index.html",
     "format:check": "prettier --check src config scripts tests edge-functions .github *.ts *.json *.yaml index.html"
   },
