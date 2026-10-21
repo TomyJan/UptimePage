@@ -2,6 +2,10 @@
   "cache": { "kvBinding": "UPTIMEPAGE_KV" },
   "site": {
     "name": "TomyJan 服务状态",
+    "nav": [
+      { "label": { "en": "Home", "zh-CN": "首页" }, "href": "https://vov.moe" },
+      { "label": { "en": "Blog", "zh-CN": "博客" }, "href": "https://blog.tomys.top" }
+    ],
     "footer": "",
     "refreshIntervalSeconds": 60,
     "pinAbnormal": true
