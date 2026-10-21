@@ -1,0 +1,34 @@
+{
+  "cache": {},
+  "site": {
+    "name": "TomyJan 服务状态",
+    "footer": "",
+    "refreshIntervalSeconds": 60,
+    "pinAbnormal": true
+  },
+  "groups": [
+    {
+      "id": "peekaping",
+      "name": { "en": "Self-hosted Monitoring", "zh-CN": "自建监控" },
+      "source": {
+        "type": "peekaping",
+        "baseUrl": "https://monitor.amoe.cc",
+        "apiKeyEnv": "PEEKAPING_API_KEY"
+      },
+      "subgroups": [
+        { "id": "default", "name": { "en": "Websites", "zh-CN": "网站" }, "slug": "default" },
+        { "id": "moeai", "name": { "en": "AI Service", "zh-CN": "AI 服务" }, "slug": "moeai" },
+        { "id": "monitor", "name": { "en": "Service Heartbeat", "zh-CN": "服务心跳" }, "slug": "monitor" }
+      ]
+    },
+    {
+      "id": "uptimerobot",
+      "name": { "en": "Uptimerobot Monitoring", "zh-CN": "Uptimerobot 监控" },
+      "source": { "type": "uptimerobot", "apiKeyEnv": "UPTIMEROBOT_API_KEY" },
+      "subgroups": [
+        { "id": "default", "name": { "en": "Default", "zh-CN": "默认" }, "monitorIds": ["*"] },
+        { "id": "cloud", "name": { "en": "Cloud", "zh-CN": "云服务" }, "monitorIds": ["example-2"] }
+      ]
+    }
+  ]
+}
