@@ -69,16 +69,22 @@ export function createKvCache(namespace: KvNamespace): ResponseCache {
 
 export class LayeredResponseCache implements ResponseCache {
   private readonly layers: ResponseCache[];
+  private readonly layerTimeoutMs: number;
 
-  constructor(layers: ResponseCache[]) {
+  constructor(layers: ResponseCache[], layerTimeoutMs = 400) {
     this.layers = layers;
+    this.layerTimeoutMs = layerTimeoutMs;
   }
 
   async match(request: RequestInfo, options?: CacheQueryOptions): Promise<Response | undefined> {
     for (const layer of this.layers) {
       try {
         // Leave time for the next layer inside the API's one-second read budget.
-        const response = await cacheOperation(() => layer.match(request, options), undefined, 400);
+        const response = await cacheOperation(
+          () => layer.match(request, options),
+          undefined,
+          this.layerTimeoutMs,
+        );
         if (response) return response;
       } catch {
         // An optional cache must never make the read-only API unavailable.

@@ -3,6 +3,11 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
+  "cloudFunctions": {
+    "nodejs": {
+      "maxDuration": 120
+    }
+  },
   "rewrites": [
     {
       "source": "/*",

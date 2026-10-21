@@ -1,11 +1,19 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { memoryCache } from '../../fixtures/server.ts';
 
 vi.mock('../../../.generated/server-config.ts', async () => {
   const { config } = await import('../../fixtures/server.ts');
   return { default: { ...config(true), cache: { kvBinding: 'TEST_UPTIMEPAGE_KV' } } };
 });
-import onRequest from '../../../edge-functions/api/v1/[[default]].ts';
+import { createCloudApiHandler } from '../../../src/server/cloud-runtime.ts';
+import cacheRequest from '../../../edge-functions/_uptimepage/cache.ts';
+import serverConfig from '../../../.generated/server-config.ts';
+import cloudRequest from '../../../cloud-functions/api/v1/[[default]].ts';
+let onRequest = createCloudApiHandler(serverConfig);
+
+beforeEach(() => {
+  onRequest = createCloudApiHandler(serverConfig);
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -16,6 +24,8 @@ const env = { KEY: 'private-test-key' };
 function upstream() {
   let calls = 0;
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    if (url.endsWith('/_uptimepage/cache'))
+      return cacheRequest({ request: new Request(url, init), env });
     calls++;
     expect(new Headers(init.headers).get('X-API-Key')).toBe('private-test-key');
     if (url.includes('/monitors/batch?'))
@@ -60,21 +70,21 @@ it('runs the actual entry without cache or KV and keeps secrets out of public re
   vi.stubGlobal('caches', undefined);
   vi.stubGlobal('TEST_UPTIMEPAGE_KV', undefined);
   const calls = upstream();
-  const missingKey = await onRequest({ request: request() });
+  const missingKey = await cloudRequest({ request: request() });
   expect(missingKey.status).toBe(502);
   expect(calls()).toBe(0);
-  const response = await onRequest({ request: request(), env });
+  const response = await cloudRequest({ request: request(), env });
   expect(response.status).toBe(200);
   expect(response.headers.get('cache-control')).toBe('no-store');
   const text = await response.text();
   expect(JSON.parse(text).monitors[0]).toMatchObject({ id: '1', state: 'operational' });
   for (const privateValue of ['private-test-key', 'source.test', 'apiKeyEnv'])
     expect(text).not.toContain(privateValue);
-  const denied = await onRequest({ request: request('/monitors/private-id'), env });
+  const denied = await cloudRequest({ request: request('/monitors/private-id'), env });
   expect(denied.status).toBe(404);
 });
 
-it('uses global Cache and KV bindings and survives loss of the node cache', async () => {
+it.each(['lost', 'hung'])('recovers from KV when the node cache is %s', async (mode) => {
   vi.stubGlobal('caches', { default: memoryCache() });
   const entries = new Map<string, string>();
   vi.stubGlobal('TEST_UPTIMEPAGE_KV', {
@@ -90,8 +100,14 @@ it('uses global Cache and KV bindings and survives loss of the node cache', asyn
   expect(entries.size).toBe(3);
   expect((await onRequest({ request: request('/monitors/1'), env })).status).toBe(200);
   expect(calls()).toBe(8);
-  vi.stubGlobal('caches', { default: memoryCache() });
-  vi.stubGlobal('fetch', async () => {
+  vi.stubGlobal('caches', {
+    default:
+      mode === 'hung' ? { match: () => new Promise(() => {}), put: async () => {} } : memoryCache(),
+  });
+  onRequest = createCloudApiHandler(serverConfig);
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    if (url.endsWith('/_uptimepage/cache'))
+      return cacheRequest({ request: new Request(url, init), env });
     throw new Error('upstream offline');
   });
   const fromKv = await onRequest({ request: request(), env });

@@ -19,6 +19,7 @@
     "scripts",
     "tests",
     "edge-functions",
+    "cloud-functions",
     "*.config.ts",
     ".generated/public-config.ts",
     ".generated/server-config.ts"
