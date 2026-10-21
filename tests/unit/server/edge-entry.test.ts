@@ -165,6 +165,64 @@ it('uses the public HTTPS origin when the cloud runtime supplies an internal HTT
   }
 });
 
+it('uses the EdgeOne public host instead of the internal cloud host for bridge keys and requests', async () => {
+  vi.stubGlobal('caches', undefined);
+  const entries = new Map<string, string>();
+  vi.stubGlobal('TEST_UPTIMEPAGE_KV', {
+    async get(key: string) {
+      return entries.has(key) ? JSON.parse(entries.get(key)!) : null;
+    },
+    async put(key: string, value: string) {
+      entries.set(key, value);
+    },
+  });
+  upstream();
+  const sourceAndBridge = fetch;
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    if (url.startsWith('https://internal-cloud.invalid/')) return new Response('', { status: 404 });
+    return sourceAndBridge(url, init);
+  });
+  const response = await onRequest({
+    request: new Request('http://internal-cloud.invalid/api/v1/groups/core', {
+      headers: { 'eo-pages-host': 'preview.test', 'x-forwarded-host': 'untrusted.invalid' },
+    }),
+    env,
+  });
+  expect(response.status).toBe(200);
+  expect(entries.size).toBe(3);
+  expect(response.headers.get('x-uptimepage-cache')).toContain('status-put:http-200');
+  for (const stored of entries.values())
+    expect(JSON.parse(stored).requestUrl).toMatch(/^https:\/\/preview\.test\//);
+  const detail = await onRequest({
+    request: new Request('http://internal-cloud.invalid/api/v1/groups/core/monitors/1?range=7d', {
+      headers: { 'eo-pages-host': 'preview.test' },
+    }),
+    env,
+  });
+  expect(detail.status).toBe(200);
+  expect((await detail.json()).range).toBe('7d');
+});
+
+it.each([
+  'attacker.invalid@preview.test',
+  'attacker.invalid/path',
+  'attacker.invalid?query',
+  'attacker.invalid#fragment',
+  'attacker.invalid,preview.test',
+  'attacker.invalid:99999',
+  '127.0.0.1',
+  '-invalid.test',
+])('ignores malformed or non-domain platform host %s', async (host) => {
+  const response = await onRequest({
+    request: new Request('https://preview.test/api/v1/groups/missing', {
+      headers: { 'eo-pages-host': host },
+    }),
+    env,
+  });
+  expect(response.status).toBe(404);
+  expect(response.headers.get('x-uptimepage-cache')).toContain('origin-41bffbbd05e5');
+});
+
 it('ignores failed cache and KV services and continues to the real source adapter', async () => {
   const failed = async () => {
     throw new Error('optional storage offline');

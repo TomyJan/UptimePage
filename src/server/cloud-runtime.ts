@@ -20,6 +20,31 @@ export function createCloudApiHandler(config: ServerConfig) {
       const environment = context.env ?? {};
       const secret = cacheBridgeSecret(config, environment);
       const publicUrl = new URL(context.request.url);
+      // EdgeOne overwrites this platform header with the public domain; the
+      // Node Request URL and Host can both refer to an internal cloud origin.
+      // Never use generic client-controlled forwarding headers for this.
+      const platformHost = context.request.headers.get('eo-pages-host');
+      if (
+        platformHost &&
+        platformHost.length <= 259 &&
+        /^[a-z0-9.-]+(?::\d{1,5})?$/i.test(platformHost)
+      ) {
+        try {
+          const candidate = new URL(`https://${platformHost}`);
+          if (
+            /\.[a-z][a-z0-9-]*$/i.test(candidate.hostname) &&
+            candidate.hostname
+              .split('.')
+              .every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(label))
+          ) {
+            publicUrl.protocol = 'https:';
+            publicUrl.hostname = candidate.hostname;
+            publicUrl.port = candidate.port;
+          }
+        } catch {
+          // Invalid platform metadata must not interrupt the read-only API.
+        }
+      }
       // EdgeOne terminates TLS before Node and supplies an HTTP request URL.
       // Public deployments use HTTPS; retain HTTP only for local development.
       if (
