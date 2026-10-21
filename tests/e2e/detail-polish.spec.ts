@@ -112,6 +112,36 @@ test('missing samples stay disconnected and recent events distinguish ongoing an
   await page.screenshot({ path: info.outputPath('events-mobile-dark.png'), fullPage: true });
 });
 
+test('recent events scroll inside the card after reaching its maximum height', async ({ page }) => {
+  const data = detailFixture('core', 'm1', '24h')!;
+  data.events = Array.from({ length: 18 }, (_, i) => ({
+    id: `event-${i}`,
+    state: i % 2 ? 'maintenance' : 'down',
+    from: new Date(Date.UTC(2026, 9, 20, i % 24)).toISOString(),
+    until: new Date(Date.UTC(2026, 9, 20, i % 24, 15)).toISOString(),
+  }));
+  await page.route('**/api/v1/groups/core/monitors/m1?range=24h', (route) =>
+    route.fulfill({ json: data }),
+  );
+  await page.goto('http://127.0.0.1:4173/services/core/m1');
+  await expect(page.locator('.event')).toHaveCount(18);
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    const list = page.getByRole('list', { name: 'Recent events' });
+    const metrics = await list.evaluate((node) => ({
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+      overflowY: getComputedStyle(node).overflowY,
+    }));
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+    expect(metrics.clientHeight).toBeLessThanOrEqual(width === 390 ? 308 : 368);
+    expect(metrics.overflowY).toBe('auto');
+    await list.evaluate((node) => (node.scrollTop = node.scrollHeight));
+    expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+    await expect(page.getByRole('heading', { name: 'Recent events' })).toBeVisible();
+  }
+});
+
 test('filtering the home list animates its height without losing search focus', async ({
   page,
 }) => {

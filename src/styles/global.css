@@ -1030,8 +1030,24 @@ input {
 }
 .event-list {
   list-style: none;
-  padding: 0;
+  padding: 4px 8px 4px 4px;
   margin: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent;
+  scrollbar-width: thin;
+}
+.event-list::-webkit-scrollbar {
+  width: 6px;
+}
+.event-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.event-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 42%, transparent);
+  border-radius: 999px;
 }
 .event {
   --event-ink: var(--muted);
@@ -1474,6 +1490,9 @@ body,
   .detail-bottom {
     grid-template-columns: 1fr;
     gap: 0;
+  }
+  .event-list {
+    max-height: 300px;
   }
   .back {
     font-size: 11px;
