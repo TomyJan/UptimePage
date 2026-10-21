@@ -37,7 +37,7 @@ test('initial detail rate limit keeps its scheduler and recovers at retryAt', as
   await page.clock.fastForward(1000);
   await expect(page.locator('h1')).toHaveText('Website');
   expect(requests).toBe(2);
-  await expect(page.locator('.toast-message')).toHaveCount(0);
+  await expect(page.locator('.toast-message')).toHaveText('Refreshed');
 });
 
 test('failed range keeps detail shell and allows returning to a successful range', async ({
@@ -134,9 +134,9 @@ test('sorted chart data uses matching chronological axis labels', async ({ page 
   await expect(page.locator('.chart-labels span').last()).toContainText('10/21');
 });
 
-test('unknown freshness and pending status use their semantic colors', async ({ page }) => {
+test('unknown and pending observed states use their semantic colors', async ({ page }) => {
   const data = groupFixture('core');
-  data.monitors[0].freshness = 'unavailable';
+  data.monitors[0].state = 'unknown';
   data.monitors[1].state = 'pending';
   data.monitors[1].freshness = 'fresh';
   await page.route('**/api/v1/groups/core', (route) => route.fulfill({ json: data }));
@@ -144,7 +144,7 @@ test('unknown freshness and pending status use their semantic colors', async ({ 
   for (const theme of ['light', 'dark']) {
     await page.evaluate((value) => (document.documentElement.dataset.theme = value), theme);
     const colors = await page.evaluate(() =>
-      ['.state.operational', '.state.unavailable', '.state.pending'].map(
+      ['.state.operational', '.state.unknown', '.state.pending'].map(
         (s) => getComputedStyle(document.querySelector(s)!).color,
       ),
     );

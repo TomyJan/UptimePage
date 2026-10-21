@@ -8,7 +8,8 @@ import { loadMonitor } from './loaders.ts';
 import { ApiClientError } from './client.ts';
 export const ApiContext = createContext<ApiClient>(createHttpClient());
 export function useGroupQuery(id: string) {
-  const client = useContext(ApiContext);
+  const client = useContext(ApiContext),
+    cache = useQueryClient();
   return useQuery({
     queryKey: groupKey(publicConfig.configVersion, id),
     queryFn: async ({ signal }) => {
@@ -19,6 +20,20 @@ export function useGroupQuery(id: string) {
         data.monitors.some((m) => m.groupId !== id)
       )
         throw new ApiClientError('invalid-response');
+      if (
+        data.freshness !== 'fresh' &&
+        cache.getQueryData(groupKey(publicConfig.configVersion, id))
+      ) {
+        const error = data.subgroupErrors[0];
+        throw new ApiClientError(
+          error?.code ?? 'unavailable',
+          data.subgroupErrors
+            .flatMap((e) => (e.retryAt ? [e.retryAt] : []))
+            .sort()
+            .at(-1) ?? null,
+          error?.diagnostic,
+        );
+      }
       return data;
     },
   });

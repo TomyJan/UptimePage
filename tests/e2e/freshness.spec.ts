@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('manual-only snapshots expire without requests and recover after refresh', async ({
+test('manual-only snapshots retain observed state and timestamp until refreshed', async ({
   page,
 }) => {
   let calls = 0;
@@ -25,8 +25,8 @@ test('manual-only snapshots expire without requests and recover after refresh', 
   await page.clock.fastForward(298999);
   await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
   await page.clock.fastForward(1);
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(0);
-  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toBeVisible();
+  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toHaveCount(0);
   await expect(page.locator('.refresh-main time')).toHaveText(timestamp!);
   expect(calls).toBe(1);
   await page.clock.resume();
@@ -35,7 +35,7 @@ test('manual-only snapshots expire without requests and recover after refresh', 
   expect(calls).toBe(2);
 });
 
-test('returning to a cached group and an already old detail never restores fresh status', async ({
+test('cached groups and old details retain their last observation without repeated warnings', async ({
   page,
 }) => {
   await page.route('**/api/v1/groups/core', (route) =>
@@ -49,16 +49,16 @@ test('returning to a cached group and an already old detail never restores fresh
   await page.getByRole('link', { name: 'Website', exact: true }).click();
   await expect(page.locator('.detail-heading .state.operational')).toBeVisible();
   await page.clock.fastForward(300000);
-  await expect(page.locator('.detail-heading .state.operational')).toHaveCount(0);
-  await expect(page.locator('.detail-metrics')).toContainText('Last known value');
+  await expect(page.locator('.detail-heading .state.operational')).toHaveCount(1);
+  await expect(page.locator('.detail-metrics')).not.toContainText('Last known value');
   await page.getByRole('link', { name: /Back/ }).click();
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(0);
+  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
   await page.reload();
   await page.goto('/services/core/m1');
-  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toBeVisible();
+  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toHaveCount(0);
 });
 
-test('resuming a suspended page immediately rechecks snapshot age', async ({ page }) => {
+test('resuming a suspended page retains its last observed state', async ({ page }) => {
   await page.route('**/api/v1/groups/core', (route) =>
     route.fulfill({ json: groupFixture('core', 1) }),
   );
@@ -66,5 +66,5 @@ test('resuming a suspended page immediately rechecks snapshot age', async ({ pag
   await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
   await page.clock.setSystemTime(new Date('2026-10-21T12:06:00Z'));
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(0);
+  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
 });

@@ -42,17 +42,17 @@ it('preserves independent subgroup ordering and filters only public text', () =>
   expect(selectMonitors(data, 'missing', '', false)).toEqual([]);
   expect(selectMonitors(data, 'all', '', false).map((m) => m.id)).toEqual(['m1', 'm2', 'm3', 'm4']);
 });
-it('pins problems stably without treating stale health as currently operational', () => {
+it('pins observed problems stably and retains the last observed state after transport failures', () => {
   const data = groupFixture('core');
   expect(
     selectMonitors(data, 'all', '', true)
       .slice(0, 2)
       .map((m) => m.id),
-  ).toEqual(['m2', 'm5']);
-  expect(summarize(data)).toEqual({ up: 6, down: 1, other: 3, total: 10, healthy: false });
+  ).toEqual(['m2', 'm1']);
+  expect(summarize(data)).toEqual({ up: 7, down: 1, other: 2, total: 10, healthy: false });
   data.freshness = 'stale';
   data.monitors = data.monitors.map((monitor) => ({ ...monitor, freshness: 'stale' }));
-  expect(summarize(data).up).toBe(0);
+  expect(summarize(data).up).toBe(7);
 });
 it('deduplicates only within a group and supports arbitrary counts', () => {
   const data = groupFixture('core', 200);

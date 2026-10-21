@@ -15,7 +15,7 @@ test('a failed subgroup preserves confirmed states from successful subgroups', a
   await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
   await expect(page.locator('.monitor .state.down')).toHaveCount(1);
   await expect(page.locator('.overview-counts .failure strong')).toHaveText('1');
-  await expect(page.getByText('Some groups are unavailable')).toBeVisible();
+  await expect(page.getByText('Some groups are unavailable')).toHaveCount(0);
 });
 test('a stale or partial successful snapshot retains the source retry deadline', async ({
   page,
@@ -61,9 +61,7 @@ test('manual refresh of stale data does not erase the source retry deadline', as
   await expect.poll(() => requests).toBe(3);
 });
 
-test('initial rate limiting defers polling and automatic recovery does not toast', async ({
-  page,
-}) => {
+test('initial rate limiting defers polling and automatic recovery toasts', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-21T12:00:00Z') });
   let requests = 0;
   await page.route('**/api/v1/groups/core', async (route) => {
@@ -84,9 +82,11 @@ test('initial rate limiting defers polling and automatic recovery does not toast
   await page.clock.fastForward(1000);
   await expect(page.locator('.monitor')).toHaveCount(10);
   expect(requests).toBe(2);
-  await expect(page.locator('.toast-message')).toHaveCount(0);
+  await expect(page.locator('.toast-message')).toHaveText('Refreshed');
 });
-test('a failed refresh keeps its timestamp and marks old data stale', async ({ page }) => {
+test('a failed refresh keeps its timestamp and observed state with an error toast', async ({
+  page,
+}) => {
   await page.clock.setFixedTime(new Date('2026-10-21T12:00:00Z'));
   let requests = 0;
   await page.route('**/api/v1/groups/core', async (route) => {
@@ -101,10 +101,10 @@ test('a failed refresh keeps its timestamp and marks old data stale', async ({ p
   await expect(page.locator('.monitor')).toHaveCount(10);
   const timestamp = await page.locator('.refresh-main time').textContent();
   await page.getByRole('button', { name: 'Refresh now', exact: true }).click();
-  await expect(page.locator('.toast-message')).toHaveText('Refresh failed');
+  await expect(page.locator('.toast-message')).toContainText('HTTP 503');
   await expect(page.locator('.refresh-main time')).toHaveText(timestamp!);
-  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toBeVisible();
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(0);
+  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toHaveCount(0);
+  await expect(page.locator('.monitor .state.operational')).toHaveCount(7);
 });
 test('a production SPA fallback cannot turn into demo data', async ({ page }) => {
   await page.goto('/');

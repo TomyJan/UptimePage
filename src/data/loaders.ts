@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { ApiClient, GroupSnapshot, Range } from '../shared/contracts.ts';
 import { ApiClientError } from './client.ts';
 import { publicConfig } from './config.ts';
-import { groupKey } from './queries.ts';
+import { groupKey, monitorKey } from './queries.ts';
 export async function loadMonitor(
   cache: QueryClient,
   client: ApiClient,
@@ -20,6 +20,15 @@ export async function loadMonitor(
       data.configVersion !== publicConfig.configVersion
     )
       throw new ApiClientError('invalid-response');
+    if (
+      (data.diagnostic || data.monitor.freshness !== 'fresh') &&
+      cache.getQueryData(monitorKey(publicConfig.configVersion, group, id, range))
+    )
+      throw new ApiClientError(
+        data.diagnostic?.status === 429 ? 'rate-limited' : 'unavailable',
+        data.retryAt ?? null,
+        data.diagnostic,
+      );
     return data;
   } catch (error) {
     if (error instanceof ApiClientError && error.code === 'not-found') {

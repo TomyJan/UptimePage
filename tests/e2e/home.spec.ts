@@ -23,10 +23,11 @@ test('groups, subgroups, search and history work without nested interactions', a
     await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   ).toBeTruthy();
 });
-test('all services are retained for a large group and partial failure is explicit', async ({
+test('all services are retained for a large group without repeated failure banners', async ({
   page,
 }) => {
   await page.goto('/?demoCount=200&demoPartial=1');
   await expect(page.locator('.monitor')).toHaveCount(200);
-  await expect(page.getByText('Some groups are unavailable')).toBeVisible();
+  await expect(page.getByText('Some groups are unavailable')).toHaveCount(0);
+  await expect(page.locator('.refresh-main time')).toHaveText('—');
 });

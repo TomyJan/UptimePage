@@ -8,14 +8,12 @@ export function RefreshControl({
   fetchedAt,
   refresh,
   identity,
-  onResult,
   error,
   retryAt,
 }: {
   fetchedAt: string | null;
   refresh: () => Promise<unknown>;
   identity: string;
-  onResult?: (ok: boolean) => void;
   error?: unknown;
   retryAt?: string | null;
 }) {
@@ -51,10 +49,7 @@ export function RefreshControl({
         aria-label={t('refresh')}
         aria-busy={busy}
         disabled={busy}
-        onClick={async () => {
-          const result = await run();
-          if (result) onResult?.(result.ok);
-        }}
+        onClick={() => void run()}
       >
         <RefreshCw size={14} />
         <span className="refresh-prefix">{t(busy ? 'refreshing' : 'updated')}</span>

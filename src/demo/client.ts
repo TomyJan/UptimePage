@@ -25,8 +25,10 @@ export const demoClient: ApiClient = {
       Number(new URLSearchParams(location.search).get('demoCount')) || 10,
       Date.now(),
     );
-    if (new URLSearchParams(location.search).has('demoPartial'))
+    if (new URLSearchParams(location.search).has('demoPartial')) {
+      data.freshness = 'stale';
       data.subgroupErrors = [{ subgroupId: data.subgroups.at(-1)!.id, code: 'unavailable' }];
+    }
     return data;
   },
   async getMonitor(group, id, range, signal) {

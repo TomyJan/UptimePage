@@ -1,4 +1,5 @@
-import { toastStore } from '../toasts/store.ts';
+import { useRefreshFeedback } from '../refresh/useRefreshFeedback.ts';
+import { errorMessage } from '../refresh/feedback.ts';
 import { TransitionLink } from '../../components/TransitionLink.tsx';
 import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router';
@@ -8,7 +9,7 @@ import { DataTooltip } from '../../components/DataTooltip.tsx';
 import type { MonitorDetail, Range } from '../../shared/contracts.ts';
 import { publicConfig } from '../../data/config.ts';
 import { useMonitorQuery } from '../../data/hooks.ts';
-import { useSnapshotExpired } from '../../data/useSnapshotExpired.ts';
+
 import { ApiClientError } from '../../data/client.ts';
 import { Logo } from '../../components/Logo.tsx';
 import { StatusBadge } from '../../components/StatusBadge.tsx';
@@ -47,21 +48,27 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
   );
   const denied = q.error instanceof ApiClientError && q.error.code === 'not-found';
   const data = q.data ?? known;
-  const expired = useSnapshotExpired(data?.fetchedAt ?? null);
-  const refresh = async () => {
+
+  const refresh = useRefreshFeedback(async () => {
     const result = await q.refetch();
     if (result.error) throw result.error;
-  };
+    const data = result.data;
+    if (data && (data.diagnostic || data.monitor.freshness !== 'fresh'))
+      throw new ApiClientError(
+        data.diagnostic?.status === 429 ? 'rate-limited' : 'unavailable',
+        data.retryAt ?? null,
+        data.diagnostic,
+      );
+  }, `${groupId}:${monitorId}:${range}`);
   const refreshControl = (
     <RefreshControl
-      fetchedAt={data?.fetchedAt ?? null}
+      fetchedAt={
+        data && !data.diagnostic && data.monitor.freshness === 'fresh' ? data.fetchedAt : null
+      }
       identity={`${groupId}:${monitorId}:${range}`}
       error={q.error}
       retryAt={data?.retryAt}
       refresh={refresh}
-      onResult={(ok) =>
-        toastStore.push(t(ok ? 'refreshDone' : 'refreshFailed'), 5000, ok ? 'success' : 'warning')
-      }
     />
   );
   if (!publicConfig.groups.some((g) => g.id === groupId) || denied)
@@ -79,7 +86,8 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         {q.isError ? (
           <div className="empty">
             <p>{t('loadError')}</p>
-            <button className="retry" onClick={() => void q.refetch()}>
+            <p>{errorMessage(q.error, t)}</p>
+            <button className="retry" onClick={() => void refresh().catch(() => {})}>
               {t('retry')}
             </button>
           </div>
@@ -92,10 +100,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         )}
       </>
     );
-  const d =
-      q.isError || expired
-        ? { ...data, monitor: { ...data.monitor, freshness: 'stale' as const } }
-        : data,
+  const d = data,
     name = localize(d.monitor.name, locale);
   const chartState =
     q.isError && (!q.data || data.range !== range)
@@ -117,11 +122,6 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
         {refreshControl}
       </section>
-      {d.monitor.freshness !== 'fresh' && (
-        <div className="detail-alert" role="status">
-          {t('staleNote')}
-        </div>
-      )}
       <MetricGrid detail={d} />
       <section className="panel chart-panel">
         <div className="panel-top">
@@ -157,6 +157,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
           {chartState === 'error' ? (
             <div className="empty" role="status">
               <p>{t('loadError')}</p>
+              <p>{errorMessage(q.error, t)}</p>
               <button className="retry" onClick={() => void refresh().catch(() => {})}>
                 {t('retry')}
               </button>

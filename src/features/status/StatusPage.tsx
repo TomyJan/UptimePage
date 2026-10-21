@@ -1,11 +1,13 @@
 import { transition } from '../../app/transitions.ts';
-import { toastStore } from '../toasts/store.ts';
+import { useRefreshFeedback } from '../refresh/useRefreshFeedback.ts';
+import { errorMessage } from '../refresh/feedback.ts';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Search } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
+import { ApiClientError } from '../../data/client.ts';
 import { useGroupQuery } from '../../data/hooks.ts';
-import { useSnapshotExpired } from '../../data/useSnapshotExpired.ts';
+
 import { publicConfig } from '../../data/config.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
@@ -22,17 +24,7 @@ export function StatusPage() {
   const sub = group.subgroups.some((s) => s.id === params.get('s')) ? params.get('s')! : 'all',
     search = params.get('q') ?? '';
   const q = useGroupQuery(id),
-    expired = useSnapshotExpired(q.data?.fetchedAt ?? null),
-    snapshot = q.data
-      ? {
-          ...q.data,
-          freshness: q.isError || expired ? ('stale' as const) : q.data.freshness,
-          monitors:
-            q.isError || expired
-              ? q.data.monitors.map((m) => ({ ...m, freshness: 'stale' as const }))
-              : q.data.monitors,
-        }
-      : null;
+    snapshot = q.data ?? null;
   const update = (patch: Record<string, string>) =>
     setParams(
       (prev) => {
@@ -41,17 +33,29 @@ export function StatusPage() {
       },
       { replace: true },
     );
-  const refresh = async () => {
+  const refresh = useRefreshFeedback(async () => {
     const result = await q.refetch();
     if (result.error) throw result.error;
-  };
+    const data = result.data;
+    if (data && data.freshness !== 'fresh') {
+      const error = data.subgroupErrors[0];
+      throw new ApiClientError(
+        error?.code ?? 'unavailable',
+        data.subgroupErrors
+          .flatMap((e) => (e.retryAt ? [e.retryAt] : []))
+          .sort()
+          .at(-1) ?? null,
+        error?.diagnostic,
+      );
+    }
+  }, id);
   const monitors = snapshot ? selectMonitors(snapshot, sub, search, pinned) : [];
   return (
     <>
       <section className="intro">
         <h1>{t('title')}</h1>
         <RefreshControl
-          fetchedAt={q.data?.fetchedAt ?? null}
+          fetchedAt={q.data?.freshness === 'fresh' ? q.data.fetchedAt : null}
           identity={id}
           error={q.error}
           retryAt={snapshot?.subgroupErrors
@@ -59,13 +63,6 @@ export function StatusPage() {
             .sort()
             .at(-1)}
           refresh={refresh}
-          onResult={(ok) =>
-            toastStore.push(
-              t(ok ? 'refreshDone' : 'refreshFailed'),
-              5000,
-              ok ? 'success' : 'warning',
-            )
-          }
         />
       </section>
       <GroupTabs
@@ -86,16 +83,6 @@ export function StatusPage() {
               pinned={pinned}
               onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
             />
-            {(q.isError || snapshot.freshness !== 'fresh') && (
-              <p className="detail-alert" role="status">
-                {t('staleNote')}
-              </p>
-            )}
-            {snapshot.subgroupErrors.length > 0 && (
-              <p className="detail-alert" role="status">
-                {t('partialError')}
-              </p>
-            )}
             <div className="sub-row">
               <GroupTabs
                 sub
@@ -131,6 +118,7 @@ export function StatusPage() {
         ) : q.isError ? (
           <div className="empty">
             <p>{t('loadError')}</p>
+            <p>{errorMessage(q.error, t)}</p>
             <button className="retry" onClick={() => void refresh().catch(() => {})}>
               {t('retry')}
             </button>

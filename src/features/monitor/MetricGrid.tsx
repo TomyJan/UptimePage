@@ -48,7 +48,6 @@ export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
         <div>
           <small>{t('latestResponse')}</small>
           <strong>{formatMetric(d.monitor.responseMs, ' ms')}</strong>
-          {d.monitor.freshness !== 'fresh' && <span>{t('lastKnown')}</span>}
         </div>
         <div>
           <small>{t('average')}</small>
