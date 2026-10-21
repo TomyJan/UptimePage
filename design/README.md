@@ -7,6 +7,13 @@
 
 两份 HTML 均可直接用浏览器打开，无需安装依赖。数据、证书、刷新及时间范围都是模拟；工具栏不属于正式页面，实际能力以[数据说明](../docs/data-api.md)为准。页脚等后续调整以页面规格和当前实现为准。
 
+## 配置编辑器（已确认）
+
+- [浮动编辑器](prototypes/config-editor-floating.html)：右下角表单 / JSON 编辑、实时 mock 预览、自动贴边，以及配置导入导出。
+- [原独立页方案](prototypes/config-editor-standalone.html)：保留的上一版布局，不覆盖、不替换。
+
+浮动方案是正式实现的交互基准，原型配色不替换既有前端规范。开关、交互及字段见[设计说明](config-editor.md)。
+
 ## 参考与许可
 
 状态页参考：[Kuma Mieru](https://github.com/alice39s/kuma-mieru)、[OpenAI Status](https://status.openai.com/)、[GitHub Status](https://www.githubstatus.com/)、[Vercel Status](https://www.vercel-status.com/)、[Cloudflare Status](https://www.cloudflarestatus.com/)。采用信息组织思路，未复制品牌素材。
