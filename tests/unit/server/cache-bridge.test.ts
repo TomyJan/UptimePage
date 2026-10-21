@@ -1,9 +1,29 @@
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { createRemoteCache, handleCacheBridge } from '../../../src/server/cache-bridge.ts';
 import { createMemoryCache } from '../../../src/server/memory-cache.ts';
 
 const origin = 'https://preview.test';
 const key = new Request(`${origin}/__uptimepage_cache/version-home-v3/api/v1/groups/core`);
+
+it('handles unsigned requests in edge runtimes without static Response.json', async () => {
+  const storage = createMemoryCache();
+  const json = vi.spyOn(Response, 'json').mockImplementation(() => {
+    throw new TypeError('Response.json is not available');
+  });
+  try {
+    const response = await handleCacheBridge(
+      new Request(origin),
+      'secret',
+      'version',
+      storage,
+      storage,
+    );
+    expect(response.status).toBe(404);
+    expect(response.headers.get('content-type')).toContain('application/json');
+  } finally {
+    json.mockRestore();
+  }
+});
 
 it('authenticates cache reads and writes without exposing the secret or caching the transport', async () => {
   const storage = createMemoryCache();

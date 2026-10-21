@@ -52,7 +52,10 @@ async function sign(secret: string, text: string) {
   return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 function result(value: unknown, status = 200) {
-  return Response.json(value, { status, headers: { 'cache-control': 'no-store' } });
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
 }
 function validPath(path: string, origin: string, version: string) {
   const url = new URL(path, origin);
