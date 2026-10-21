@@ -5,6 +5,10 @@ import { LayeredResponseCache } from './kv-cache.ts';
 import type { ServerConfig } from './config.ts';
 import { createHash } from 'node:crypto';
 
+function originFingerprint(origin: string) {
+  return createHash('sha256').update(origin).digest('hex').slice(0, 12);
+}
+
 export type FunctionContext = { request: Request; env?: Record<string, string | undefined> };
 
 /** Node aggregation avoids the edge runtime's per-request fetch ceiling. */
@@ -58,7 +62,16 @@ export function createCloudApiHandler(config: ServerConfig) {
         'x-uptimepage-cache',
         [
           new URL(origin).protocol === 'https:' ? 'https' : 'http',
-          `origin-${createHash('sha256').update(origin).digest('hex').slice(0, 12)}`,
+          `origin-${originFingerprint(origin)}`,
+          ...['host', 'x-forwarded-host'].flatMap((name) => {
+            const value = context.request.headers.get(name);
+            if (!value || value.length > 500) return [];
+            try {
+              return [`${name}-${originFingerprint(new URL(`https://${value}`).origin)}`];
+            } catch {
+              return [`${name}-invalid`];
+            }
+          }),
           ...Array.from(diagnostics, ([operation, result]) => `${operation}:${result}`),
         ].join(',') + (secret ? '' : ',unconfigured'),
       );
