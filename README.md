@@ -1,15 +1,24 @@
 # UptimePage
 
-面向 EdgeOne Makers 的监控状态页，支持 Peekaping 和 UptimeRobot。只展示数据，检查和告警由上游负责。
+面向 EdgeOne Makers 的公开监控状态页，支持 Peekaping 和 UptimeRobot。本站负责展示，上游负责检查和告警。
 
 - 多来源、两级分组、独立监控详情。
-- 简体中文 / 英文，浏览器语言与时区偏好，深浅色。
-- 响应趋势、历史、事件、自动 / 手动刷新。
-- 服务端限制公开范围，节点缓存，可选 KV。
+- 简体中文 / 英文、时区、深浅色、自动 / 手动刷新。
+- 状态历史、响应曲线、可用率和事件；节点缓存，可选 KV。
 
-## 本地预览
+## 部署
 
-使用 `package.json` 声明的 Node.js 和 pnpm 版本。
+1. 复制 [config/default.json](config/default.json) 为 `config/site.json`，填写实际配置，提交并推送。
+2. 在 EdgeOne Makers 导入仓库，在项目环境变量中设置来源 API Key。
+3. 重新部署并检查真实数据。构建设置已写在 `edgeone.json`，使用 `site.json` 无需额外设置配置路径。
+
+完整步骤见[部署指南](docs/deployment.md)，字段见[配置说明](docs/configuration.md)。没有 `site.json` 时会回退默认配置；默认地址和监控 ID 是占位值，不能直接用于生产。API Key 不写进 JSON。
+
+当前只提供 24 小时详情，Peekaping 历史限于状态页最近心跳，证书未接入。缺失数据显示 `—`，不补造历史。真实来源与 EdgeOne 平台仍待验收，见[验证状态](docs/production-review.md)。
+
+## 本地演示
+
+使用 `package.json` 声明的 Node.js 和 pnpm 版本：
 
 ```sh
 corepack enable
@@ -17,22 +26,10 @@ pnpm install --frozen-lockfile
 pnpm run dev:demo
 ```
 
-这是演示数据。生产构建使用真实同源接口，不包含演示数据。
+演示使用模拟数据；生产构建调用本站 API，不包含演示代码。
 
-## 使用
+## 文档
 
-1. 复制 [config/default.json](config/default.json) 为 `config/site.json`，填写实际配置，提交并推送。未提供 `site.json` 时使用默认配置。
-2. 按[部署指南](docs/deployment.md)导入 EdgeOne 项目，设置服务端密钥；密钥不写进 JSON。
-3. 部署到预览环境，运行 `pnpm run verify:deployment` 并完成平台检查。
+[开发与测试](docs/development.md) · [数据与接口](docs/data-api.md) · [需求与架构](docs/superpowers/specs/2026-10-20-uptimepage-foundation-design.md) · [页面规格与原型](design/README.md)
 
-详细说明：[配置](docs/configuration.md) · [开发和测试](docs/development.md) · [数据与接口](docs/data-api.md) · [审查记录](docs/production-review.md)。
-
-当前提供 24 小时详情。Peekaping 历史受状态页最近心跳限制，证书尚未接入；缺失信息显示 `—`。代码已完成本地验证，真实来源与 EdgeOne 平台仍需按部署指南验收。
-
-## 分支与设计
-
-`master` 为完全重写的新版本；`legacy` 保留旧代码与历史。
-
-[需求与架构](docs/superpowers/specs/2026-10-20-uptimepage-foundation-design.md) · [页面规格](docs/superpowers/specs/2026-10-21-uptimepage-ui-design.md) · [设计原型](design/README.md)
-
-许可证：[MPL-2.0](LICENSE)。
+`master` 是重写版本，`legacy` 保留旧实现。许可证：[MPL-2.0](LICENSE)。

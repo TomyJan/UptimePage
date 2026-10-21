@@ -2,7 +2,7 @@
 
 日期：2026-10-21。用户已确认 A 精进原型，可进入正式实现准备。
 
-视觉基准：[原型 HTML](../../../design/prototypes/refined-a.html)，确认时提交为 `4d313b1`。前序约束见[需求与基础架构](2026-10-20-uptimepage-foundation-design.md)；参考来源、探索记录和验证范围见[设计说明](../../../design/README.md)。
+视觉基准：[原型 HTML](../../../design/prototypes/refined-a.html)，确认时提交为 `4d313b1`。前序约束见[需求与基础架构](2026-10-20-uptimepage-foundation-design.md)；原型入口、参考来源及许可见[设计说明](../../../design/README.md)。
 
 本文件固定页面结构、视觉与交互。原型的模拟数据、固定数量、取数实现、工具栏和示例百分比不进入生产实现。以下数据口径与空态细化是实施准备中的设计决定，遵守前序“不伪造数据”的约束。
 
