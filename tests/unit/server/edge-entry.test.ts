@@ -116,6 +116,36 @@ it.each(['lost', 'hung'])('recovers from KV when the node cache is %s', async (m
   expect((await fromKv.json()).freshness).toBe('fresh');
 });
 
+it('uses the public HTTPS origin when the cloud runtime supplies an internal HTTP URL', async () => {
+  vi.stubGlobal('caches', undefined);
+  const entries = new Map<string, string>();
+  vi.stubGlobal('TEST_UPTIMEPAGE_KV', {
+    async get(key: string) {
+      return entries.has(key) ? JSON.parse(entries.get(key)!) : null;
+    },
+    async put(key: string, value: string) {
+      entries.set(key, value);
+    },
+  });
+  upstream();
+  const realSourceAndBridge = fetch;
+  vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+    // EdgeOne redirects public HTTP to HTTPS; bridge fetch refuses redirects.
+    if (url.startsWith('http://preview.test/')) throw new TypeError('redirect');
+    return realSourceAndBridge(url, init);
+  });
+  const response = await onRequest({
+    request: new Request('http://preview.test/api/v1/groups/core'),
+    env,
+  });
+  expect(response.status).toBe(200);
+  expect(entries.size).toBe(3);
+  expect(response.headers.get('x-uptimepage-cache')).toContain('status-put:http-200');
+  for (const stored of entries.values()) {
+    expect(JSON.parse(stored).requestUrl).toMatch(/^https:\/\/preview\.test\//);
+  }
+});
+
 it('ignores failed cache and KV services and continues to the real source adapter', async () => {
   const failed = async () => {
     throw new Error('optional storage offline');
