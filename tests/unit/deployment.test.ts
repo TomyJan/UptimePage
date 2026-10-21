@@ -24,13 +24,22 @@ type Mode =
   | 'accepts-write'
   | 'public-cache'
   | 'legacy-home'
-  | 'broken-long-range';
+  | 'broken-long-range'
+  | 'broken-cache-bridge';
 async function serve(mode: Mode = 'ok') {
   const server = createServer(async (req, res) => {
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
     const url = new URL(req.url!, origin);
     let response: Response;
-    if (url.pathname.startsWith('/api/') && mode !== 'html-api') {
+    if (url.pathname === '/_uptimepage/cache') {
+      response =
+        mode === 'broken-cache-bridge'
+          ? new Response('Error return from script', { status: 545 })
+          : Response.json(
+              { error: { code: 'not-found' } },
+              { status: 404, headers: { 'cache-control': 'no-store' } },
+            );
+    } else if (url.pathname.startsWith('/api/') && mode !== 'html-api') {
       response = await handleApi(new Request(url, { method: req.method }), {
         config:
           mode === 'wrong-version' ? { ...serverConfig, configVersion: 'wrong' } : serverConfig,
@@ -92,6 +101,7 @@ it('checks the real API over HTTP, errors, deep routes and JavaScript assets', a
     expect.arrayContaining([
       'Homepage and assets',
       'Unknown group rejected',
+      'Unsigned cache requests rejected',
       'core: snapshot',
       'core: detail',
       'core: detail 7d',
@@ -115,6 +125,7 @@ it.each([
   ['accepts-write', /HTTP 200/],
   ['legacy-home', /home-v1/i],
   ['broken-long-range', /7d.*identity|7d.*range/i],
+  ['broken-cache-bridge', /JSON|545/],
 ] as const)('fails deployment validation for %s', async (mode, reason) => {
   await expect(verifyDeployment(await serve(mode), publicConfig)).rejects.toThrow(reason);
 });

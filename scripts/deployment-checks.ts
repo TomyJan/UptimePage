@@ -45,7 +45,8 @@ export async function verifyDeployment(
         redirect: 'error',
         cache: 'no-store',
         credentials: 'omit',
-        signal: AbortSignal.timeout(15000),
+        // Cold aggregation may use the configured 120-second cloud budget.
+        signal: AbortSignal.timeout(path.startsWith('/api/') ? 125000 : 15000),
       });
     } catch {
       throw new Error(`${method} ${path}: network, redirect or timeout failure`);
@@ -133,6 +134,9 @@ export async function verifyDeployment(
     );
   }
   checks.push('Homepage and assets');
+  for (const method of ['GET', 'POST'])
+    await rejected('/_uptimepage/cache', 'not-found', 404, method);
+  checks.push('Unsigned cache requests rejected');
   let unknown = 'uptimepage-validation-nonexistent';
   while (config.groups.some((group) => group.id === unknown)) unknown += '-x';
   await rejected(`/api/v1/groups/${unknown}`, 'not-found', 404);
