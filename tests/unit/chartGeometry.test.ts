@@ -50,3 +50,31 @@ it('keeps irregular sampling together when no explicit sample is missing', () =>
   );
   expect(g.segments.map((s) => s.points.length)).toEqual([4]);
 });
+
+it('keeps a fixed requested window when the source only returns recent data', () => {
+  const g = buildResponsePaths(
+    [1, 2].map((h) => ({ at: at(h), valueMs: 42 })),
+    500,
+    { from: at(0), until: at(24) },
+  );
+  expect(g.from).toBe(at(0));
+  expect(g.until).toBe(at(24));
+  expect(g.segments[0].points[0].x).toBeGreaterThan(g.left);
+  expect(g.segments[0].points.at(-1)!.x).toBeLessThan(g.left + (g.right - g.left) / 8);
+});
+
+it('draws dashed bridges only for explicitly marked short missing checks, never outages', () => {
+  const g = buildResponsePaths(
+    [
+      { at: at(0), valueMs: 42 },
+      { at: at(1), valueMs: null, gap: 'short-missing' },
+      { at: at(2), valueMs: 44 },
+      { at: at(3), valueMs: null },
+      { at: at(4), valueMs: 45 },
+    ],
+    500,
+  );
+  expect(g.segments).toHaveLength(3);
+  expect(g.bridges).toHaveLength(1);
+  expect(g.bridges[0]).toContain(`L ${g.segments[1].points[0].x}`);
+});

@@ -1,3 +1,5 @@
+import { rangeMilliseconds } from '../../shared/ranges.ts';
+import type { Range } from '../../shared/contracts.ts';
 import type { HistoryBucket, MonitorSummary, MonitorDetail } from '../../shared/contracts.ts';
 import { SourceRequestError, requestJson, type JsonFetcher } from './http.ts';
 
@@ -59,14 +61,15 @@ export async function fetchPeekapingHistory(
   apiKey: string,
   until: Date,
   fetcher: JsonFetcher = fetch,
+  range: Range = '24h',
 ) {
   const end = until.getTime(),
-    start = end - 86400000;
+    start = end - rangeMilliseconds(range);
   const path = `monitors/${encodeURIComponent(monitor.id)}`;
   const query = new URLSearchParams({
     since: new Date(start).toISOString(),
     until: until.toISOString(),
-    granularity: 'minute',
+    granularity: range === '24h' ? 'minute' : 'hour',
   });
   const raw = peekapingData(
     await requestJson(fetcher, sourceUrl(baseUrl, `${path}/stats/points?${query}`), auth(apiKey)),
@@ -76,7 +79,10 @@ export async function fetchPeekapingHistory(
   const stats = raw as Record<string, unknown> & { points: unknown[] };
   const number = (n: unknown): number | null =>
     typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
-  const interval = Math.max(60, Math.round((monitor.intervalSeconds ?? 60) / 60) * 60) * 1000;
+  const interval =
+    range === '24h'
+      ? Math.max(60, Math.round((monitor.intervalSeconds ?? 60) / 60) * 60) * 1000
+      : 3600000;
   const history: HistoryBucket[] = stats.points
     .map((value): HistoryBucket => {
       if (!value || typeof value !== 'object')
@@ -136,6 +142,7 @@ export async function fetchPeekapingHistory(
     monitor: {
       ...monitor,
       history,
+      sampleIntervalSeconds: interval / 1000,
       observedAt:
         Number.isFinite(observed) && observed <= end ? new Date(observed).toISOString() : null,
       responseMs: monitor.state === 'operational' && hb?.status === 1 ? number(hb.ping) : null,
@@ -147,7 +154,7 @@ export async function fetchPeekapingHistory(
       },
     },
     average: number(stats.avgPing),
-    events: await fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher),
+    events: await fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range),
   };
 }
 
@@ -157,8 +164,9 @@ async function fetchPeekapingEvents(
   apiKey: string,
   until: Date,
   fetcher: JsonFetcher,
+  range: Range,
 ): Promise<MonitorDetail['events']> {
-  const start = until.getTime() - 86400000,
+  const start = until.getTime() - rangeMilliseconds(range),
     end = until.getTime();
   const changes: { id: string; at: number; status: number }[] = [];
   let previousOldest = Infinity;

@@ -1,6 +1,7 @@
 export interface ResponsePoint {
   at: string;
   valueMs: number | null;
+  gap?: 'short-missing';
 }
 interface PlotPoint {
   x: number;
@@ -8,22 +9,37 @@ interface PlotPoint {
   at: string;
   value: number;
 }
-export function buildResponsePaths(input: ResponsePoint[], width: number) {
+export function buildResponsePaths(
+  input: ResponsePoint[],
+  width: number,
+  window?: { from: string; until: string },
+) {
   const left = 40,
     right = Math.max(48, width - 8),
     top = 20,
     bottom = 180;
   const sorted = [
     ...new Map(
-      input.filter((p) => Number.isFinite(Date.parse(p.at))).map((p) => [Date.parse(p.at), p]),
+      input
+        .filter(
+          (p) =>
+            Number.isFinite(Date.parse(p.at)) &&
+            (!window ||
+              (Date.parse(p.at) >= Date.parse(window.from) &&
+                Date.parse(p.at) <= Date.parse(window.until))),
+        )
+        .map((p) => [Date.parse(p.at), p]),
     ).entries(),
   ].sort(([a], [b]) => a - b);
   const values = sorted.flatMap(([, p]) => (p.valueMs === null ? [] : [p.valueMs]));
   const max = Math.max(50, Math.ceil(Math.max(0, ...values) / 50) * 50);
-  const start = sorted[0]?.[0] ?? 0,
-    end = sorted.at(-1)?.[0] ?? start;
+  const start = window ? Date.parse(window.from) : (sorted[0]?.[0] ?? 0),
+    end = window ? Date.parse(window.until) : (sorted.at(-1)?.[0] ?? start);
   const chunks: PlotPoint[][] = [];
   let chunk: PlotPoint[] = [];
+  const bridges: string[] = [];
+  let previous: PlotPoint | null = null;
+  let bridgePending = false;
   const flush = () => {
     if (chunk.length) chunks.push(chunk);
     chunk = [];
@@ -31,15 +47,22 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
   for (const [at, p] of sorted) {
     if (p.valueMs === null || !Number.isFinite(p.valueMs)) {
       flush();
+      bridgePending = p.gap === 'short-missing';
+      if (!bridgePending) previous = null;
       continue;
     }
-    chunk.push({
+    const point: PlotPoint = {
       x:
         end === start ? (left + right) / 2 : left + ((at - start) / (end - start)) * (right - left),
       y: bottom - (p.valueMs / max) * (bottom - top),
       at: p.at,
       value: p.valueMs,
-    });
+    };
+    if (bridgePending && previous)
+      bridges.push(`M ${previous.x} ${previous.y} L ${point.x} ${point.y}`);
+    bridgePending = false;
+    previous = point;
+    chunk.push(point);
   }
   flush();
   const segments = chunks.map((points) => {
@@ -67,13 +90,14 @@ export function buildResponsePaths(input: ResponsePoint[], width: number) {
   });
   return {
     segments,
+    bridges,
     max,
     left,
     right,
     top,
     bottom,
     width,
-    from: sorted[0]?.[1].at ?? null,
-    until: sorted.at(-1)?.[1].at ?? null,
+    from: window?.from ?? sorted[0]?.[1].at ?? null,
+    until: window?.until ?? sorted.at(-1)?.[1].at ?? null,
   };
 }

@@ -40,11 +40,15 @@ export function buildHistoryCells(
   buckets: HistoryBucket[],
   from: string,
   until: string,
+  sampleIntervalSeconds?: number | null,
 ): HistorySegment[] {
   const start = Date.parse(from),
     end = Date.parse(until);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
-  const count = 48,
+  const count = Math.max(
+      1,
+      Math.min(48, Math.floor((end - start) / Math.max(1, (sampleIntervalSeconds ?? 0) * 2000))),
+    ),
     width = (end - start) / count;
   const priority: Record<HistoryBucket['state'], number> = {
     'no-data': 0,

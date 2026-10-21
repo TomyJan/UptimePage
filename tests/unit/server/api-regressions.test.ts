@@ -122,7 +122,7 @@ it('keeps regular response samples connected while preserving null outage points
 it('validates routes and ranges before upstream access, and distinguishes source failures from removal', async () => {
   const fetch = vi.fn(fetcher);
   const runtime = { config: config(), environment: { KEY: 'key' }, fetcher: fetch, now };
-  for (const path of ['core/bogus/1', 'core/monitors/1?range=30d', 'core/monitors/2']) {
+  for (const path of ['core/bogus/1', 'core/monitors/1?range=invalid', 'core/monitors/2']) {
     expect(
       (await handleApi(new Request('https://site.test/api/v1/groups/' + path), runtime)).status,
     ).not.toBe(200);

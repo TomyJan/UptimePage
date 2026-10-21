@@ -8,7 +8,8 @@ test('history tooltip follows the selected record on the list and detail pages',
     await page.goto(url);
     const history = page.locator('.bars').first();
     await expect(history).toBeVisible();
-    for (const index of [10, 36]) {
+    const lastIndex = (await history.locator('.bar').count()) - 4;
+    for (const index of [4, lastIndex]) {
       const bar = history.locator('.bar').nth(index);
       await bar.hover();
       const tip = page.getByRole('tooltip');
@@ -23,7 +24,7 @@ test('history tooltip follows the selected record on the list and detail pages',
     }
     await history.focus();
     await history.press('ArrowLeft');
-    const selected = history.locator('.bar').nth(35);
+    const selected = history.locator('.bar').nth(lastIndex - 1);
     await expect
       .poll(async () => {
         const target = (await selected.boundingBox())!;

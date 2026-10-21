@@ -102,7 +102,7 @@ test('long public detail descriptions wrap within the viewport', async ({ page }
 
 test('detail uptime exposes partial sample coverage', async ({ page }) => {
   const data = detailFixture('core', 'm1', '24h')!;
-  data.monitor.uptime24h = {
+  data.periodUptime = {
     value: 100,
     from: '2026-10-21T11:50:00Z',
     until: '2026-10-21T12:00:00Z',

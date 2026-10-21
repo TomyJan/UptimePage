@@ -1,3 +1,4 @@
+import { rangeMilliseconds } from '../../shared/ranges.ts';
 import type { MonitorDetail } from '../../shared/contracts.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { formatMetric } from '../status/history.ts';
@@ -11,17 +12,19 @@ export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
     d.certificateExpiresAt !== null && d.capabilities.certificate === 'available'
       ? Math.ceil((Date.parse(d.certificateExpiresAt) - Date.now()) / 86400000)
       : null;
-  const uptime = d.monitor.uptime24h;
+  const uptime = d.periodUptime;
   const partial =
     uptime.from !== null &&
     uptime.until !== null &&
-    (Date.parse(uptime.from) > Date.parse(d.fetchedAt) - 86400000 ||
+    (Date.parse(uptime.from) > Date.parse(d.fetchedAt) - rangeMilliseconds(d.range) ||
       Date.parse(uptime.until) < Date.parse(d.fetchedAt));
   return (
     <AnimatedHeight>
       <div className="detail-metrics">
         <div>
-          <small>{t(partial ? 'uptime' : 'periodUptime')}</small>
+          <small>
+            {d.range} {t('uptime')}
+          </small>
           <DataTooltip
             content={
               <>
@@ -48,24 +51,31 @@ export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
         <div>
           <small>{t('latestResponse')}</small>
           <strong>{formatMetric(d.monitor.responseMs, ' ms')}</strong>
+          <span>
+            <time dateTime={d.monitor.observedAt ?? undefined}>
+              {time(d.monitor.observedAt, true)}
+            </time>
+          </span>
         </div>
         <div>
-          <small>{t('average')}</small>
+          <small>
+            {d.range} {t('average')}
+          </small>
           <DataTooltip
             content={
               <>
-                <div>{t(d.averageResponse24h.basis === 'provider' ? 'provider' : 'samples')}</div>
+                <div>{t(d.averageResponse.basis === 'provider' ? 'provider' : 'samples')}</div>
                 <div className="tip-note">
-                  {time(d.averageResponse24h.from, true)} – {time(d.averageResponse24h.until, true)}
+                  {time(d.averageResponse.from, true)} – {time(d.averageResponse.until, true)}
                 </div>
               </>
             }
           >
             <button
               className="metric-detail"
-              aria-label={`${t('average')} ${formatMetric(d.averageResponse24h.value, ' ms')}`}
+              aria-label={`${t('average')} ${formatMetric(d.averageResponse.value, ' ms')}`}
             >
-              <strong>{formatMetric(d.averageResponse24h.value, ' ms')}</strong>
+              <strong>{formatMetric(d.averageResponse.value, ' ms')}</strong>
             </button>
           </DataTooltip>
         </div>

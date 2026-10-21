@@ -1,8 +1,11 @@
 import type { MonitorDetail } from '../../shared/contracts.ts';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
+import { formatInterval } from '../status/duration.ts';
+import { usePreferences } from '../preferences/store.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { useFormatTime } from '../status/HistoryBars.tsx';
 export function MonitorFacts({ detail: d }: { detail: MonitorDetail }) {
+  const { locale } = usePreferences();
   const t = useCopy(),
     time = useFormatTime();
   return (
@@ -15,7 +18,7 @@ export function MonitorFacts({ detail: d }: { detail: MonitorDetail }) {
           <dt>{t('type')}</dt>
           <dd>{d.type ?? '—'}</dd>
           <dt>{t('interval')}</dt>
-          <dd>{d.intervalSeconds === null ? '—' : `${d.intervalSeconds} ${t('seconds')}`}</dd>
+          <dd>{formatInterval(d.intervalSeconds, locale)}</dd>
           <dt>{t('source')}</dt>
           <dd>{d.sourceName ?? '—'}</dd>
           <dt>{t('lastCheck')}</dt>

@@ -15,6 +15,8 @@ export type UptimeRobotRequestOptions = {
   endDate?: number;
   includeDetails?: boolean;
   responseTimesAverage?: number;
+  uptimeDays?: number;
+  latestOnly?: boolean;
 };
 
 function asPage(value: unknown): Page {
@@ -40,14 +42,15 @@ export async function fetchUptimeRobotMonitors(
       format: 'json',
       offset: String(offset),
       limit: String(limit),
-      custom_uptime_ratios: '1',
+      custom_uptime_ratios: String(options.uptimeDays ?? 1),
     });
     if (monitorIds?.length) body.set('monitors', monitorIds.join('-'));
     if (options.includeDetails) {
       body.set('response_times', '1');
       if (options.responseTimesAverage)
         body.set('response_times_average', String(options.responseTimesAverage));
-      body.set('logs', '1');
+      body.set('logs', options.latestOnly ? '0' : '1');
+      if (options.latestOnly) body.set('response_times_limit', '1');
       if (options.startDate !== undefined) {
         body.set('response_times_start_date', String(options.startDate));
         body.set('logs_start_date', String(options.startDate));

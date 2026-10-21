@@ -92,11 +92,19 @@ export function detailFixture(
   if (!m) return null;
   const days = range === '24h' ? 1 : range === '7d' ? 7 : 30;
   return {
-    monitor: m,
+    monitor: {
+      ...m,
+      history: m.history.map((b) => ({
+        ...b,
+        from: iso(now - (now - Date.parse(b.from)) * days),
+        until: iso(now - (now - Date.parse(b.until)) * days),
+      })),
+    },
     fetchedAt: iso(now),
     configVersion: publicConfig.configVersion,
     range,
-    averageResponse24h: {
+    periodUptime: { ...m.uptime24h, from: iso(now - days * 86400000) },
+    averageResponse: {
       value: m.responseMs === null ? null : 133.6,
       from: iso(now - 86400000),
       until: iso(now),

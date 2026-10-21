@@ -32,7 +32,11 @@ export function MonitorCard({ monitor: m, until }: { monitor: MonitorSummary; un
       </TransitionLink>
       <StatusBadge state={m.state} freshness={m.freshness} />
       <div className="history">
-        <HistoryBars history={m.history} until={until} />
+        <HistoryBars
+          history={m.history}
+          until={until}
+          sampleIntervalSeconds={m.sampleIntervalSeconds}
+        />
       </div>
       <UptimeMetric metric={m.uptime24h} />
       <div className="metric latency">

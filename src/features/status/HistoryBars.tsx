@@ -13,20 +13,27 @@ export function useFormatTime() {
           ...(full ? { month: '2-digit', day: '2-digit' } : {}),
           hour: '2-digit',
           minute: '2-digit',
+          second: '2-digit',
           hour12: false,
         }).format(new Date(value))
       : '—';
 }
-export function HistoryBars({ history, until }: { history: HistoryBucket[]; until: string }) {
+export function HistoryBars({
+  history,
+  until,
+  sampleIntervalSeconds,
+  from = new Date(Date.parse(until) - 86400000).toISOString(),
+}: {
+  history: HistoryBucket[];
+  until: string;
+  from?: string;
+  sampleIntervalSeconds?: number | null;
+}) {
   const t = useCopy(),
     time = useFormatTime(),
     [active, setActive] = useState(0),
     activeBar = useRef<HTMLSpanElement>(null);
-  const segments = buildHistoryCells(
-      history,
-      new Date(Date.parse(until) - 86400000).toISOString(),
-      until,
-    ),
+  const segments = buildHistoryCells(history, from, until, sampleIntervalSeconds),
     selected = segments[Math.min(active, segments.length - 1)];
   if (!selected) return <span>{t('noData')}</span>;
   return (

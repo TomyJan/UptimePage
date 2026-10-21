@@ -65,6 +65,7 @@ export const monitorSummarySchema = z.object({
   responseMs: finite.nonnegative().nullable(),
   type: z.string().nullable().optional(),
   intervalSeconds: finite.positive().nullable().optional(),
+  sampleIntervalSeconds: finite.positive().nullable().optional(),
   sourceName: z.string().nullable().optional(),
   uptime24h: metricSchema,
   history: z.array(historyBucketSchema),
@@ -97,7 +98,8 @@ export const monitorDetailSchema = z.object({
   range: rangeSchema,
   retryAt: utc.nullable().optional(),
   diagnostic: diagnosticSchema.optional(),
-  averageResponse24h: metricSchema,
+  periodUptime: metricSchema,
+  averageResponse: metricSchema,
   certificateExpiresAt: utc.nullable(),
   supportedRanges: z.array(rangeSchema),
   capabilities: z.object({
@@ -106,7 +108,13 @@ export const monitorDetailSchema = z.object({
     events: capability,
     certificate: capability,
   }),
-  response: z.array(z.object({ at: utc, valueMs: finite.nonnegative().nullable() })),
+  response: z.array(
+    z.object({
+      at: utc,
+      valueMs: finite.nonnegative().nullable(),
+      gap: z.literal('short-missing').optional(),
+    }),
+  ),
   events: z.array(
     z.object({ id: z.string(), from: utc, until: utc.nullable(), state: monitorStateSchema }),
   ),

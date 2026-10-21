@@ -1,3 +1,4 @@
+import { rangeMilliseconds } from '../../shared/ranges.ts';
 import { useRefreshFeedback } from '../refresh/useRefreshFeedback.ts';
 import { errorMessage } from '../refresh/feedback.ts';
 import { TransitionLink } from '../../components/TransitionLink.tsx';
@@ -17,7 +18,7 @@ import { localize } from '../preferences/locale.ts';
 import { usePreferences } from '../preferences/store.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
-import { HistoryBars } from '../status/HistoryBars.tsx';
+import { HistoryBars, useFormatTime } from '../status/HistoryBars.tsx';
 import { MetricGrid } from './MetricGrid.tsx';
 import { ResponseChart } from './ResponseChart.tsx';
 import { MonitorEvents } from './MonitorEvents.tsx';
@@ -27,6 +28,7 @@ export function MonitorPage() {
   return <MonitorContent key={`${groupId}:${monitorId}`} groupId={groupId} monitorId={monitorId} />;
 }
 function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: string }) {
+  const time = useFormatTime();
   const [range, setRange] = useState<Range>('24h'),
     q = useMonitorQuery(groupId, monitorId, range),
     t = useCopy(),
@@ -101,6 +103,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       </>
     );
   const d = data,
+    windowFrom = new Date(Date.parse(data.fetchedAt) - rangeMilliseconds(data.range)).toISOString(),
     name = localize(d.monitor.name, locale);
   const chartState =
     q.isError && (!q.data || data.range !== range)
@@ -165,7 +168,12 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
           ) : chartState === 'loading' ? (
             <div className="chart-loading" aria-busy="true" />
           ) : chartState === 'available' ? (
-            <ResponseChart points={d.response} animationKey={`${groupId}:${monitorId}:${range}`} />
+            <ResponseChart
+              points={d.response}
+              from={windowFrom}
+              until={d.fetchedAt}
+              animationKey={`${groupId}:${monitorId}:${range}`}
+            />
           ) : (
             <div className="empty">
               {t(d.capabilities.response === 'unsupported' ? 'unsupported' : 'noData')}
@@ -176,15 +184,20 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       <section className="panel">
         <div className="panel-top">
           <h2>
-            {t('checks')} <span className="muted">{t('history')}</span>
+            {t('checks')} <span className="muted">{d.range}</span>
           </h2>
         </div>
         <AnimatedHeight contentKey={d.capabilities.history}>
           {d.capabilities.history === 'available' ? (
             <>
-              <HistoryBars history={d.monitor.history} until={d.fetchedAt} />
+              <HistoryBars
+                history={d.monitor.history}
+                from={windowFrom}
+                until={d.fetchedAt}
+                sampleIntervalSeconds={d.monitor.sampleIntervalSeconds}
+              />
               <div className="history-meta">
-                <span>{t('ago')}</span>
+                <span>{time(windowFrom, true)}</span>
                 <span>{t('now')}</span>
               </div>
             </>

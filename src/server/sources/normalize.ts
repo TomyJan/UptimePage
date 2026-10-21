@@ -1,3 +1,5 @@
+import { rangeMilliseconds } from '../../shared/ranges.ts';
+import type { Range } from '../../shared/contracts.ts';
 import type { HistoryBucket, MonitorState, MonitorSummary } from '../../shared/contracts.ts';
 
 const iso = (value: unknown): string | null => {
@@ -158,7 +160,11 @@ function uptimeRobotState(value: unknown): MonitorState {
   }
 }
 
-function uptimeRobotHistory(item: Record<string, unknown>, fetchedAt: string): HistoryBucket[] {
+function uptimeRobotHistory(
+  item: Record<string, unknown>,
+  fetchedAt: string,
+  range: Range,
+): HistoryBucket[] {
   const points = Array.isArray(item.response_times) ? item.response_times : [];
   const history = points
     .flatMap((entry): { at: string; valueMs: number | null }[] => {
@@ -168,7 +174,7 @@ function uptimeRobotHistory(item: Record<string, unknown>, fetchedAt: string): H
       if (
         !at ||
         Date.parse(at) > Date.parse(fetchedAt) ||
-        Date.parse(at) < Date.parse(fetchedAt) - 86400000
+        Date.parse(at) < Date.parse(fetchedAt) - rangeMilliseconds(range)
       )
         return [];
       return [{ at, valueMs: number(point.value ?? point.response_time) }];
@@ -252,7 +258,7 @@ function uptimeRobotHistory(item: Record<string, unknown>, fetchedAt: string): H
     .filter(
       (b) =>
         Date.parse(b.from) <= Date.parse(fetchedAt) &&
-        Date.parse(b.until) > Date.parse(fetchedAt) - 86400000,
+        Date.parse(b.until) > Date.parse(fetchedAt) - rangeMilliseconds(range),
     )
     .sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
 }
@@ -262,13 +268,15 @@ export function normalizeUptimeRobotMonitor(
   groupId: string,
   subgroupIds: string[],
   fetchedAt: string,
+  range: Range = '24h',
+  sampleIntervalSeconds: number | null = null,
 ): MonitorSummary | null {
   if (!raw || typeof raw !== 'object') return null;
   const item = raw as Record<string, unknown>;
   const id = item.id === undefined || item.id === null ? null : String(item.id);
   const name = typeof item.friendly_name === 'string' ? item.friendly_name : null;
   if (!id || !name) return null;
-  const history = uptimeRobotHistory(item, fetchedAt);
+  const history = uptimeRobotHistory(item, fetchedAt, range);
   const points = Array.isArray(item.response_times)
     ? item.response_times
         .flatMap((entry) => {
@@ -297,6 +305,7 @@ export function normalizeUptimeRobotMonitor(
     type: monitorType(item.type),
     intervalSeconds: positive(item.interval),
     sourceName: 'UptimeRobot',
+    sampleIntervalSeconds,
     uptime24h: uptime(ratio, fetchedAt),
     history,
   };

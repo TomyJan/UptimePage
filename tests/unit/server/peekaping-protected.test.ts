@@ -43,7 +43,7 @@ it('uses status pages solely for membership and protected APIs for every display
     observedAt: '2026-10-21T11:59:30.000Z',
     uptime24h: { value: 99.5 },
   });
-  expect(detail.averageResponse24h).toMatchObject({ value: 36, basis: 'provider' });
+  expect(detail.averageResponse).toMatchObject({ value: 36, basis: 'provider' });
   expect(detail.capabilities.events).toBe('available');
   expect(text).not.toMatch(/PRIVATE|TOKEN|WRONG PUBLIC NAME|Forbidden/);
   const before = calls.length;

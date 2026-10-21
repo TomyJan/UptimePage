@@ -145,7 +145,14 @@ export async function loadGroupSnapshot(
           .filter((s) => s.monitorIds?.includes('*') || s.monitorIds?.includes(id))
           .map((s) => s.id);
         if (!selected.length) continue;
-        const monitor = normalizeUptimeRobotMonitor(raw, group.id, selected, fetchedAt);
+        const monitor = normalizeUptimeRobotMonitor(
+          raw,
+          group.id,
+          selected,
+          fetchedAt,
+          '24h',
+          1800,
+        );
         if (!monitor || !monitorSummarySchema.safeParse(monitor).success)
           throw new SourceRequestError('Invalid UptimeRobot monitor');
         mergeMonitor(monitors, applyOverride(monitor, group));

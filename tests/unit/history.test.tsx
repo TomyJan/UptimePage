@@ -42,3 +42,26 @@ it('groups dense checks into separated time cells while retaining faults and emp
   expect(cells[20].state).toBe('down');
   expect(cells[21]).toMatchObject({ state: 'operational', responseMs: 42 });
 });
+
+it('uses wider cells for sparse aggregated checks without filling missing periods or hiding faults', async () => {
+  const { buildHistoryCells } = await import('../../src/features/status/history.ts');
+  const buckets = Array.from({ length: 48 }, (_, i) => ({
+    from: new Date(
+      Date.parse('2026-10-21T00:00:00Z') + i * 1800000 + (i % 2 ? 10000 : 0),
+    ).toISOString(),
+    until: new Date(
+      Date.parse('2026-10-21T00:00:01Z') + i * 1800000 + (i % 2 ? 10000 : 0),
+    ).toISOString(),
+    state: i === 10 ? ('down' as const) : ('operational' as const),
+    responseMs: i === 10 ? null : 42,
+  }));
+  const cells = buildHistoryCells(
+    buckets.filter((_, i) => i < 20 || i >= 24),
+    '2026-10-21T00:00:00Z',
+    '2026-10-22T00:00:00Z',
+    1800,
+  );
+  expect(cells.length).toBeLessThan(48);
+  expect(cells.some((c) => c.state === 'down')).toBe(true);
+  expect(cells.some((c) => c.state === 'no-data')).toBe(true);
+});

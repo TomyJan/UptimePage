@@ -1,5 +1,7 @@
 import {
   apiErrorCodeSchema,
+  rangeSchema,
+  type Range,
   groupSnapshotSchema,
   monitorDetailSchema,
   type ApiErrorCode,
@@ -7,6 +9,8 @@ import {
   type GroupSnapshot,
   type MonitorDetail,
 } from '../shared/contracts.ts';
+import { rangeDays, rangeMilliseconds } from '../shared/ranges.ts';
+import { samplingCadence } from '../shared/sampling.ts';
 import { configuredMonitorIds, findServerGroup, type ServerConfig } from './config.ts';
 import { loadGroupSnapshot } from './snapshot.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
@@ -57,26 +61,39 @@ function splitPath(pathname: string): string[] | null {
   }
 }
 
-function detailFromSnapshot(snapshot: GroupSnapshot, monitorId: string): MonitorDetail | null {
+function detailFromSnapshot(
+  snapshot: GroupSnapshot,
+  monitorId: string,
+  range: Range,
+): MonitorDetail | null {
   const monitor = snapshot.monitors.find((m) => m.id === monitorId);
   if (!monitor) return null;
   const response: MonitorDetail['response'] = [];
   const history = [...monitor.history].sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
-  const steps = history
-    .slice(1)
-    .map((b, i) => Date.parse(b.from) - Date.parse(history[i].from))
-    .filter((n) => n > 0)
-    .sort((a, b) => a - b);
-  const cadence = monitor.intervalSeconds
-    ? monitor.intervalSeconds * 1000
-    : (steps[Math.floor(steps.length / 2)] ?? 0);
+  const cadence = samplingCadence(monitor.intervalSeconds, monitor.sampleIntervalSeconds);
   for (let i = 0; i < history.length; i++) {
     const bucket = history[i];
-    if (Date.parse(bucket.from) >= Date.parse(snapshot.fetchedAt) - 86400000)
-      response.push({ at: bucket.from, valueMs: bucket.responseMs });
+    const start = Date.parse(snapshot.fetchedAt) - rangeMilliseconds(range);
+    if (Date.parse(bucket.until) > start)
+      response.push({
+        at: new Date(Math.max(start, Date.parse(bucket.from))).toISOString(),
+        valueMs: bucket.responseMs,
+      });
     const next = history[i + 1];
-    if (next && Date.parse(next.from) - Date.parse(bucket.until) > cadence * 1.5)
-      response.push({ at: bucket.until, valueMs: null });
+    if (
+      next &&
+      Date.parse(next.from) > Date.parse(bucket.until) &&
+      Date.parse(next.from) - Date.parse(bucket.from) > cadence * 1.5
+    )
+      response.push({
+        at: bucket.until,
+        valueMs: null,
+        ...(bucket.responseMs !== null &&
+        next.responseMs !== null &&
+        Date.parse(next.from) - Date.parse(bucket.from) <= cadence * 2.5
+          ? { gap: 'short-missing' as const }
+          : {}),
+      });
   }
   const values = response.flatMap((p) => (p.valueMs === null ? [] : [p.valueMs]));
   const events: MonitorDetail['events'] = [];
@@ -111,20 +128,24 @@ function detailFromSnapshot(snapshot: GroupSnapshot, monitorId: string): Monitor
     monitor,
     fetchedAt: snapshot.fetchedAt,
     configVersion: snapshot.configVersion,
-    range: '24h',
+    range,
+    periodUptime: {
+      ...monitor.uptime24h,
+      from: new Date(Date.parse(snapshot.fetchedAt) - rangeMilliseconds(range)).toISOString(),
+    },
     retryAt:
       snapshot.subgroupErrors
         .flatMap((e) => (e.code === 'rate-limited' && e.retryAt ? [e.retryAt] : []))
         .sort()
         .at(-1) ?? null,
-    averageResponse24h: {
+    averageResponse: {
       value: values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : null,
       from: response.find((p) => p.valueMs !== null)?.at ?? null,
       until: response.findLast((p) => p.valueMs !== null)?.at ?? null,
       basis: 'observed-samples',
     },
     certificateExpiresAt: null,
-    supportedRanges: ['24h'],
+    supportedRanges: ['24h', '7d', '30d'],
     capabilities: {
       history: history.length ? 'available' : 'unavailable',
       response: values.length ? 'available' : 'unavailable',
@@ -162,8 +183,9 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     return errorResponse('not-found');
   const isDetail = parts.length === 4;
   if (isDetail && (parts[2] !== 'monitors' || !parts[3])) return errorResponse('not-found');
-  if (isDetail && (url.searchParams.get('range') ?? '24h') !== '24h')
-    return errorResponse('invalid-response');
+  const parsedRange = rangeSchema.safeParse(url.searchParams.get('range') ?? '24h');
+  if (isDetail && !parsedRange.success) return errorResponse('invalid-response');
+  const range = parsedRange.success ? parsedRange.data : '24h';
   const group = findServerGroup(runtime.config, parts[1]);
   if (!group) return errorResponse('not-found');
   const ids = configuredMonitorIds(group);
@@ -209,7 +231,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         (b) => b.toString(16).padStart(2, '0'),
       ).join('')
     : '';
-  const cacheVersion: string = `${runtime.config.configVersion}-protected-v1-${membershipDigest}`;
+  const cacheVersion: string = `${runtime.config.configVersion}-ranges-v2-${membershipDigest}`;
   if (
     isDetail &&
     membership &&
@@ -243,7 +265,9 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   }
   let cached: GroupSnapshot | null = null;
   let cachedDetail: MonitorDetail | null = null;
-  const detailKey = new Request(`${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}`);
+  const detailKey = new Request(
+    `${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}/ranges/${range}`,
+  );
   if (isDetail) {
     try {
       const entry = await readCache(runtime.cache, detailKey, cacheVersion);
@@ -254,7 +278,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           parsed.data.configVersion === runtime.config.configVersion &&
           parsed.data.monitor.groupId === group.id &&
           parsed.data.monitor.id === parts[3] &&
-          parsed.data.range === '24h'
+          parsed.data.range === range
         ) {
           const age = now.getTime() - Date.parse(parsed.data.fetchedAt);
           if (age >= 0 && age < retainMs) cachedDetail = parsed.data;
@@ -341,7 +365,9 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           runtime.fetcher,
           {
             includeDetails: true,
-            startDate: Math.floor((now.getTime() - 86400000) / 1000),
+            uptimeDays: rangeDays(range),
+            ...(range === '24h' ? {} : { responseTimesAverage: range === '7d' ? 30 : 60 }),
+            startDate: Math.floor((now.getTime() - rangeMilliseconds(range)) / 1000),
             endDate: Math.floor(now.getTime() / 1000),
           },
         );
@@ -354,10 +380,59 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           group.id,
           member.subgroupIds,
           now.toISOString(),
+          range,
+          range === '24h' ? null : range === '7d' ? 1800 : 3600,
         );
         if (!normalized) throw new SourceRequestError('Invalid UptimeRobot monitor');
+        let latest = normalized;
+        if (range !== '24h') {
+          const entry = await readCache(
+            runtime.cache,
+            new Request(`${key.url}/monitors/${encodeURIComponent(member.id)}/ranges/24h`),
+            cacheVersion,
+          );
+          let rawDetail: MonitorDetail | null = null;
+          try {
+            const parsed = entry && monitorDetailSchema.safeParse(await entry.json());
+            if (
+              parsed &&
+              parsed.success &&
+              parsed.data.range === '24h' &&
+              parsed.data.configVersion === runtime.config.configVersion &&
+              parsed.data.monitor.groupId === group.id &&
+              parsed.data.monitor.id === member.id &&
+              now.getTime() - Date.parse(parsed.data.fetchedAt) >= 0 &&
+              now.getTime() - Date.parse(parsed.data.fetchedAt) < freshMs
+            )
+              rawDetail = parsed.data;
+          } catch {
+            /* Corrupt optional cache: retrieve the latest check. */
+          }
+          if (rawDetail) latest = rawDetail.monitor;
+          else {
+            const rows = await fetchUptimeRobotMonitors(
+              requireSecret(runtime.environment, group.source.apiKeyEnv),
+              [member.id],
+              runtime.fetcher,
+              { includeDetails: true, latestOnly: true },
+            );
+            const row = rows.find(
+              (m) => m && typeof m === 'object' && 'id' in m && String(m.id) === member.id,
+            );
+            const check = normalizeUptimeRobotMonitor(
+              row,
+              group.id,
+              member.subgroupIds,
+              now.toISOString(),
+            );
+            if (!check) throw new SourceRequestError('Invalid UptimeRobot latest check');
+            latest = check;
+          }
+        }
         const monitor = {
           ...normalized,
+          observedAt: latest.observedAt,
+          responseMs: normalized.state === 'operational' ? latest.responseMs : null,
           name: member.name,
           logo: member.logo,
           description: member.description,
@@ -365,7 +440,9 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         const detail = detailFromSnapshot(
           { ...snapshot, fetchedAt: now.toISOString(), monitors: [monitor] },
           member.id,
+          range,
         )!;
+        detail.monitor.uptime24h = member.uptime24h;
         detail.capabilities.events = Array.isArray((record as Record<string, unknown>).logs)
           ? 'available'
           : 'unavailable';
@@ -391,14 +468,18 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         requireSecret(runtime.environment, group.source.apiKeyEnv),
         now,
         runtime.fetcher,
+        range,
       );
       const detail = detailFromSnapshot(
         { ...snapshot, fetchedAt: now.toISOString(), monitors: [result.monitor] },
         member.id,
+        range,
       )!;
-      detail.averageResponse24h = {
+      detail.monitor.uptime24h = member.uptime24h;
+      if (range === '24h') detail.monitor.uptime24h = detail.periodUptime;
+      detail.averageResponse = {
         value: result.average,
-        from: result.monitor.uptime24h.from,
+        from: detail.periodUptime.from,
         until: now.toISOString(),
         basis: 'provider',
       };
