@@ -18,7 +18,11 @@
       "subgroups": [
         { "id": "default", "name": { "en": "Websites", "zh-CN": "网站" }, "slug": "default" },
         { "id": "moeai", "name": { "en": "AI Service", "zh-CN": "AI 服务" }, "slug": "moeai" },
-        { "id": "monitor", "name": { "en": "Service Heartbeat", "zh-CN": "服务心跳" }, "slug": "monitor" }
+        {
+          "id": "monitor",
+          "name": { "en": "Service Heartbeat", "zh-CN": "服务心跳" },
+          "slug": "monitor"
+        }
       ]
     },
     {
