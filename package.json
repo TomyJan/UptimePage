@@ -18,6 +18,7 @@
     "test:e2e": "node scripts/test.mjs browser",
     "verify:public-build": "node scripts/verify-public-build.ts",
     "verify:deployment": "pnpm run build && node scripts/verify-deployment.ts",
+    "verify:browser": "pnpm run generate && playwright test --config=playwright.deployment.config.ts",
     "format": "prettier --write src config scripts tests edge-functions cloud-functions .github *.ts *.json *.yaml index.html",
     "format:check": "prettier --check src config scripts tests edge-functions cloud-functions .github *.ts *.json *.yaml index.html"
   },
