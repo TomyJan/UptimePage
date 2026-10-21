@@ -53,6 +53,8 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 
 非零退出码表示失败；空组的详情检查会 `SKIP`。遇到限流应等待退避后重试。自动检查不能代替来源口径、平台缓存和运行配额验证，完整清单见[验证状态](production-review.md)。
 
+排查缓存时查看 API 响应头 `X-UptimePage-Cache`：`status` / `membership` 表示状态 / 成员缓存，`match` / `put` 表示读取 / 写入；`http-404` 表示缓存桥拒绝，`network` / `timeout` 表示连接失败 / 超时，`pending` 表示 API 返回时操作仍未完成，`oversized` 表示超过桥接请求限制。`http-200` 只代表缓存桥响应成功，仍需在 KV 核对新记录；该响应头不包含密钥、来源地址或异常原文。
+
 ## 排错
 
 | 现象                              | 检查                                                                                                            |

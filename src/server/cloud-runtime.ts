@@ -15,13 +15,19 @@ export function createCloudApiHandler(config: ServerConfig) {
       const environment = context.env ?? {};
       const secret = cacheBridgeSecret(config, environment);
       const origin = new URL(context.request.url).origin;
+      // Fixed labels only: never expose origins, credentials or exception text.
+      const diagnostics = new Map<string, string>();
+      const report = (event: string) => {
+        const [operation, result] = event.split(':');
+        diagnostics.set(operation, result);
+      };
       const remote = secret
-        ? createRemoteCache(origin, secret, config.configVersion, 'status')
+        ? createRemoteCache(origin, secret, config.configVersion, 'status', fetch, report)
         : null;
       const membership = secret
-        ? createRemoteCache(origin, secret, config.configVersion, 'membership')
+        ? createRemoteCache(origin, secret, config.configVersion, 'membership', fetch, report)
         : null;
-      return await handleApi(context.request, {
+      const response = await handleApi(context.request, {
         config,
         environment,
         inFlight,
@@ -33,6 +39,14 @@ export function createCloudApiHandler(config: ServerConfig) {
           950,
         ),
       });
+      response.headers.set(
+        'x-uptimepage-cache',
+        [
+          new URL(origin).protocol === 'https:' ? 'https' : 'http',
+          ...Array.from(diagnostics, ([operation, result]) => `${operation}:${result}`),
+        ].join(',') + (secret ? '' : ',unconfigured'),
+      );
+      return response;
     } catch {
       return errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' });
     }

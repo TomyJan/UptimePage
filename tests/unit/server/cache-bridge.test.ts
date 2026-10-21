@@ -1,9 +1,50 @@
 import { expect, it, vi } from 'vitest';
 import { createRemoteCache, handleCacheBridge } from '../../../src/server/cache-bridge.ts';
 import { createMemoryCache } from '../../../src/server/memory-cache.ts';
+import { LayeredResponseCache } from '../../../src/server/kv-cache.ts';
 
 const origin = 'https://preview.test';
 const key = new Request(`${origin}/__uptimepage_cache/version-home-v3/api/v1/groups/core`);
+
+it('reports a pending write when the API budget ends before the bridge response', async () => {
+  const events: string[] = [];
+  const remote = createRemoteCache(
+    origin,
+    'secret',
+    'version',
+    'status',
+    async () =>
+      new Promise<Response>((resolve) => setTimeout(() => resolve(new Response('null')), 1200)),
+    (event) => events.push(event),
+  );
+  await new LayeredResponseCache([remote]).put(key, new Response('{}'));
+  expect(events).toEqual(['status-put:pending']);
+});
+
+it.each(['denied', 'network', 'timeout'])(
+  'reports sanitized %s bridge failures',
+  async (failure) => {
+    const events: string[] = [];
+    const cache = createRemoteCache(
+      origin,
+      'private-secret',
+      'version',
+      'status',
+      async () => {
+        if (failure === 'denied') return new Response('private upstream body', { status: 404 });
+        throw failure === 'timeout'
+          ? new DOMException('private URL and credential', 'TimeoutError')
+          : new Error('private URL and credential');
+      },
+      (event) => events.push(event),
+    );
+    await cache.match(key).catch(() => undefined);
+    expect(events).toEqual([
+      'status-match:pending',
+      `status-match:${failure === 'denied' ? 'http-404' : failure}`,
+    ]);
+  },
+);
 
 it('handles unsigned requests in edge runtimes without static Response.json', async () => {
   const storage = createMemoryCache();

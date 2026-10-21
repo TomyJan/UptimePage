@@ -148,6 +148,7 @@ export function createRemoteCache(
   version: string,
   layer: Message['layer'],
   fetcher: typeof fetch = fetch,
+  report?: (event: string) => void,
 ): ResponseCache {
   async function send(
     request: RequestInfo | URL,
@@ -160,8 +161,10 @@ export function createRemoteCache(
       !validPath(url.pathname, origin, version) ||
       url.search ||
       url.hash
-    )
+    ) {
+      report?.(`${layer}-${operation}:invalid-path`);
       return null;
+    }
     const body = JSON.stringify({
       at: Date.now(),
       origin,
@@ -171,17 +174,30 @@ export function createRemoteCache(
       path: url.pathname,
       ...(value ? { value } : {}),
     });
-    if (new TextEncoder().encode(body).byteLength > maxMessageBytes) return null;
-    const response = await fetcher(origin + endpoint, {
-      method: 'POST',
-      body,
-      headers: {
-        'content-type': 'application/json',
-        [signatureHeader]: await sign(secret, body),
-      },
-      redirect: 'error',
-      signal: AbortSignal.timeout(1500),
-    });
+    if (new TextEncoder().encode(body).byteLength > maxMessageBytes) {
+      report?.(`${layer}-${operation}:oversized`);
+      return null;
+    }
+    let response: Response;
+    report?.(`${layer}-${operation}:pending`);
+    try {
+      response = await fetcher(origin + endpoint, {
+        method: 'POST',
+        body,
+        headers: {
+          'content-type': 'application/json',
+          [signatureHeader]: await sign(secret, body),
+        },
+        redirect: 'error',
+        signal: AbortSignal.timeout(1500),
+      });
+    } catch (error) {
+      report?.(
+        `${layer}-${operation}:${error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name) ? 'timeout' : 'network'}`,
+      );
+      throw error;
+    }
+    report?.(`${layer}-${operation}:http-${response.status}`);
     if (!response.ok) return null;
     return response.json();
   }

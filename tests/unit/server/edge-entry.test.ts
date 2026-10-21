@@ -76,6 +76,7 @@ it('runs the actual entry without cache or KV and keeps secrets out of public re
   const response = await cloudRequest({ request: request(), env });
   expect(response.status).toBe(200);
   expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(response.headers.get('x-uptimepage-cache')).toContain('status-put:http-200');
   const text = await response.text();
   expect(JSON.parse(text).monitors[0]).toMatchObject({ id: '1', state: 'operational' });
   for (const privateValue of ['private-test-key', 'source.test', 'apiKeyEnv'])
