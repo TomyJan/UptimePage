@@ -67,7 +67,13 @@ it('filters UptimeRobot results to configured IDs and reports source failures pe
     async () => new Response(JSON.stringify({ error: 'down' }), { status: 503 }),
   );
   expect(snapshot.freshness).toBe('unavailable');
-  expect(snapshot.subgroupErrors).toEqual([{ subgroupId: 'web', code: 'unavailable' }]);
+  expect(snapshot.subgroupErrors).toEqual([
+    {
+      subgroupId: 'web',
+      code: 'unavailable',
+      diagnostic: { reason: 'upstream-http', status: 503, stage: 'source' },
+    },
+  ]);
   expect(snapshot.monitors).toEqual([]);
 });
 

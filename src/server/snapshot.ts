@@ -35,7 +35,11 @@ function extractPeekapingMonitors(value: unknown): unknown[] {
   if (!value || typeof value !== 'object')
     throw new SourceRequestError('Invalid Peekaping response');
   const item = value as Record<string, unknown>;
-  if (item.success === false) throw new SourceRequestError('Peekaping rejected the request');
+  if (item.success === false)
+    throw new SourceRequestError('Peekaping rejected the request', null, null, {
+      reason: 'upstream-rejected',
+      stage: 'source',
+    });
   if (Array.isArray(item.monitors)) return item.monitors;
   if (item.data !== undefined && item.data !== value) return extractPeekapingMonitors(item.data);
   throw new SourceRequestError('Invalid Peekaping response');
@@ -107,26 +111,36 @@ export async function loadGroupSnapshot(
             throw new SourceRequestError('Invalid Peekaping monitor');
           selected.push(applyOverride(monitor, group));
         }
-        return { subgroup, selected, code: null, retryAt: null };
+        return { subgroup, selected, code: null, retryAt: null, diagnostic: undefined };
       } catch (error) {
         return {
           subgroup,
           selected: [],
           code: sourceErrorCode(error),
+          diagnostic:
+            error instanceof SourceRequestError
+              ? error.diagnostic
+              : { reason: 'internal' as const },
           retryAt: error instanceof SourceRequestError ? error.retryAt : null,
         };
       }
     });
-    for (const { subgroup, selected, code, retryAt } of results) {
+    for (const { subgroup, selected, code, retryAt, diagnostic } of results) {
       const rank = new Map((subgroup.order ?? []).map((id, i) => [id, i]));
       selected.sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
       subgroupIds[subgroup.id] = [...new Set(selected.map((m) => m.id))];
       for (const monitor of selected) mergeMonitor(monitors, monitor);
       if (code)
-        subgroupErrors.push({ subgroupId: subgroup.id, code, ...(retryAt ? { retryAt } : {}) });
+        subgroupErrors.push({
+          subgroupId: subgroup.id,
+          code,
+          diagnostic,
+          ...(retryAt ? { retryAt } : {}),
+        });
     }
   } else {
     const refs = configuredMonitorRefs(group);
+
     try {
       const rawMonitors = await fetchUptimeRobotMonitors(
         key,
@@ -172,6 +186,8 @@ export async function loadGroupSnapshot(
         subgroupErrors.push({
           subgroupId: subgroup.id,
           code,
+          diagnostic:
+            error instanceof SourceRequestError ? error.diagnostic : { reason: 'internal' },
           ...(error instanceof SourceRequestError && error.retryAt
             ? { retryAt: error.retryAt }
             : {}),

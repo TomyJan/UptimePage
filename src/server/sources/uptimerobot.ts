@@ -65,9 +65,10 @@ export async function fetchUptimeRobotMonitors(
       }),
     );
     if (page.stat === 'fail')
-      throw new SourceRequestError(
-        typeof page.error === 'string' ? page.error : 'UptimeRobot rejected the request',
-      );
+      throw new SourceRequestError('UptimeRobot rejected the request', null, null, {
+        reason: 'upstream-rejected',
+        stage: 'source',
+      });
     if (!Array.isArray(page.monitors) || (page.stat !== undefined && page.stat !== 'ok'))
       throw new SourceRequestError('Invalid UptimeRobot response');
     const monitors = page.monitors;

@@ -1,9 +1,21 @@
+import type { Diagnostic } from '../../shared/contracts.ts';
 export class SourceRequestError extends Error {
+  readonly diagnostic: Diagnostic;
   readonly status: number | null;
   readonly retryAt: string | null;
 
-  constructor(message: string, status: number | null = null, retryAt: string | null = null) {
+  constructor(
+    message: string,
+    status: number | null = null,
+    retryAt: string | null = null,
+    diagnostic: Diagnostic = {
+      reason: status ? 'upstream-http' : 'invalid-response',
+      ...(status ? { status } : {}),
+      stage: 'source',
+    },
+  ) {
     super(message);
+    this.diagnostic = diagnostic;
     this.name = 'SourceRequestError';
     this.status = status;
     this.retryAt = retryAt;
@@ -41,12 +53,24 @@ export async function requestJson(
     try {
       return await response.json();
     } catch {
+      if (controller.signal.aborted)
+        throw new SourceRequestError('Source request timed out', null, null, {
+          reason: 'timeout',
+          stage: 'source',
+        });
       throw new SourceRequestError('Source returned invalid JSON');
     }
   } catch (error) {
     if (error instanceof SourceRequestError) throw error;
-    if (controller.signal.aborted) throw new SourceRequestError('Source request timed out');
-    throw new SourceRequestError('Source request unavailable');
+    if (controller.signal.aborted)
+      throw new SourceRequestError('Source request timed out', null, null, {
+        reason: 'timeout',
+        stage: 'source',
+      });
+    throw new SourceRequestError('Source request unavailable', null, null, {
+      reason: 'network',
+      stage: 'source',
+    });
   } finally {
     clearTimeout(timer);
   }

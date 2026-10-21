@@ -1,3 +1,4 @@
+import { SourceRequestError } from './sources/http.ts';
 import type { SiteConfig } from '../../config/schema.ts';
 
 export type ServerConfig = {
@@ -44,6 +45,9 @@ export function requireSecret(
   variable: string,
 ): string {
   const value = environment[variable]?.trim();
-  if (!value) throw new Error(`Missing server secret: ${variable}`);
+  if (!value)
+    throw new SourceRequestError('Server credential missing', null, null, {
+      reason: 'configuration',
+    });
   return value;
 }

@@ -1,5 +1,5 @@
 import serverConfig from '../../../.generated/server-config.ts';
-import { handleApi } from '../../../src/server/api.ts';
+import { handleApi, errorResponse } from '../../../src/server/api.ts';
 import type { ServerConfig } from '../../../src/server/config.ts';
 import {
   LayeredResponseCache,
@@ -15,26 +15,30 @@ type EdgeContext = {
 
 const inFlight = new Map<string, Promise<unknown>>();
 
-export default function onRequest(context: EdgeContext) {
-  const edgeCaches = globalThis as typeof globalThis & { caches?: { default?: Cache } };
-  const bindings = globalThis as typeof globalThis & Record<string, unknown>;
-  const kvBinding = serverConfig.cache.kvBinding;
-  const kv = kvBinding ? bindings[kvBinding] : undefined;
-  const layers = [
-    edgeCaches.caches?.default,
-    kv &&
-    typeof kv === 'object' &&
-    'get' in kv &&
-    typeof kv.get === 'function' &&
-    'put' in kv &&
-    typeof kv.put === 'function'
-      ? createKvCache(kv as KvNamespace)
-      : undefined,
-  ].filter((layer): layer is ResponseCache => Boolean(layer));
-  return handleApi(context.request, {
-    config: serverConfig as ServerConfig,
-    environment: context.env ?? {},
-    cache: new LayeredResponseCache(layers),
-    inFlight,
-  });
+export default async function onRequest(context: EdgeContext) {
+  try {
+    const edgeCaches = globalThis as typeof globalThis & { caches?: { default?: Cache } };
+    const bindings = globalThis as typeof globalThis & Record<string, unknown>;
+    const kvBinding = serverConfig.cache.kvBinding;
+    const kv = kvBinding ? bindings[kvBinding] : undefined;
+    const layers = [
+      edgeCaches.caches?.default,
+      kv &&
+      typeof kv === 'object' &&
+      'get' in kv &&
+      typeof kv.get === 'function' &&
+      'put' in kv &&
+      typeof kv.put === 'function'
+        ? createKvCache(kv as KvNamespace)
+        : undefined,
+    ].filter((layer): layer is ResponseCache => Boolean(layer));
+    return await handleApi(context.request, {
+      config: serverConfig as ServerConfig,
+      environment: context.env ?? {},
+      cache: new LayeredResponseCache(layers),
+      inFlight,
+    });
+  } catch {
+    return errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' });
+  }
 }

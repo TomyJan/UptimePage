@@ -3,6 +3,7 @@ import {
   groupSnapshotSchema,
   monitorDetailSchema,
   type ApiErrorCode,
+  type Diagnostic,
   type GroupSnapshot,
   type MonitorDetail,
 } from '../shared/contracts.ts';
@@ -10,6 +11,7 @@ import { configuredMonitorIds, findServerGroup, type ServerConfig } from './conf
 import { loadGroupSnapshot } from './snapshot.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
 import { readCache, writeCache, type ResponseCache } from './cache.ts';
+import { fetchPeekapingInterval } from './sources/peekaping.ts';
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizeUptimeRobotMonitor } from './sources/normalize.ts';
 import { requireSecret } from './config.ts';
@@ -34,9 +36,13 @@ function json(value: unknown, status = 200) {
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
 }
-function errorResponse(code: ApiErrorCode, retryAt: string | null = null) {
+export function errorResponse(
+  code: ApiErrorCode,
+  retryAt: string | null = null,
+  diagnostic?: Diagnostic,
+) {
   return json(
-    { error: { code, retryAt } },
+    { error: { code, retryAt, diagnostic } },
     code === 'not-found' ? 404 : code === 'rate-limited' ? 429 : 502,
   );
 }
@@ -140,6 +146,13 @@ function stale(snapshot: GroupSnapshot): GroupSnapshot {
 }
 
 export async function handleApi(request: Request, runtime: ApiRuntime): Promise<Response> {
+  try {
+    return await handleRequest(request, runtime);
+  } catch {
+    return errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' });
+  }
+}
+async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Response> {
   if (request.method !== 'GET') return errorResponse('not-found');
   const url = new URL(request.url);
   const parts = splitPath(url.pathname);
@@ -174,7 +187,7 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
   let cached: GroupSnapshot | null = null;
   let cachedDetail: MonitorDetail | null = null;
   const detailKey = new Request(`${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}`);
-  if (isDetail && group.source.type === 'uptimerobot') {
+  if (isDetail) {
     try {
       const entry = await readCache(runtime.cache, detailKey, runtime.config.configVersion);
       if (entry) {
@@ -252,16 +265,17 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
           'Source unavailable',
           snapshot.subgroupErrors.some((e) => e.code === 'rate-limited') ? 429 : null,
           retryAt,
+          snapshot.subgroupErrors.find((e) => e.diagnostic)?.diagnostic ?? { reason: 'internal' },
         );
       }
     }
     if (!isDetail) return json(snapshot);
     const member = snapshot.monitors.find((m) => m.id === parts[3]);
     if (!member) return errorResponse('not-found');
+    // A detail cache cannot bypass current public membership.
+    if (cachedDetail && now.getTime() - Date.parse(cachedDetail.fetchedAt) < freshMs)
+      return json(cachedDetail);
     if (group.source.type === 'uptimerobot') {
-      // Membership is checked above even when the detail cache is newer.
-      if (cachedDetail && now.getTime() - Date.parse(cachedDetail.fetchedAt) < freshMs)
-        return json(cachedDetail);
       const detail = await coalesce<MonitorDetail | null>(detailKey.url, async () => {
         const raw = await fetchUptimeRobotMonitors(
           requireSecret(runtime.environment, group.source.apiKeyEnv),
@@ -312,7 +326,42 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
       });
       return detail ? json(detail) : errorResponse('not-found');
     }
-    return json(detailFromSnapshot(snapshot, parts[3]));
+    let detail = detailFromSnapshot(snapshot, parts[3])!;
+    if (detail.intervalSeconds === null && group.source.type === 'peekaping') {
+      try {
+        const interval = await coalesce(`${detailKey.url}:interval`, () =>
+          fetchPeekapingInterval(
+            group.source.type === 'peekaping' ? group.source.baseUrl : '',
+            member.id,
+            requireSecret(runtime.environment, group.source.apiKeyEnv),
+            runtime.fetcher,
+          ),
+        );
+        detail = detailFromSnapshot(
+          { ...snapshot, monitors: [{ ...member, intervalSeconds: interval }] },
+          member.id,
+        )!;
+      } catch (error) {
+        detail.retryAt = error instanceof SourceRequestError ? error.retryAt : null;
+        detail.diagnostic =
+          error instanceof SourceRequestError
+            ? { ...error.diagnostic, stage: 'detail' }
+            : { reason: 'internal', stage: 'detail' };
+      }
+    }
+    if (!detail.diagnostic && snapshot.freshness === 'fresh')
+      await writeCache(
+        runtime.cache,
+        detailKey,
+        runtime.config.configVersion,
+        new Response(JSON.stringify(detail), {
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': `public, max-age=${retainMs / 1000}`,
+          },
+        }),
+      );
+    return json(detail);
   } catch (error) {
     // An unavailable Peekaping status page cannot confirm current membership.
     // Fail closed for details instead of serving potentially revoked data.
@@ -321,11 +370,13 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
         ...cachedDetail,
         monitor: { ...cachedDetail.monitor, freshness: 'stale' },
         retryAt: error instanceof SourceRequestError ? error.retryAt : null,
+        diagnostic: error instanceof SourceRequestError ? error.diagnostic : { reason: 'internal' },
       });
     if (!isDetail && cached) {
       const fallback = stale(cached);
       fallback.subgroupErrors = group.subgroups.map((subgroup) => ({
         subgroupId: subgroup.id,
+        diagnostic: error instanceof SourceRequestError ? error.diagnostic : { reason: 'internal' },
         code:
           error instanceof SourceRequestError && error.status === 429
             ? 'rate-limited'
@@ -335,8 +386,12 @@ export async function handleApi(request: Request, runtime: ApiRuntime): Promise<
       return json(fallback);
     }
     if (error instanceof SourceRequestError)
-      return errorResponse(error.status === 429 ? 'rate-limited' : 'unavailable', error.retryAt);
-    return errorResponse('unavailable');
+      return errorResponse(
+        error.status === 429 ? 'rate-limited' : 'unavailable',
+        error.retryAt,
+        error.diagnostic,
+      );
+    return errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' });
   }
 }
 

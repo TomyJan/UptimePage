@@ -103,6 +103,9 @@ describe('source request clients', () => {
         undefined,
         async () => new Response(JSON.stringify({ stat: 'fail', error: 'bad key' })),
       ),
-    ).rejects.toMatchObject({ message: 'bad key' });
+    ).rejects.toMatchObject({
+      message: 'UptimeRobot rejected the request',
+      diagnostic: { reason: 'upstream-rejected' },
+    });
   });
 });

@@ -21,6 +21,21 @@ export const apiErrorCodeSchema = z.enum([
   'rate-limited',
   'invalid-response',
 ]);
+export const diagnosticSchema = z.object({
+  reason: z.enum([
+    'configuration',
+    'upstream-http',
+    'upstream-rejected',
+    'timeout',
+    'network',
+    'invalid-response',
+    'internal',
+    'edge-runtime',
+  ]),
+  status: z.number().int().min(100).max(599).optional(),
+  stage: z.enum(['source', 'membership', 'detail', 'runtime']).optional(),
+});
+export type Diagnostic = z.infer<typeof diagnosticSchema>;
 const utc = z.iso.datetime({ offset: false });
 const finite = z.number().finite();
 export const metricSchema = z.object({
@@ -64,7 +79,12 @@ export const groupSnapshotSchema = z.object({
     z.object({ id: z.string(), monitorIds: z.array(z.string()), freshness: freshnessSchema }),
   ),
   subgroupErrors: z.array(
-    z.object({ subgroupId: z.string(), code: apiErrorCodeSchema, retryAt: utc.optional() }),
+    z.object({
+      subgroupId: z.string(),
+      code: apiErrorCodeSchema,
+      retryAt: utc.optional(),
+      diagnostic: diagnosticSchema.optional(),
+    }),
   ),
 });
 const capability = z.enum(['available', 'unsupported', 'unavailable']);
@@ -74,6 +94,7 @@ export const monitorDetailSchema = z.object({
   configVersion: z.string(),
   range: rangeSchema,
   retryAt: utc.nullable().optional(),
+  diagnostic: diagnosticSchema.optional(),
   averageResponse24h: metricSchema,
   certificateExpiresAt: utc.nullable(),
   supportedRanges: z.array(rangeSchema),

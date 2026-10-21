@@ -17,6 +17,10 @@ function upstream() {
   let calls = 0;
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
     calls++;
+    if (url === 'https://source.test/api/v1/monitors/1') {
+      expect(new Headers(init.headers).get('X-API-Key')).toBe('private-test-key');
+      return Response.json({ data: { id: '1', interval: 60, config: 'private-target' } });
+    }
     expect(url).toMatch(
       /^https:\/\/source.test\/api\/v1\/status-pages\/slug\/(one|two)\/monitors$/,
     );
@@ -72,7 +76,7 @@ it('uses global Cache and KV bindings and survives loss of the node cache', asyn
   expect((await onRequest({ request: request(), env })).status).toBe(200);
   expect(entries.size).toBe(1);
   expect((await onRequest({ request: request('/monitors/1'), env })).status).toBe(200);
-  expect(calls()).toBe(2);
+  expect(calls()).toBe(3);
   vi.stubGlobal('caches', { default: memoryCache() });
   vi.stubGlobal('fetch', async () => {
     throw new Error('upstream offline');
@@ -92,5 +96,5 @@ it('ignores failed cache and KV services and continues to the real source adapte
   const response = await onRequest({ request: request('/monitors/1'), env });
   expect(response.status).toBe(200);
   expect((await response.json()).monitor).toMatchObject({ id: '1', freshness: 'fresh' });
-  expect(calls()).toBe(2);
+  expect(calls()).toBe(3);
 });

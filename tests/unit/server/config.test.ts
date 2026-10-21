@@ -61,7 +61,9 @@ describe('server configuration boundary', () => {
 
   it('rejects absent or blank server secrets', () => {
     expect(requireSecret({ ROBOT_KEY: ' secret ' }, 'ROBOT_KEY')).toBe('secret');
-    expect(() => requireSecret({}, 'ROBOT_KEY')).toThrow('ROBOT_KEY');
-    expect(() => requireSecret({ ROBOT_KEY: '  ' }, 'ROBOT_KEY')).toThrow('ROBOT_KEY');
+    expect(() => requireSecret({}, 'ROBOT_KEY')).toThrow('Server credential missing');
+    expect(() => requireSecret({ ROBOT_KEY: '  ' }, 'ROBOT_KEY')).toThrow(
+      'Server credential missing',
+    );
   });
 });
