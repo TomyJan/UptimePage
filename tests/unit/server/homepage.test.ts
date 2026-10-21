@@ -124,7 +124,7 @@ for (const count of [50, 200])
     expect(calls.filter((p) => p.includes('/stats/'))).toHaveLength(count);
     expect(calls.filter((p) => p.includes('/heartbeats?'))).toHaveLength(count);
     expect(maximum).toBeGreaterThan(1);
-    expect(maximum).toBeLessThanOrEqual(4);
+    expect(maximum).toBeLessThanOrEqual(16);
     // Less than 1 KB per monitor, with no minute curves, event logs or repeated dates.
     expect(new TextEncoder().encode(text).length).toBeLessThan(count * 1000 + 1000);
     const before = calls.length;
@@ -155,7 +155,7 @@ it('stops scheduling homepage checks after a rate limit and preserves its safe d
     },
   });
   const body = await response.json();
-  expect(queries).toBeLessThanOrEqual(4);
+  expect(queries).toBeLessThanOrEqual(16);
   expect(
     body.subgroupErrors.every(
       (e: { code: string; retryAt: string }) =>

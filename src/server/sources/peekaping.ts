@@ -2,6 +2,9 @@ import { rangeMilliseconds } from '../../shared/ranges.ts';
 import type { Range } from '../../shared/contracts.ts';
 import type { HistoryBucket, MonitorSummary, MonitorDetail } from '../../shared/contracts.ts';
 import { SourceRequestError, requestJson, type JsonFetcher } from './http.ts';
+import { mapConcurrent } from '../concurrency.ts';
+
+const requestTimeoutMs = 4000;
 
 export function peekapingData(payload: unknown): unknown {
   if (!payload || typeof payload !== 'object')
@@ -17,8 +20,11 @@ export function peekapingData(payload: unknown): unknown {
 function sourceUrl(base: string, path: string) {
   return `${base.replace(/\/+$/, '')}/api/v1/${path}`;
 }
-function auth(apiKey: string) {
-  return { headers: { Accept: 'application/json', 'X-API-Key': apiKey } };
+function auth(apiKey: string, signal?: AbortSignal) {
+  return {
+    headers: { Accept: 'application/json', 'X-API-Key': apiKey },
+    ...(signal ? { signal } : {}),
+  };
 }
 export async function fetchPeekapingMonitors(
   baseUrl: string,
@@ -30,6 +36,7 @@ export async function fetchPeekapingMonitors(
     fetcher,
     sourceUrl(baseUrl, `status-pages/slug/${encodeURIComponent(slug)}/monitors`),
     auth(apiKey),
+    requestTimeoutMs,
   );
 }
 export async function fetchPeekapingBatch(
@@ -38,22 +45,22 @@ export async function fetchPeekapingBatch(
   apiKey: string,
   fetcher: JsonFetcher = fetch,
 ): Promise<unknown[]> {
-  const result: unknown[] = [];
-  for (let i = 0; i < ids.length; i += 100) {
+  const batches = Array.from({ length: Math.ceil(ids.length / 100) }, (_, i) =>
+    ids.slice(i * 100, (i + 1) * 100),
+  );
+  const result = await mapConcurrent(batches, 4, async (batch) => {
     const data = peekapingData(
       await requestJson(
         fetcher,
-        sourceUrl(
-          baseUrl,
-          `monitors/batch?${new URLSearchParams({ ids: ids.slice(i, i + 100).join(',') })}`,
-        ),
+        sourceUrl(baseUrl, `monitors/batch?${new URLSearchParams({ ids: batch.join(',') })}`),
         auth(apiKey),
+        requestTimeoutMs,
       ),
     );
     if (!Array.isArray(data)) throw new SourceRequestError('Invalid Peekaping batch');
-    result.push(...data);
-  }
-  return result;
+    return data;
+  });
+  return result.flat();
 }
 export async function fetchPeekapingHistory(
   baseUrl: string,
@@ -72,9 +79,27 @@ export async function fetchPeekapingHistory(
     until: until.toISOString(),
     granularity: purpose === 'home' || range !== '24h' ? 'hour' : 'minute',
   });
-  const raw = peekapingData(
-    await requestJson(fetcher, sourceUrl(baseUrl, `${path}/stats/points?${query}`), auth(apiKey)),
-  );
+  const controller = new AbortController();
+  const [raw, latest, events] = await Promise.all([
+    requestJson(
+      fetcher,
+      sourceUrl(baseUrl, `${path}/stats/points?${query}`),
+      auth(apiKey, controller.signal),
+      requestTimeoutMs,
+    ).then(peekapingData),
+    requestJson(
+      fetcher,
+      sourceUrl(baseUrl, `${path}/heartbeats?limit=1&page=0`),
+      auth(apiKey, controller.signal),
+      requestTimeoutMs,
+    ).then(peekapingData),
+    purpose === 'home'
+      ? Promise.resolve([])
+      : fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range, controller.signal),
+  ]).catch((error) => {
+    controller.abort();
+    throw error;
+  });
   if (!raw || typeof raw !== 'object' || !('points' in raw) || !Array.isArray(raw.points))
     throw new SourceRequestError('Invalid Peekaping statistics');
   const stats = raw as Record<string, unknown> & { points: unknown[] };
@@ -120,13 +145,6 @@ export async function fetchPeekapingHistory(
     })
     .filter((p) => Date.parse(p.until) > Date.parse(p.from))
     .sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
-  const latest = peekapingData(
-    await requestJson(
-      fetcher,
-      sourceUrl(baseUrl, `${path}/heartbeats?limit=1&page=0`),
-      auth(apiKey),
-    ),
-  );
   if (!Array.isArray(latest)) throw new SourceRequestError('Invalid Peekaping heartbeat');
   const hb =
     latest[0] && typeof latest[0] === 'object' ? (latest[0] as Record<string, unknown>) : null;
@@ -157,10 +175,7 @@ export async function fetchPeekapingHistory(
       },
     },
     average: number(stats.avgPing),
-    events:
-      purpose === 'home'
-        ? []
-        : await fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range),
+    events,
   };
 }
 
@@ -171,6 +186,7 @@ async function fetchPeekapingEvents(
   until: Date,
   fetcher: JsonFetcher,
   range: Range,
+  signal?: AbortSignal,
 ): Promise<MonitorDetail['events']> {
   const start = until.getTime() - rangeMilliseconds(range),
     end = until.getTime();
@@ -185,7 +201,8 @@ async function fetchPeekapingEvents(
       await requestJson(
         fetcher,
         sourceUrl(baseUrl, `monitors/${encodeURIComponent(monitor.id)}/heartbeats?${query}`),
-        auth(apiKey),
+        auth(apiKey, signal),
+        requestTimeoutMs,
       ),
     );
     if (!Array.isArray(rows)) throw new SourceRequestError('Invalid Peekaping events');

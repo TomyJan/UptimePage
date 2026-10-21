@@ -117,7 +117,7 @@ export async function loadGroupSnapshot(
         let limited: SourceRequestError | undefined;
         const errors = new Map(subgroupErrors.map((e) => [e.subgroupId, e]));
         await Promise.all(
-          Array.from({ length: Math.min(4, ordered.length) }, async () => {
+          Array.from({ length: Math.min(8, ordered.length) }, async () => {
             for (let index = next++; index < ordered.length; index = next++) {
               const monitor = ordered[index];
               try {
@@ -138,7 +138,13 @@ export async function loadGroupSnapshot(
                   revokedMonitorIds.push(monitor.id);
                   continue;
                 }
-                if (error instanceof SourceRequestError && error.status === 429) limited = error;
+                if (
+                  error instanceof SourceRequestError &&
+                  (error.status === 429 ||
+                    error.diagnostic.reason === 'timeout' ||
+                    error.diagnostic.reason === 'network')
+                )
+                  limited = error;
                 monitors.set(monitor.id, { ...monitor, freshness: 'unavailable' });
                 for (const subgroupId of monitor.subgroupIds) {
                   const previous = errors.get(subgroupId);

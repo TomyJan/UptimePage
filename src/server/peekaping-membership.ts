@@ -1,3 +1,4 @@
+import { mapConcurrent } from './concurrency.ts';
 import { z } from 'zod';
 import { readCache, writeCache, type ResponseCache } from './cache.ts';
 import { requireSecret, type ServerConfig } from './config.ts';
@@ -27,11 +28,10 @@ export async function loadPeekapingMembership(
 ): Promise<PeekapingMembership> {
   const group = config.groups.find((g) => g.id === groupId)!;
   if (group.source.type !== 'peekaping') throw new Error('Invalid membership source');
+  const baseUrl = group.source.baseUrl;
   const key = requireSecret(environment, group.source.apiKeyEnv);
-  const subgroups: PeekapingMembership['subgroups'] = [],
-    errors: PeekapingMembership['errors'] = [];
-  const generations: string[] = [];
-  for (const subgroup of group.subgroups) {
+  const results = await mapConcurrent(group.subgroups, 4, async (subgroup) => {
+    let failure: PeekapingMembership['errors'][number] | undefined;
     const request = new Request(
       `${origin}/membership/${encodeURIComponent(group.id)}/${encodeURIComponent(subgroup.id)}`,
     );
@@ -50,7 +50,7 @@ export async function loadPeekapingMembership(
     if (!entry) {
       try {
         const raw = peekapingData(
-          await fetchPeekapingMonitors(group.source.baseUrl, subgroup.slug!, key, fetcher),
+          await fetchPeekapingMonitors(baseUrl, subgroup.slug!, key, fetcher),
         );
         if (!Array.isArray(raw)) throw new SourceRequestError('Invalid Peekaping membership');
         const ids = raw.map((item) => {
@@ -79,18 +79,23 @@ export async function loadPeekapingMembership(
           error instanceof SourceRequestError
             ? error
             : new SourceRequestError('Membership unavailable');
-        errors.push({
+        failure = {
           subgroupId: subgroup.id,
           code: source.status === 429 ? 'rate-limited' : 'unavailable',
           diagnostic: { ...source.diagnostic, stage: 'membership' },
           ...(source.retryAt ? { retryAt: source.retryAt } : {}),
-        });
+        };
       }
     }
-    subgroups.push({ id: subgroup.id, monitorIds: entry?.monitorIds ?? [] });
-    generations.push(
-      entry ? `${entry.fetchedAt}:${JSON.stringify(entry.monitorIds)}` : 'unavailable',
-    );
-  }
-  return { generation: JSON.stringify(generations), subgroups, errors };
+    return {
+      subgroup: { id: subgroup.id, monitorIds: entry?.monitorIds ?? [] },
+      error: failure,
+      generation: entry ? `${entry.fetchedAt}:${JSON.stringify(entry.monitorIds)}` : 'unavailable',
+    };
+  });
+  return {
+    generation: JSON.stringify(results.map((result) => result.generation)),
+    subgroups: results.map((result) => result.subgroup),
+    errors: results.flatMap((result) => (result.error ? [result.error] : [])),
+  };
 }

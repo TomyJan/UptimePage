@@ -4,6 +4,9 @@ import { createMemoryCache } from './memory-cache.ts';
 import { LayeredResponseCache } from './kv-cache.ts';
 import type { ServerConfig } from './config.ts';
 import { createHash } from 'node:crypto';
+import { limitSourceFetch } from './concurrency.ts';
+import { RequestTiming } from './timing.ts';
+import type { ResponseCache } from './cache.ts';
 
 function originFingerprint(origin: string) {
   return createHash('sha256').update(origin).digest('hex').slice(0, 12);
@@ -15,7 +18,21 @@ export type FunctionContext = { request: Request; env?: Record<string, string | 
 export function createCloudApiHandler(config: ServerConfig) {
   const memory = createMemoryCache();
   const inFlight = new Map<string, Promise<unknown>>();
+  const sourceFetch = limitSourceFetch((input, init) => fetch(input, init));
   return async (context: FunctionContext): Promise<Response> => {
+    const timing = new RequestTiming();
+    const finish = (response: Response) => {
+      response.headers.set('server-timing', timing.header());
+      response.headers.set('x-uptimepage-source-requests', String(timing.upstreamRequests));
+      console.info(
+        JSON.stringify({
+          event: 'uptimepage.request',
+          status: response.status,
+          ...timing.report(),
+        }),
+      );
+      return response;
+    };
     try {
       const environment = context.env ?? {};
       const secret = cacheBridgeSecret(config, environment);
@@ -71,16 +88,24 @@ export function createCloudApiHandler(config: ServerConfig) {
       const membership = secret
         ? createRemoteCache(origin, secret, config.configVersion, 'membership', fetch, report)
         : null;
+      const observeCache = (cache: ResponseCache): ResponseCache => ({
+        match: (request, options) => timing.measure('cache', () => cache.match(request, options)),
+        put: (request, response) => timing.measure('cache', () => cache.put(request, response)),
+      });
       const response = await handleApi(request, {
         config,
         environment,
         inFlight,
+        timing,
+        fetcher: (input, init) => {
+          timing.upstreamRequests++;
+          return sourceFetch(input, init);
+        },
         // The bridge may try two 400 ms edge layers. Leave it time to fall back
         // to KV while staying inside handleApi's one-second read budget.
-        cache: new LayeredResponseCache(remote ? [memory, remote] : [memory], 950),
-        membershipCache: new LayeredResponseCache(
-          membership ? [membership, memory] : [memory],
-          950,
+        cache: observeCache(new LayeredResponseCache(remote ? [memory, remote] : [memory], 950)),
+        membershipCache: observeCache(
+          new LayeredResponseCache(membership ? [memory, membership] : [memory], 950),
         ),
       });
       response.headers.set(
@@ -100,9 +125,9 @@ export function createCloudApiHandler(config: ServerConfig) {
           ...Array.from(diagnostics, ([operation, result]) => `${operation}:${result}`),
         ].join(',') + (secret ? '' : ',unconfigured'),
       );
-      return response;
+      return finish(response);
     } catch {
-      return errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' });
+      return finish(errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' }));
     }
   };
 }

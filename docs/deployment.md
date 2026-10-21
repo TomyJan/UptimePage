@@ -59,6 +59,8 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 
 排查缓存时查看 API 响应头 `X-UptimePage-Cache`：`status` / `membership` 表示状态 / 成员缓存，`match` / `put` 表示读取 / 写入；`http-404` 表示缓存桥拒绝，`network` / `timeout` 表示连接失败 / 超时，`pending` 表示 API 返回时操作仍未完成，`oversized` 表示超过桥接请求限制。`http-200` 只代表缓存桥响应成功，仍需在 KV 核对新记录；该响应头不包含密钥、来源地址或异常原文。
 
+排查耗时可看 `Server-Timing`：`total` 总处理时间、`membership` 成员确认、`snapshot` 整组取数、`detail` 详情取数、`cache` 缓存累计等待，单位毫秒。阶段可能重叠，不能直接相加；`X-UptimePage-Source-Requests` 是本次发起的来源请求数。云函数同时输出 `uptimepage.request` JSON 日志，只含状态码、耗时和请求数，不含密钥、来源地址或原始响应。
+
 404 后的后缀是拒绝阶段：`configuration` 缺少运行时配置，`signature` 验签失败，`crypto` 加密接口异常，`version` / `origin` 为部署版本 / 请求来源不匹配，`expired` 为签名过期。缓存桥本身的相同标签位于 `X-UptimePage-Cache-Bridge`；其他标签表示报文、路径、写入值或内部处理异常。
 
 `origin-` 后的 12 位是缓存桥目标 origin 的 SHA-256 前 12 位；`host-` / `x-forwarded-host-` / `eo-pages-host-` 以同样方式标识对应头中的 HTTPS origin，不直接显示内部地址。EdgeOne 会覆盖 `eo-pages-host` 为公开域名；云函数据此恢复地址，不使用可能指向内部站点的 Request Host，也不采信通用转发头。正常生产请求中，`origin-` 应与 `eo-pages-host-` 相同。

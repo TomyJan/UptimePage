@@ -77,7 +77,7 @@ export class LayeredResponseCache implements ResponseCache {
   }
 
   async match(request: RequestInfo, options?: CacheQueryOptions): Promise<Response | undefined> {
-    for (const layer of this.layers) {
+    for (const [index, layer] of this.layers.entries()) {
       try {
         // Leave time for the next layer inside the API's one-second read budget.
         const response = await cacheOperation(
@@ -85,7 +85,18 @@ export class LayeredResponseCache implements ResponseCache {
           undefined,
           this.layerTimeoutMs,
         );
-        if (response) return response;
+        if (response) {
+          // Promote shared hits into faster layers, so a warm instance does not
+          // repeat the same network lookup on every visitor request.
+          await Promise.allSettled(
+            this.layers
+              .slice(0, index)
+              .map((earlier) =>
+                cacheOperation(() => earlier.put(request, response.clone()), undefined, 25),
+              ),
+          );
+          return response;
+        }
       } catch {
         // An optional cache must never make the read-only API unavailable.
       }
