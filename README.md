@@ -14,7 +14,7 @@
 
 完整步骤见[部署指南](docs/deployment.md)，字段见[配置说明](docs/configuration.md)。没有 `site.json` 时会回退默认配置；默认地址和监控 ID 是占位值，不能直接用于生产。API Key 不写进 JSON。
 
-当前只提供 24 小时详情，Peekaping 历史限于状态页最近心跳，证书未接入。缺失数据显示 `—`，不补造历史。真实来源与 EdgeOne 平台仍待验收，见[验证状态](docs/production-review.md)。
+当前只提供 24 小时详情，Peekaping 历史限于状态页最近心跳，证书未接入。缺失数据显示 `—`，不补造历史。上线验收进度见[验证状态](docs/production-review.md)。
 
 ## 本地演示
 
