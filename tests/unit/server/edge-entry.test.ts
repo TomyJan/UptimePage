@@ -24,7 +24,11 @@ const env = { KEY: 'private-test-key' };
 it('identifies the actual bridge origin without exposing request or forwarding hosts', async () => {
   const response = await onRequest({
     request: new Request('http://preview.test/api/v1/groups/missing', {
-      headers: { host: 'preview.test', 'x-forwarded-host': 'private-internal.invalid' },
+      headers: {
+        host: 'preview.test',
+        'eo-pages-host': 'preview.test',
+        'x-forwarded-host': 'private-internal.invalid',
+      },
     }),
     env,
   });
@@ -32,6 +36,7 @@ it('identifies the actual bridge origin without exposing request or forwarding h
   const diagnostic = response.headers.get('x-uptimepage-cache');
   expect(diagnostic).toContain('origin-41bffbbd05e5');
   expect(diagnostic).toContain('host-41bffbbd05e5');
+  expect(diagnostic).toContain('eo-pages-host-41bffbbd05e5');
   expect(diagnostic).not.toContain('preview.test');
   expect(diagnostic).not.toContain('private-internal');
 });

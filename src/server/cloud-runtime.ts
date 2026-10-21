@@ -63,7 +63,7 @@ export function createCloudApiHandler(config: ServerConfig) {
         [
           new URL(origin).protocol === 'https:' ? 'https' : 'http',
           `origin-${originFingerprint(origin)}`,
-          ...['host', 'x-forwarded-host'].flatMap((name) => {
+          ...['host', 'x-forwarded-host', 'eo-pages-host'].flatMap((name) => {
             const value = context.request.headers.get(name);
             if (!value || value.length > 500) return [];
             try {
