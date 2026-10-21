@@ -47,7 +47,7 @@ it('batches only missing boundaries and requests no extra samples or statistics'
   expect((rows[1] as { logs: unknown[] }).logs).toHaveLength(2);
 });
 
-it.each(['failed', 'missing', 'changed'])(
+it.each(['failed', 'missing', 'changed', 'round-trip'])(
   'does not publish incomplete boundaries when the lookup is %s',
   async (scenario) => {
     await expect(
@@ -60,7 +60,19 @@ it.each(['failed', 'missing', 'changed'])(
             if (scenario === 'failed') return new Response('', { status: 503 });
             return Response.json({
               stat: 'ok',
-              monitors: scenario === 'missing' ? [] : [{ id: 1, status: 2, logs: [] }],
+              monitors:
+                scenario === 'missing'
+                  ? []
+                  : [
+                      {
+                        id: 1,
+                        status: scenario === 'round-trip' ? 9 : 2,
+                        logs:
+                          scenario === 'round-trip'
+                            ? [{ type: 1, datetime: 201, duration: 0 }]
+                            : [],
+                      },
+                    ],
             });
           }
           return Response.json({ stat: 'ok', monitors: [{ id: 1, status: 9, logs: [] }] });

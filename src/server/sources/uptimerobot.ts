@@ -208,16 +208,17 @@ export async function fetchUptimeRobotMonitors(
     if (pending.length) {
       // Read only one additional transition beyond the known window count.
       // The v2 date filter excludes starts of outages crossing the boundary.
+      const boundaryLogsLimit = pending.reduce(
+        (limit, monitor) => Math.max(limit, (monitor.logs as unknown[]).length + 1),
+        1,
+      );
       const anchors = (await fetchUptimeRobotMonitors(
         apiKey,
         pending.map((monitor) => String(monitor.id)),
         fetcher,
         {
           uptimeDays: null,
-          boundaryLogsLimit: pending.reduce(
-            (limit, monitor) => Math.max(limit, (monitor.logs as unknown[]).length + 1),
-            1,
-          ),
+          boundaryLogsLimit,
         },
       )) as Record<string, unknown>[];
       const anchorsById = new Map(anchors.map((row) => [String(row.id), row]));
@@ -232,6 +233,10 @@ export async function fetchUptimeRobotMonitors(
         const preceding = anchor.logs
           .filter((log) => log && Number(log.datetime) < start && [1, 2].includes(Number(log.type)))
           .sort((a, b) => Number(b.datetime) - Number(a.datetime))[0];
+        // New transitions can displace the boundary even if status changes
+        // away and back between requests. A saturated lookup is incomplete.
+        if (!preceding && anchor.logs.length >= boundaryLogsLimit)
+          throw new SourceRequestError('UptimeRobot boundary displaced');
         if (preceding) monitor.logs = [preceding, ...(monitor.logs as unknown[])];
       }
     }
