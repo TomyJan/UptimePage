@@ -4,9 +4,7 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist",
   "cloudFunctions": {
-    "nodejs": {
-      "maxDuration": 120
-    }
+    "maxDuration": 120
   },
   "rewrites": [
     {
