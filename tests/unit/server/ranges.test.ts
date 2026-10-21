@@ -194,7 +194,7 @@ it.each([false, true])(
         latestCalls++;
         expect(form.get('logs')).toBe('0');
       }
-      const aggregate = form.get('custom_uptime_ratios') === '30';
+      const aggregate = form.has('response_times_average');
       return Response.json({
         stat: 'ok',
         pagination: { total: 1 },
