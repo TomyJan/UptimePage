@@ -28,6 +28,10 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 
 测试使用 5173（开发演示）和 4173（生产静态预览），应保持端口可用；截图及失败 trace 位于 `test-results/`。生成、构建、产物隔离和浏览器测试共用 `.generated/`，请顺序执行，测试期间不要修改源码或配置。
 
+单元和浏览器测试固定使用 `config/default.json`，不依赖实际站点的分组名；结束后恢复原生成配置，测试失败也会恢复。生产构建仍按[配置优先级](configuration.md#配置文件)读取实际配置。浏览器测试会构建演示测试所需的静态产物，发布前运行 `pnpm run build` 生成实际站点产物。
+
+正常取消测试会先结束子进程、还原配置；强制结束进程或断电无法保证恢复，之后先运行 `pnpm run generate`。
+
 ## 代码入口
 
 | 路径                                          | 职责                        |
