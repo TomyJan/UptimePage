@@ -59,6 +59,7 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 | 配置构建失败                      | JSON 格式、错误指出的字段；实际配置损坏不会回退默认文件                           |
 | API 返回 HTML                     | 函数是否部署，路由是否被 SPA fallback 接管；只上传 `dist` 不够                    |
 | 获取失败 / 502                    | 函数能否读取密钥，来源地址、状态页权限和来源版本是否正确                          |
+| 545 / `Error return from script`  | 边缘函数执行异常；记录发生时间和 `X-NWS-LOG-UUID`，核查平台异常日志及 CPU 指标，不能仅凭状态码确定根因 |
 | 429 / 更新延迟                    | 来源额度和退避截止时间；旧结果会标旧，不代表监控故障                              |
 | 验收报配置版本不符 / 缺少资源     | 本地和部署的提交、配置、锁文件及构建变量是否一致                                  |
 | 历史不满一天 / 没有证书或 7d、30d | 当前来源能力限制，见[数据口径](data-api.md#来源能力)                              |

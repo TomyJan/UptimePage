@@ -17,7 +17,7 @@
 - 首页及构建资源正常；Peekaping 快照、详情、详情直达、公开名单、禁止写入及 `no-store` 检查通过。
 - Peekaping 共 40 个监控：`default` 为 0、`moeai` 为 1、`monitor` 为 39；快照为新鲜数据，无子组错误。三个上游公开状态页的监控数量一致。
 - 全站 `verify:deployment` 因 UptimeRobot 返回 `502 unavailable` 失败；实际配置仍有占位监控 ID。需替换 ID 并确认 EO 密钥有效，再重新部署验收，不能仅凭 502 判断根因。
-- Peekaping 首次请求曾返回 545，后续恢复且未复现；原因未确定，仍需检查平台错误率和运行额度。
+- Peekaping 间歇返回 545，已多次复现，正文为 `Error return from script`；相邻请求也有返回 200。[官方说明](https://cloud.tencent.cn/document/product/1552/101095)将 545 归为边缘函数执行异常，具体根因尚未确定。需用失败请求的 `X-NWS-LOG-UUID` 和时间核查平台异常日志及 CPU 指标；本地正常处理同批公开数据不能排除平台限制。
 
 ## 上线前检查
 
