@@ -20,6 +20,8 @@ export type UptimeRobotRequestOptions = {
   responseTimesAverage?: number;
   uptimeDays?: number | null;
   latestOnly?: boolean;
+  /** Internal boundary lookup: recent transitions only, no response samples. */
+  boundaryLogsLimit?: number;
 };
 
 function asPage(value: unknown): Page {
@@ -108,12 +110,18 @@ export async function fetchUptimeRobotMonitors(
     if (options.uptimeDays !== null)
       body.set('custom_uptime_ratios', String(options.uptimeDays ?? 1));
     if (monitorIds?.length) body.set('monitors', monitorIds.join('-'));
+    if (options.boundaryLogsLimit) {
+      body.set('logs', '1');
+      body.set('logs_limit', String(options.boundaryLogsLimit));
+      body.set('log_types', '1-2');
+    }
     if (options.includeDetails) {
       body.set('response_times', '1');
       if (options.responseTimesAverage)
         body.set('response_times_average', String(options.responseTimesAverage));
       const logs = !options.latestOnly && options.includeLogs !== false;
       body.set('logs', logs ? '1' : '0');
+      if (logs) body.set('log_types', '1-2');
       if (options.latestOnly) body.set('response_times_limit', '1');
       if (responseStart !== undefined) {
         body.set('response_times_start_date', String(responseStart));
@@ -175,6 +183,58 @@ export async function fetchUptimeRobotMonitors(
       break;
     }
     offset += monitors.length;
+  }
+  if (
+    options.includeDetails &&
+    !options.latestOnly &&
+    options.includeLogs !== false &&
+    options.startDate !== undefined
+  ) {
+    const start = options.startDate;
+    const pending = (result as Record<string, unknown>[]).filter((monitor) => {
+      if (!Array.isArray(monitor.logs)) return false;
+      const transitions = monitor.logs.filter(
+        (log) => log && (Number(log.type) === 1 || Number(log.type) === 2),
+      );
+      const first = transitions.reduce<Record<string, unknown> | null>(
+        (earliest, log) =>
+          !earliest || Number(log.datetime) < Number(earliest.datetime) ? log : earliest,
+        null,
+      );
+      // An initial recovery needs its preceding outage; no transitions while
+      // currently down means the ongoing outage may predate the entire window.
+      return first ? Number(first.type) === 2 : [8, 9].includes(Number(monitor.status));
+    });
+    if (pending.length) {
+      // Read only one additional transition beyond the known window count.
+      // The v2 date filter excludes starts of outages crossing the boundary.
+      const anchors = (await fetchUptimeRobotMonitors(
+        apiKey,
+        pending.map((monitor) => String(monitor.id)),
+        fetcher,
+        {
+          uptimeDays: null,
+          boundaryLogsLimit: pending.reduce(
+            (limit, monitor) => Math.max(limit, (monitor.logs as unknown[]).length + 1),
+            1,
+          ),
+        },
+      )) as Record<string, unknown>[];
+      const anchorsById = new Map(anchors.map((row) => [String(row.id), row]));
+      for (const monitor of pending) {
+        const anchor = anchorsById.get(String(monitor.id));
+        if (
+          !anchor ||
+          Number(anchor.status) !== Number(monitor.status) ||
+          !Array.isArray(anchor.logs)
+        )
+          throw new SourceRequestError('Inconsistent UptimeRobot boundary');
+        const preceding = anchor.logs
+          .filter((log) => log && Number(log.datetime) < start && [1, 2].includes(Number(log.type)))
+          .sort((a, b) => Number(b.datetime) - Number(a.datetime))[0];
+        if (preceding) monitor.logs = [preceding, ...(monitor.logs as unknown[])];
+      }
+    }
   }
   return result;
 }
