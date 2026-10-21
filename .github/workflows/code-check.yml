@@ -55,6 +55,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run test:e2e
+      - run: pnpm run test:editor
       - uses: actions/upload-artifact@v7
         if: ${{ failure() || cancelled() }}
         with:

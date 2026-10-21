@@ -16,6 +16,7 @@ const forbidden = [
   'UPTIMEPAGE_DEMO_ONLY',
   'apiKeyEnv',
   'server-config.ts',
+  'Private override',
 ];
 try {
   const input = JSON.parse(await readFile('config/default.json', 'utf8'));
@@ -36,23 +37,38 @@ try {
   const pnpm = process.env.npm_execpath;
   if (!pnpm) throw new Error('Run with pnpm run verify:public-build');
   const pnpmIsScript = /\.(?:c|m)?js$/i.test(pnpm);
-  await new Promise<void>((done, fail) => {
-    const child = spawn(
-      pnpmIsScript ? process.execPath : pnpm,
-      [...(pnpmIsScript ? [pnpm] : []), 'run', 'build', '--outDir', join(scratch, 'dist')],
-      {
-        cwd: root,
-        stdio: 'inherit',
-        env: { ...process.env, UPTIMEPAGE_CONFIG: config, VITE_DEMO: 'true' },
-      },
+  for (const enabled of [false, true]) {
+    const output = join(scratch, enabled ? 'editor-enabled' : 'editor-disabled');
+    await new Promise<void>((done, fail) => {
+      const child = spawn(
+        pnpmIsScript ? process.execPath : pnpm,
+        [...(pnpmIsScript ? [pnpm] : []), 'run', 'build', '--outDir', output],
+        {
+          cwd: root,
+          stdio: 'inherit',
+          env: {
+            ...process.env,
+            UPTIMEPAGE_CONFIG: config,
+            VITE_DEMO: 'true',
+            UPTIMEPAGE_CONFIG_EDITOR: enabled ? 'true' : 'false',
+          },
+        },
+      );
+      child.on('error', fail);
+      child.on('exit', (code) =>
+        code === 0 ? done() : fail(new Error(`Isolated build failed (${code})`)),
+      );
+    });
+    await scanPublicBuild(
+      output,
+      enabled
+        ? forbidden.filter((value) => value !== 'apiKeyEnv')
+        : [...forbidden, 'UPTIMEPAGE_CONFIG_EDITOR_ONLY', 'ce-panel', 'peekaping.example.com'],
     );
-    child.on('error', fail);
-    child.on('exit', (code) =>
-      code === 0 ? done() : fail(new Error(`Isolated build failed (${code})`)),
+    console.log(
+      `${enabled ? 'Editor-enabled' : 'Default'} public build isolation verified (including VITE_DEMO=true).`,
     );
-  });
-  await scanPublicBuild(join(scratch, 'dist'), forbidden);
-  console.log('Public build isolation verified (including VITE_DEMO=true).');
+  }
 } finally {
   await Promise.all(
     generatedFiles.map((path, i) =>

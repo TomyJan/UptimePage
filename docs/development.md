@@ -19,6 +19,7 @@ pnpm test
 pnpm run build
 pnpm run verify:public-build
 pnpm run test:e2e
+pnpm run test:editor
 pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 ```
 
@@ -26,7 +27,9 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 
 首次浏览器测试前运行 `pnpm exec playwright install chromium`；Linux CI 使用 `pnpm exec playwright install --with-deps chromium`。已有 Chromium 可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定。
 
-测试使用 5173（开发演示）和 4173（生产静态预览），应保持端口可用；截图及失败 trace 位于 `test-results/`。生成、构建、产物隔离和浏览器测试共用 `.generated/`，请顺序执行，测试期间不要修改源码或配置。
+测试使用 5173（开发演示）、4173（生产静态预览）和 5174（配置编辑器），应保持端口可用；截图及失败 trace 位于 `test-results/`。生成、构建、产物隔离和浏览器测试共用 `.generated/`，请顺序执行，测试期间不要修改源码或配置。
+
+编辑器本地开发：在当前终端设置 `UPTIMEPAGE_CONFIG_EDITOR=true` 后运行 `pnpm run dev`，访问 `http://127.0.0.1:5173/?configeditor=on`。默认不编译；`verify:public-build` 会分别构建关闭 / 开启两种产物，检查默认产物无编辑器、两种产物均不泄露部署的服务端配置。
 
 单元和浏览器测试固定使用 `config/default.json`，不依赖实际站点的分组名；结束后恢复原生成配置，测试失败也会恢复。生产构建仍按[配置优先级](configuration.md#配置文件)读取实际配置。浏览器测试会构建演示测试所需的静态产物，发布前运行 `pnpm run build` 生成实际站点产物。
 
@@ -37,6 +40,7 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 | 路径                                          | 职责                        |
 | --------------------------------------------- | --------------------------- |
 | `src/features/`                               | 页面和交互                  |
+| `src/features/editor/`                        | 可选工作台、内存草稿与 mock |
 | `src/shared/`                                 | 前后端契约与响应校验        |
 | `src/server/`                                 | 来源适配、公开范围、缓存    |
 | `src/server/certificates.ts`                  | 来源证书到期时间与能力映射  |
@@ -44,7 +48,7 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 | `edge-functions/_uptimepage/cache.ts`         | 签名缓存桥、节点缓存与 KV   |
 | `config/schema.ts`、`scripts/build-config.ts` | 配置校验与公私拆分          |
 | `scripts/verify-deployment.ts`                | HTTP 部署验收               |
-| `tests/unit/`、`tests/e2e/`                   | 单元 / 集成测试、浏览器回归 |
+| `tests/unit/`、`tests/e2e/`、`tests/editor/`  | 单元 / 集成测试、浏览器回归 |
 
 浏览器只能导入 `.generated/public-config.ts`；服务端配置在 `.generated/server-config.ts`。不要提交生成物、密钥、`.env` 或 `*.local.json`；实际部署配置使用可提交的 `config/site.json`。
 

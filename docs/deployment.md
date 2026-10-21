@@ -26,6 +26,8 @@ Fork 本仓库或使用自己的 Git 仓库，复制 `config/default.json` 为 `
 
 变量名与 JSON 中的 `apiKeyEnv` 一致；密钥不放进 JSON 或 `VITE_*`。修改变量后重新部署。KV 非必需，启用方式见[可选 KV](configuration.md#可选-kv-cache)。
 
+可选：在构建环境中设置 `UPTIMEPAGE_CONFIG_EDITOR=true`，重新部署后访问 `/?configeditor=on` 使用[配置编辑器](configuration.md#可选配置编辑器)。默认不编译，不带参数时仍显示生产数据；它只导出文件，不在线修改配置。
+
 使用仓库构建部署，不能只上传 `dist/`：还需要 `cloud-functions/`、`edge-functions/` 和构建生成的服务端配置。构建后应有 `/api/v1/*` 云函数和 `/_uptimepage/cache` 边缘缓存函数。两种运行时使用相同的来源环境变量，无需额外配置缓存密钥。
 
 API 由 Cloud Functions 聚合，避免 Edge Functions 每次最多 64 次 `fetch` 的限制。`edgeone.json` 已将云函数最长执行时间设为 120 秒；响应仍受平台 6 MB 和来源额度限制。监控数量没有人为上限，冷加载耗时随来源数量增加。运行限制见 [Cloud Functions](https://pages.edgeone.ai/zh/document/cloud-functions)。
