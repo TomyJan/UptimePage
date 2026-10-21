@@ -1,5 +1,7 @@
+import { AnimatedHeight } from './AnimatedHeight.tsx';
+import { HistoryLoading, Skeleton } from './Loading.tsx';
 import { TransitionLink } from './TransitionLink.tsx';
-import { Link, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
 import { ChevronRight } from 'lucide-react';
 import type { MonitorSummary } from '../shared/contracts.ts';
 import { Logo } from './Logo.tsx';
@@ -13,45 +15,81 @@ export function MonitorCard({
   monitor: m,
   until,
   refreshing = false,
+  initialHeight,
 }: {
-  monitor: MonitorSummary;
+  monitor?: MonitorSummary;
   until: string;
   refreshing?: boolean;
+  initialHeight?: number;
 }) {
   const { locale } = usePreferences(),
     t = useCopy(),
     location = useLocation(),
-    name = localize(m.name, locale);
+    name = m ? localize(m.name, locale) : '';
   return (
-    <article className="monitor loading-surface" data-status={m.state} aria-busy={refreshing}>
-      <TransitionLink
-        className="monitor-identity card-link"
-        to={`/services/${encodeURIComponent(m.groupId)}/${encodeURIComponent(m.id)}`}
-        state={{ returnTo: location.pathname + location.search }}
-        aria-label={name}
-      >
-        <Logo src={m.logo} name={name} className="service-logo" />
-        <div className="identity-text">
-          <div className="monitor-name">{name}</div>
-          {m.description && (
-            <div className="monitor-description">{localize(m.description, locale)}</div>
+    <article
+      className={`monitor loading-surface ${m ? '' : 'monitor-loading'}`}
+      data-status={m?.state}
+      aria-busy={!m || refreshing}
+      aria-hidden={!m || undefined}
+    >
+      <AnimatedHeight initialHeight={initialHeight} contentKey={m ? m.id : 'loading'}>
+        <div className="monitor-grid">
+          {!m ? (
+            <>
+              <div className="monitor-identity">
+                <Skeleton className="service-logo" />
+                <div className="identity-text">
+                  <Skeleton className="skeleton-name" />
+                </div>
+              </div>
+              <Skeleton className="state skeleton-badge" />
+              <div className="history">
+                <HistoryLoading labels={false} />
+              </div>
+              <div className="metric uptime">
+                <Skeleton />
+              </div>
+              <div className="metric latency">
+                <Skeleton />
+                <small>{t('response')}</small>
+              </div>
+              <span className="arrow" />
+            </>
+          ) : (
+            <>
+              <TransitionLink
+                className="monitor-identity card-link"
+                to={`/services/${encodeURIComponent(m.groupId)}/${encodeURIComponent(m.id)}`}
+                state={{ returnTo: location.pathname + location.search }}
+                aria-label={name}
+              >
+                <Logo src={m.logo} name={name} className="service-logo" />
+                <div className="identity-text">
+                  <div className="monitor-name">{name}</div>
+                  {m.description && (
+                    <div className="monitor-description">{localize(m.description, locale)}</div>
+                  )}
+                </div>
+              </TransitionLink>
+              <StatusBadge state={m.state} freshness={m.freshness} />
+              <div className="history">
+                <HistoryBars
+                  history={m.history}
+                  until={until}
+                  sampleIntervalSeconds={m.sampleIntervalSeconds}
+                />
+              </div>
+              <UptimeMetric metric={m.uptime24h} />
+              <div className="metric latency">
+                <strong>{formatMetric(m.responseMs, ' ms')}</strong>
+                <small>{t('response')}</small>
+              </div>
+              <ChevronRight size={14} className="arrow" aria-hidden="true" />
+            </>
           )}
         </div>
-      </TransitionLink>
-      <StatusBadge state={m.state} freshness={m.freshness} />
-      <div className="history">
-        <HistoryBars
-          history={m.history}
-          until={until}
-          sampleIntervalSeconds={m.sampleIntervalSeconds}
-        />
-      </div>
-      <UptimeMetric metric={m.uptime24h} />
-      <div className="metric latency">
-        <strong>{formatMetric(m.responseMs, ' ms')}</strong>
-        <small>{t('response')}</small>
-      </div>
-      <ChevronRight size={14} className="arrow" aria-hidden="true" />
+      </AnimatedHeight>
     </article>
   );
 }

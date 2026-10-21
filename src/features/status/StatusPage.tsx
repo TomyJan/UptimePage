@@ -6,13 +6,13 @@ import { useSearchParams } from 'react-router';
 import { Search } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import { ApiClientError } from '../../data/client.ts';
-import { useGroupQuery } from '../../data/hooks.ts';
+import { useGroupCounts, useGroupQuery } from '../../data/hooks.ts';
 
 import { publicConfig } from '../../data/config.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
 import { GroupTabs } from './GroupTabs.tsx';
-import { StatusSummary, StatusSummaryLoading } from './StatusSummary.tsx';
+import { StatusSummary } from './StatusSummary.tsx';
 import { MonitorList } from './MonitorList.tsx';
 import { selectMonitors } from './selectors.ts';
 export function StatusPage() {
@@ -25,6 +25,7 @@ export function StatusPage() {
     search = params.get('q') ?? '';
   const q = useGroupQuery(id),
     snapshot = q.data ?? null;
+  const counts = useGroupCounts();
   const update = (patch: Record<string, string>) =>
     setParams(
       (prev) => {
@@ -70,23 +71,16 @@ export function StatusPage() {
         selected={id}
         onChange={(g) => update({ g, s: '', q: '' })}
         label={t('groups')}
-        counts={{ [id]: snapshot?.monitors.length }}
+        counts={counts}
       />
-      <AnimatedHeight
-        className="status-body"
-        contentKey={`${id}:${snapshot ? 'loaded' : q.isError ? 'error' : 'loading'}`}
-      >
+      <AnimatedHeight className="status-body" contentKey={id}>
         {snapshot || !q.isError ? (
           <>
-            {snapshot ? (
-              <StatusSummary
-                snapshot={snapshot}
-                pinned={pinned}
-                onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
-              />
-            ) : (
-              <StatusSummaryLoading />
-            )}
+            <StatusSummary
+              snapshot={snapshot}
+              pinned={pinned}
+              onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
+            />
             <div className="sub-row">
               <GroupTabs
                 sub
@@ -118,6 +112,7 @@ export function StatusPage() {
               </label>
             </div>
             <MonitorList
+              key={id}
               monitors={monitors}
               until={snapshot?.fetchedAt ?? ''}
               searching={Boolean(search.trim())}

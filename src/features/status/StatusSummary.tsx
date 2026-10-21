@@ -3,65 +3,62 @@ import type { GroupSnapshot } from '../../shared/contracts.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { summarize } from './selectors.ts';
 import { LoadingIndicator, Skeleton } from '../../components/Loading.tsx';
+import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 
-export function StatusSummaryLoading() {
-  const t = useCopy();
-  return (
-    <section className="overview overview-loading" aria-busy="true" aria-label={t('loading')}>
-      <span className="status-icon">
-        <LoadingIndicator />
-      </span>
-      <div className="overview-heading">
-        <Skeleton className="skeleton-title" />
-        <Skeleton className="skeleton-pin" />
-      </div>
-      <div className="overview-counts">
-        {(['normalCount', 'faultCount', 'otherCount'] as const).map((key) => (
-          <div key={key}>
-            <Skeleton className="skeleton-count" />
-            <small>{t(key)}</small>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 export function StatusSummary({
   snapshot,
   pinned,
   onPin,
 }: {
-  snapshot: GroupSnapshot;
+  snapshot: GroupSnapshot | null;
   pinned: boolean;
   onPin: () => void;
 }) {
-  const t = useCopy(),
-    s = summarize(snapshot),
-    key = s.healthy ? 'healthy' : s.down ? 'some' : 'uncertain';
+  const t = useCopy();
+  const s = snapshot ? summarize(snapshot) : null;
+  const key = !s ? 'loading' : s.healthy ? 'healthy' : s.down ? 'some' : 'uncertain';
   return (
-    <section className={`overview ${s.healthy ? 'ok' : ''}`} aria-label={t(key)}>
-      <span className="status-icon" aria-hidden="true">
-        {s.healthy ? <Check size={20} /> : <TriangleAlert size={20} />}
-      </span>
-      <div className="overview-heading">
-        <h2 className="overview-title">{t(key)}</h2>
-        <button className="pin-toggle" role="switch" aria-checked={pinned} onClick={onPin}>
-          <ArrowDownWideNarrow size={13} />
-          {t('pin')}
-        </button>
-      </div>
-      <div className="overview-counts">
-        {[
-          ['normalCount', s.up],
-          ['faultCount', s.down],
-          ['otherCount', s.other],
-        ].map(([key, n], i) => (
-          <div key={key} className={i === 1 ? 'failure' : i === 2 ? 'unknown' : ''}>
-            <strong>{n}</strong>
-            <small>{t(key as 'normalCount')}</small>
+    <section
+      className={`overview ${!s ? 'overview-loading' : s.healthy ? 'ok' : ''}`}
+      aria-label={t(key)}
+      aria-busy={!s}
+    >
+      <AnimatedHeight>
+        <div className="overview-content">
+          <span className="status-icon">
+            {!s ? (
+              <LoadingIndicator />
+            ) : s.healthy ? (
+              <Check size={20} aria-hidden="true" />
+            ) : (
+              <TriangleAlert size={20} aria-hidden="true" />
+            )}
+          </span>
+          <div className="overview-heading">
+            {s ? (
+              <h2 className="overview-title">{t(key)}</h2>
+            ) : (
+              <Skeleton className="skeleton-title" />
+            )}
+            <button className="pin-toggle" role="switch" aria-checked={pinned} onClick={onPin}>
+              <ArrowDownWideNarrow size={13} />
+              {t('pin')}
+            </button>
           </div>
-        ))}
-      </div>
+          <div className="overview-counts">
+            {(['normalCount', 'faultCount', 'otherCount'] as const).map((label, i) => (
+              <div key={label} className={i === 1 ? 'failure' : i === 2 ? 'unknown' : ''}>
+                {s ? (
+                  <strong>{[s.up, s.down, s.other][i]}</strong>
+                ) : (
+                  <Skeleton className="skeleton-count" />
+                )}
+                <small>{t(label)}</small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </AnimatedHeight>
     </section>
   );
 }

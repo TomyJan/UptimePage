@@ -10,7 +10,7 @@ export function MonitorEvents({
   error = false,
   refreshing = false,
 }: {
-  detail: MonitorDetail;
+  detail?: MonitorDetail;
   loading?: boolean;
   error?: boolean;
   refreshing?: boolean;
@@ -18,15 +18,15 @@ export function MonitorEvents({
   const t = useCopy(),
     time = useFormatTime();
   return (
-    <section className="panel events-panel loading-surface" aria-busy={loading || refreshing}>
+    <section className="panel events-panel loading-surface" aria-busy={!d || loading || refreshing}>
       <div className="panel-top">
         <h2>{t('events')}</h2>
       </div>
       <AnimatedHeight
         className="events-content"
-        contentKey={`${loading ? 'loading' : error ? 'error' : d.capabilities.events}:${d.events.length > 0}`}
+        contentKey={`${!d || loading ? 'loading' : error ? 'error' : d.capabilities.events}:${Boolean(d?.events.length)}`}
       >
-        {loading ? (
+        {!d || loading ? (
           <EventsLoading />
         ) : error ? (
           <div className="events-empty">{t('loadError')}</div>

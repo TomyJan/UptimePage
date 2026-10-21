@@ -47,4 +47,6 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 
 浏览器只能导入 `.generated/public-config.ts`；服务端配置在 `.generated/server-config.ts`。不要提交生成物、密钥、`.env` 或 `*.local.json`；实际部署配置使用可提交的 `config/site.json`。
 
+加载态与正常态共用 `MonitorCard` / `MonitorLayout`，切换内容时保留卡片和 `AnimatedHeight` 容器。新增异步内容也应放入同一容器内，避免整体替换导致高度跳变；减少动画偏好会关闭过渡。分组数量仅观察已有查询缓存，不预取未访问分组。
+
 CI 在 `master` 推送、PR 和手动触发时执行上述检查，浏览器失败产物保留 7 天。Dependabot 每日检查 pnpm 依赖、每周检查 Actions；React / React DOM 成组更新。配置见 `.github/`。

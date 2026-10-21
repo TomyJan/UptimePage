@@ -1,7 +1,7 @@
 import type { MonitorSummary } from '../../shared/contracts.ts';
 import { MonitorCard } from '../../components/MonitorCard.tsx';
 import { useCopy } from '../preferences/copy.ts';
-import { HistoryLoading, Skeleton } from '../../components/Loading.tsx';
+import { useLayoutEffect, useRef } from 'react';
 export function MonitorList({
   monitors,
   until,
@@ -16,6 +16,26 @@ export function MonitorList({
   refreshing?: boolean;
 }) {
   const t = useCopy();
+  const list = useRef<HTMLDivElement>(null);
+  const loadingHeights = useRef<number[]>([]);
+  const wasLoading = useRef(loading);
+  useLayoutEffect(() => {
+    if (!loading) {
+      wasLoading.current = false;
+      return;
+    }
+    wasLoading.current = true;
+    const measure = () => {
+      loadingHeights.current = Array.from(
+        list.current!.querySelectorAll('.monitor .resize-content'),
+        (el) => el.getBoundingClientRect().height,
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list.current!);
+    return () => observer.disconnect();
+  }, [loading]);
   return (
     <>
       <div className="column-head" aria-hidden="true">
@@ -32,6 +52,7 @@ export function MonitorList({
         <span />
       </div>
       <div
+        ref={list}
         className="monitors"
         id="monitor-content"
         role="tabpanel"
@@ -39,31 +60,20 @@ export function MonitorList({
         aria-busy={loading || refreshing}
       >
         {loading ? (
-          Array.from({ length: 6 }, (_, i) => (
-            <article className="monitor monitor-loading" key={i} aria-hidden="true">
-              <div className="monitor-identity">
-                <Skeleton className="service-logo" />
-                <div className="identity-text">
-                  <Skeleton className="skeleton-name" />
-                </div>
-              </div>
-              <Skeleton className="state skeleton-badge" />
-              <div className="history">
-                <HistoryLoading labels={false} />
-              </div>
-              <div className="metric uptime">
-                <Skeleton />
-              </div>
-              <div className="metric latency">
-                <Skeleton />
-                <small>{t('response')}</small>
-              </div>
-              <span className="arrow" />
-            </article>
-          ))
+          Array.from({ length: 6 }, (_, i) => <MonitorCard key={i} until={until} />)
         ) : monitors.length ? (
-          monitors.map((m) => (
-            <MonitorCard key={m.id} monitor={m} until={until} refreshing={refreshing} />
+          monitors.map((m, i) => (
+            <MonitorCard
+              key={m.id}
+              monitor={m}
+              until={until}
+              refreshing={refreshing}
+              initialHeight={
+                wasLoading.current
+                  ? (loadingHeights.current[i] ?? loadingHeights.current[0])
+                  : undefined
+              }
+            />
           ))
         ) : (
           <div className="empty">{t(searching ? 'noResults' : 'empty')}</div>

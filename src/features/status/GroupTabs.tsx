@@ -70,7 +70,15 @@ export function GroupTabs({
         >
           {item.id !== 'all' && <Logo src={item.logo} name={localize(item.name, locale)} />}
           <span>{localize(item.name, locale)}</span>
-          {counts[item.id] !== undefined && <span className="count">{counts[item.id]}</span>}
+          <span
+            className="count-shell"
+            data-visible={counts[item.id] !== undefined}
+            aria-hidden={counts[item.id] === undefined}
+          >
+            <span className="count">
+              <span className="count-value">{counts[item.id]}</span>
+            </span>
+          </span>
         </button>
       ))}
       <span

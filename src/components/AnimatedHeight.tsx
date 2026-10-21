@@ -6,10 +6,12 @@ export function AnimatedHeight({
   children,
   className = '',
   contentKey,
+  initialHeight,
 }: {
   children: ReactNode;
   className?: string;
   contentKey?: string;
+  initialHeight?: number;
 }) {
   const outer = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
@@ -17,7 +19,7 @@ export function AnimatedHeight({
     const container = outer.current!;
     const content = inner.current!;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-    let target = content.getBoundingClientRect().height;
+    let target = initialHeight ?? content.getBoundingClientRect().height;
     let animation: Animation | null = null;
     container.style.height = `${target}px`;
     const stop = () => {
@@ -48,6 +50,7 @@ export function AnimatedHeight({
     };
     const observer = new ResizeObserver(measure);
     observer.observe(content);
+    measure();
     reduced.addEventListener('change', onMotionChange);
     return () => {
       observer.disconnect();

@@ -1,11 +1,22 @@
 import { useContext, createContext } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ApiClient, Range } from '../shared/contracts.ts';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ApiClient, GroupSnapshot, Range } from '../shared/contracts.ts';
 import { createHttpClient } from './client.ts';
 import { publicConfig } from './config.ts';
 import { groupKey, monitorKey } from './queries.ts';
 import { loadMonitor, loadGroup } from './loaders.ts';
 export const ApiContext = createContext<ApiClient>(createHttpClient());
+// Observe existing snapshots only. Unvisited groups must not cause extra requests.
+export function useGroupCounts() {
+  const queries = useQueries({
+    queries: publicConfig.groups.map((group) => ({
+      queryKey: groupKey(publicConfig.configVersion, group.id),
+      enabled: false,
+      select: (data: GroupSnapshot) => data.monitors.length,
+    })),
+  });
+  return Object.fromEntries(publicConfig.groups.map((group, i) => [group.id, queries[i].data]));
+}
 export function useGroupQuery(id: string) {
   const client = useContext(ApiContext),
     cache = useQueryClient();

@@ -3,7 +3,7 @@ import { BackToTop } from '../features/scroll/BackToTop.tsx';
 import { ToastViewport } from '../features/toasts/ToastViewport.tsx';
 import { TransitionLink } from '../components/TransitionLink.tsx';
 import { lazy, Suspense } from 'react';
-import { MonitorLoading } from '../features/monitor/MonitorLoading.tsx';
+import { MonitorLoading } from '../features/monitor/MonitorLayout.tsx';
 const MonitorPage = lazy(() =>
   import('../features/monitor/MonitorPage.tsx').then((m) => ({ default: m.MonitorPage })),
 );

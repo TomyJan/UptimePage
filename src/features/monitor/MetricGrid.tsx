@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { rangeMilliseconds } from '../../shared/ranges.ts';
 import type { MonitorDetail, Range } from '../../shared/contracts.ts';
 import { Skeleton } from '../../components/Loading.tsx';
@@ -11,115 +12,155 @@ export function MetricGrid({
   loadingRange,
   refreshing = false,
 }: {
-  detail: MonitorDetail;
+  detail?: MonitorDetail;
   loadingRange?: Range;
   refreshing?: boolean;
 }) {
   const t = useCopy(),
     time = useFormatTime();
   const days =
-    d.certificateExpiresAt !== null && d.capabilities.certificate === 'available'
+    d && d.certificateExpiresAt !== null && d.capabilities.certificate === 'available'
       ? Math.ceil((Date.parse(d.certificateExpiresAt) - Date.now()) / 86400000)
       : null;
-  const uptime = d.periodUptime;
+  const uptime = d?.periodUptime ?? {
+    value: null,
+    from: null,
+    until: null,
+    basis: 'provider' as const,
+  };
   const partial =
+    d &&
+    uptime &&
     uptime.from !== null &&
     uptime.until !== null &&
     (Date.parse(uptime.from) > Date.parse(d.fetchedAt) - rangeMilliseconds(d.range) ||
       Date.parse(uptime.until) < Date.parse(d.fetchedAt));
   return (
-    <AnimatedHeight>
-      <div className="detail-metrics">
-        <div className="loading-surface" aria-busy={Boolean(loadingRange) || refreshing}>
-          <small>
-            {loadingRange ?? d.range} {t('uptime')}
-          </small>
-          {loadingRange ? (
-            <strong>
-              <Skeleton className="skeleton-value" />
-            </strong>
-          ) : (
-            <DataTooltip
-              content={
-                <>
-                  <div>
-                    {t('coverage')}: {time(uptime.from, true)} – {time(uptime.until, true)}
-                  </div>
-                  <div className="tip-note">
-                    {t(uptime.basis === 'provider' ? 'provider' : 'samples')}
-                  </div>
-                </>
-              }
+    <div className="detail-metrics">
+      <MetricCard
+        busy={!d || Boolean(loadingRange) || refreshing}
+        state={!d || loadingRange ? 'loading' : 'loaded'}
+      >
+        <small>
+          {loadingRange ?? d?.range ?? '24h'} {t('uptime')}
+        </small>
+        {!d || loadingRange ? (
+          <strong>
+            <Skeleton className="skeleton-value" />
+          </strong>
+        ) : (
+          <DataTooltip
+            content={
+              <>
+                <div>
+                  {t('coverage')}: {time(uptime.from, true)} – {time(uptime.until, true)}
+                </div>
+                <div className="tip-note">
+                  {t(uptime.basis === 'provider' ? 'provider' : 'samples')}
+                </div>
+              </>
+            }
+          >
+            <button
+              className="metric-detail"
+              aria-label={`${t('uptime')} ${formatMetric(uptime.value, '%')}`}
             >
-              <button
-                className="metric-detail"
-                aria-label={`${t('uptime')} ${formatMetric(uptime.value, '%')}`}
-              >
-                <strong>{formatMetric(uptime.value, '%')}</strong>
-              </button>
-            </DataTooltip>
+              <strong>{formatMetric(uptime.value, '%')}</strong>
+            </button>
+          </DataTooltip>
+        )}
+        <span className="metric-note">
+          {!d || loadingRange ? (
+            <Skeleton className="skeleton-caption" />
+          ) : (
+            t(partial ? 'partial' : uptime.basis === 'provider' ? 'provider' : 'samples')
           )}
-          <span>
-            {loadingRange ? (
-              <Skeleton className="skeleton-caption" />
-            ) : (
-              t(partial ? 'partial' : uptime.basis === 'provider' ? 'provider' : 'samples')
-            )}
+        </span>
+      </MetricCard>
+      <MetricCard busy={!d || refreshing} state={d ? 'loaded' : 'loading'}>
+        <small>{t('latestResponse')}</small>
+        <strong>
+          {d ? formatMetric(d.monitor.responseMs, ' ms') : <Skeleton className="skeleton-value" />}
+        </strong>
+        {!d ? (
+          <span className="metric-note">
+            <Skeleton className="skeleton-caption" />
           </span>
-        </div>
-        <div className="loading-surface" aria-busy={refreshing}>
-          <small>{t('latestResponse')}</small>
-          <strong>{formatMetric(d.monitor.responseMs, ' ms')}</strong>
-          {d.monitor.responseMs !== null && d.monitor.observedAt !== null && (
-            <span>
+        ) : (
+          d.monitor.responseMs !== null &&
+          d.monitor.observedAt !== null && (
+            <span className="metric-note">
               <time dateTime={d.monitor.observedAt ?? undefined}>
                 {time(d.monitor.observedAt, true)}
               </time>
             </span>
-          )}
-        </div>
-        <div className="loading-surface" aria-busy={Boolean(loadingRange) || refreshing}>
-          <small>
-            {loadingRange ?? d.range} {t('average')}
-          </small>
-          {loadingRange ? (
-            <strong>
-              <Skeleton className="skeleton-value" />
-            </strong>
-          ) : (
-            <DataTooltip
-              content={
-                <>
-                  <div>{t(d.averageResponse.basis === 'provider' ? 'provider' : 'samples')}</div>
-                  <div className="tip-note">
-                    {time(d.averageResponse.from, true)} – {time(d.averageResponse.until, true)}
-                  </div>
-                </>
-              }
-            >
-              <button
-                className="metric-detail"
-                aria-label={`${t('average')} ${formatMetric(d.averageResponse.value, ' ms')}`}
-              >
-                <strong>{formatMetric(d.averageResponse.value, ' ms')}</strong>
-              </button>
-            </DataTooltip>
-          )}
-        </div>
-        <div className="loading-surface" aria-busy={refreshing}>
-          <small>{t('certificate')}</small>
+          )
+        )}
+      </MetricCard>
+      <MetricCard
+        busy={!d || Boolean(loadingRange) || refreshing}
+        state={!d || loadingRange ? 'loading' : 'loaded'}
+      >
+        <small>
+          {loadingRange ?? d?.range ?? '24h'} {t('average')}
+        </small>
+        {!d || loadingRange ? (
           <strong>
-            {d.capabilities.certificate === 'unsupported'
-              ? t('unsupported')
-              : days === null
-                ? '—'
-                : `${days} ${t('days')}`}
+            <Skeleton className="skeleton-value" />
           </strong>
-          {days === null && d.capabilities.certificate !== 'unsupported' && (
-            <span>{t('noData')}</span>
+        ) : (
+          <DataTooltip
+            content={
+              <>
+                <div>{t(d.averageResponse.basis === 'provider' ? 'provider' : 'samples')}</div>
+                <div className="tip-note">
+                  {time(d.averageResponse.from, true)} – {time(d.averageResponse.until, true)}
+                </div>
+              </>
+            }
+          >
+            <button
+              className="metric-detail"
+              aria-label={`${t('average')} ${formatMetric(d.averageResponse.value, ' ms')}`}
+            >
+              <strong>{formatMetric(d.averageResponse.value, ' ms')}</strong>
+            </button>
+          </DataTooltip>
+        )}
+      </MetricCard>
+      <MetricCard busy={!d || refreshing} state={d ? 'loaded' : 'loading'}>
+        <small>{t('certificate')}</small>
+        <strong>
+          {!d ? (
+            <Skeleton className="skeleton-value" />
+          ) : d.capabilities.certificate === 'unsupported' ? (
+            t('unsupported')
+          ) : days === null ? (
+            '—'
+          ) : (
+            `${days} ${t('days')}`
           )}
-        </div>
-      </div>
-    </AnimatedHeight>
+        </strong>
+        {d && days === null && d.capabilities.certificate !== 'unsupported' && (
+          <span className="metric-note">{t('noData')}</span>
+        )}
+      </MetricCard>
+    </div>
+  );
+}
+
+function MetricCard({
+  children,
+  busy,
+  state,
+}: {
+  children: ReactNode;
+  busy: boolean;
+  state: string;
+}) {
+  return (
+    <div className="loading-surface" aria-busy={busy}>
+      <AnimatedHeight contentKey={state}>{children}</AnimatedHeight>
+    </div>
   );
 }
