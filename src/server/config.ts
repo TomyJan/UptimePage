@@ -16,11 +16,15 @@ export function findServerGroup(config: ServerConfig, groupId: string) {
 }
 
 /**
- * Returns the configured UptimeRobot monitor allowlist. Peekaping is resolved
- * from a live status page later, so it intentionally returns null here.
+ * Explicit UptimeRobot IDs can be rejected early. Wildcard and Peekaping
+ * membership are resolved from the source snapshot, so return null here.
  */
 export function configuredMonitorIds(group: SiteConfig['groups'][number]): Set<string> | null {
-  if (group.source.type !== 'uptimerobot') return null;
+  if (
+    group.source.type !== 'uptimerobot' ||
+    group.subgroups.some((s) => s.monitorIds?.includes('*'))
+  )
+    return null;
   return new Set(group.subgroups.flatMap((subgroup) => subgroup.monitorIds ?? []));
 }
 

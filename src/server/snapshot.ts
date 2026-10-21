@@ -8,6 +8,7 @@ import type { SiteConfig } from '../../config/schema.ts';
 import {
   findServerGroup,
   configuredMonitorRefs,
+  configuredMonitorIds,
   requireSecret,
   type ServerConfig,
 } from './config.ts';
@@ -126,11 +127,10 @@ export async function loadGroupSnapshot(
     }
   } else {
     const refs = configuredMonitorRefs(group);
-    const refMap = new Map(refs.map((ref) => [ref.id, ref.subgroupIds]));
     try {
       const rawMonitors = await fetchUptimeRobotMonitors(
         key,
-        refs.map((ref) => ref.id),
+        configuredMonitorIds(group) ? refs.map((ref) => ref.id) : undefined,
         fetcher,
         {
           includeDetails: true,
@@ -141,8 +141,10 @@ export async function loadGroupSnapshot(
       );
       for (const raw of rawMonitors) {
         const id = raw && typeof raw === 'object' && 'id' in raw ? String(raw.id) : '';
-        const selected = refMap.get(id);
-        if (!selected) continue;
+        const selected = group.subgroups
+          .filter((s) => s.monitorIds?.includes('*') || s.monitorIds?.includes(id))
+          .map((s) => s.id);
+        if (!selected.length) continue;
         const monitor = normalizeUptimeRobotMonitor(raw, group.id, selected, fetchedAt);
         if (!monitor || !monitorSummarySchema.safeParse(monitor).success)
           throw new SourceRequestError('Invalid UptimeRobot monitor');
@@ -150,7 +152,12 @@ export async function loadGroupSnapshot(
       }
       for (const subgroup of group.subgroups)
         subgroupIds[subgroup.id] = [
-          ...new Set([...(subgroup.order ?? []), ...(subgroup.monitorIds ?? [])]),
+          ...new Set([
+            ...(subgroup.order ?? []),
+            ...(subgroup.monitorIds?.includes('*')
+              ? [...monitors.keys()]
+              : (subgroup.monitorIds ?? [])),
+          ]),
         ].filter((id) => monitors.has(id));
       const ordered = new Map<string, MonitorSummary>();
       for (const sub of group.subgroups)

@@ -109,7 +109,11 @@ const schema = z
         if (group.source.type === 'uptimerobot') {
           if (!sub.monitorIds || sub.slug !== undefined)
             error(['subgroups', j, 'monitorIds'], 'UptimeRobot requires monitorIds only');
-          if (sub.order?.some((m) => !sub.monitorIds?.includes(m)))
+          if (
+            sub.order?.some(
+              (m) => m === '*' || (!sub.monitorIds?.includes('*') && !sub.monitorIds?.includes(m)),
+            )
+          )
             error(['subgroups', j, 'order'], 'Order references an unselected monitor');
         }
       });
