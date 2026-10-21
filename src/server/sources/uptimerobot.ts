@@ -60,8 +60,12 @@ export async function fetchUptimeRobotMonitors(
     const page = asPage(
       await requestJson(fetcher, endpoint, {
         method: 'POST',
-        headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
-        body,
+        headers: {
+          Accept: 'application/json',
+          'Cache-Control': 'no-cache',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
       }),
     );
     if (page.stat === 'fail')

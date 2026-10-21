@@ -109,3 +109,14 @@ describe('source request clients', () => {
     });
   });
 });
+
+it('sends an explicit encoded string form compatible with the EdgeOne fetch runtime', async () => {
+  const result = await fetchUptimeRobotMonitors('secret+&=', ['1'], async (_url, init) => {
+    if (typeof init?.body !== 'string') throw new TypeError('Unsupported BodyInit');
+    if (new Headers(init.headers).get('content-type') !== 'application/x-www-form-urlencoded')
+      return new Response('', { status: 415 });
+    expect(new URLSearchParams(init.body).get('api_key')).toBe('secret+&=');
+    return Response.json({ stat: 'ok', monitors: [{ id: 1 }] });
+  });
+  expect(result).toEqual([{ id: 1 }]);
+});
