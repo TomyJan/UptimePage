@@ -10,18 +10,20 @@ it('counts fresh successful subgroup results even when another status page fails
     'core',
     { KEY: 'key' },
     async (url) =>
-      String(url).includes('/one/')
+      String(url).includes('/one/') || String(url).includes('/batch?')
         ? Response.json({
             data: [
               {
                 id: 'up',
                 name: 'Up',
+                status: 1,
                 active: true,
                 heartbeats: [{ status: 1, time: '2026-10-21T11:59:00Z', ping: 1 }],
               },
               {
                 id: 'down',
                 name: 'Down',
+                status: 0,
                 active: true,
                 heartbeats: [{ status: 0, time: '2026-10-21T11:59:00Z', ping: 0 }],
               },

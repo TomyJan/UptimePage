@@ -13,7 +13,8 @@ import {
   type ServerConfig,
 } from './config.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
-import { fetchPeekapingMonitors } from './sources/peekaping.ts';
+import { fetchPeekapingBatch } from './sources/peekaping.ts';
+import { loadPeekapingMembership, type PeekapingMembership } from './peekaping-membership.ts';
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizePeekapingMonitor, normalizeUptimeRobotMonitor } from './sources/normalize.ts';
 
@@ -28,32 +29,6 @@ function sourceErrorCode(error: unknown): ApiErrorCode {
   if (error instanceof SourceRequestError && error.status === 429) return 'rate-limited';
   if (error instanceof SourceRequestError && error.status === 404) return 'not-found';
   return 'unavailable';
-}
-
-function extractPeekapingMonitors(value: unknown): unknown[] {
-  if (Array.isArray(value)) return value;
-  if (!value || typeof value !== 'object')
-    throw new SourceRequestError('Invalid Peekaping response');
-  const item = value as Record<string, unknown>;
-  if (item.success === false)
-    throw new SourceRequestError('Peekaping rejected the request', null, null, {
-      reason: 'upstream-rejected',
-      stage: 'source',
-    });
-  if (Array.isArray(item.monitors)) return item.monitors;
-  if (item.data !== undefined && item.data !== value) return extractPeekapingMonitors(item.data);
-  throw new SourceRequestError('Invalid Peekaping response');
-}
-
-async function mapLimited<T, R>(items: T[], map: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(4, items.length) }, async () => {
-      for (let i = next++; i < items.length; i = next++) results[i] = await map(items[i]);
-    }),
-  );
-  return results;
 }
 
 function applyOverride(
@@ -89,6 +64,7 @@ export async function loadGroupSnapshot(
   environment: Record<string, string | undefined>,
   fetcher: JsonFetcher = fetch,
   now = new Date(),
+  membership?: PeekapingMembership,
 ): Promise<GroupSnapshot> {
   const group = findServerGroup(config, groupId);
   if (!group) throw new PublicGroupNotFoundError();
@@ -96,46 +72,56 @@ export async function loadGroupSnapshot(
   const monitors = new Map<string, MonitorSummary>();
   const subgroupIds: Record<string, string[]> = {};
   const subgroupErrors: GroupSnapshot['subgroupErrors'] = [];
+  const revokedMonitorIds: string[] = [];
   const key = requireSecret(environment, group.source.apiKeyEnv);
 
   if (group.source.type === 'peekaping') {
-    const source = group.source;
-    const results = await mapLimited(group.subgroups, async (subgroup) => {
-      try {
-        if (!subgroup.slug) throw new Error('Missing Peekaping status-page slug');
-        const payload = await fetchPeekapingMonitors(source.baseUrl, subgroup.slug, key, fetcher);
-        const selected: MonitorSummary[] = [];
-        for (const raw of extractPeekapingMonitors(payload)) {
-          const monitor = normalizePeekapingMonitor(raw, group.id, [subgroup.id], fetchedAt);
-          if (!monitor || !monitorSummarySchema.safeParse(monitor).success)
-            throw new SourceRequestError('Invalid Peekaping monitor');
-          selected.push(applyOverride(monitor, group));
-        }
-        return { subgroup, selected, code: null, retryAt: null, diagnostic: undefined };
-      } catch (error) {
-        return {
-          subgroup,
-          selected: [],
-          code: sourceErrorCode(error),
-          diagnostic:
-            error instanceof SourceRequestError
-              ? error.diagnostic
-              : { reason: 'internal' as const },
-          retryAt: error instanceof SourceRequestError ? error.retryAt : null,
-        };
+    const members =
+      membership ?? (await loadPeekapingMembership(config, groupId, environment, fetcher, now));
+    subgroupErrors.push(...members.errors);
+    const ids = [...new Set(members.subgroups.flatMap((s) => s.monitorIds))];
+    for (const subgroup of members.subgroups) subgroupIds[subgroup.id] = subgroup.monitorIds;
+    try {
+      const selected = new Set(ids);
+      const records = await fetchPeekapingBatch(group.source.baseUrl, ids, key, fetcher);
+      for (const raw of records) {
+        if (
+          !raw ||
+          typeof raw !== 'object' ||
+          !('id' in raw) ||
+          typeof raw.id !== 'string' ||
+          !selected.has(raw.id)
+        )
+          continue;
+        const subgroups = members.subgroups
+          .filter((s) => s.monitorIds.includes(raw.id as string))
+          .map((s) => s.id);
+        const monitor = normalizePeekapingMonitor(raw, group.id, subgroups, fetchedAt);
+        if (
+          !monitor ||
+          !monitorSummarySchema.safeParse(monitor).success ||
+          monitors.has(monitor.id)
+        )
+          throw new SourceRequestError('Invalid Peekaping monitor');
+        mergeMonitor(monitors, applyOverride(monitor, group));
       }
-    });
-    for (const { subgroup, selected, code, retryAt, diagnostic } of results) {
-      const rank = new Map((subgroup.order ?? []).map((id, i) => [id, i]));
-      selected.sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
-      subgroupIds[subgroup.id] = [...new Set(selected.map((m) => m.id))];
-      for (const monitor of selected) mergeMonitor(monitors, monitor);
-      if (code)
+      revokedMonitorIds.push(...ids.filter((id) => !monitors.has(id)));
+      for (const subgroup of members.subgroups)
+        subgroupIds[subgroup.id] = subgroup.monitorIds.filter((id) => monitors.has(id));
+      const ordered = ids.flatMap((id) => (monitors.has(id) ? [monitors.get(id)!] : []));
+      monitors.clear();
+      for (const monitor of ordered) monitors.set(monitor.id, monitor);
+    } catch (error) {
+      monitors.clear();
+      for (const subgroup of group.subgroups)
         subgroupErrors.push({
           subgroupId: subgroup.id,
-          code,
-          diagnostic,
-          ...(retryAt ? { retryAt } : {}),
+          code: sourceErrorCode(error),
+          diagnostic:
+            error instanceof SourceRequestError ? error.diagnostic : { reason: 'internal' },
+          ...(error instanceof SourceRequestError && error.retryAt
+            ? { retryAt: error.retryAt }
+            : {}),
         });
     }
   } else {
@@ -205,6 +191,7 @@ export async function loadGroupSnapshot(
   }));
   return {
     groupId: group.id,
+    ...(group.source.type === 'peekaping' ? { hydrateDetails: true, revokedMonitorIds } : {}),
     fetchedAt,
     configVersion: config.configVersion,
     freshness: subgroupErrors.length === 0 ? 'fresh' : monitors.size > 0 ? 'stale' : 'unavailable',

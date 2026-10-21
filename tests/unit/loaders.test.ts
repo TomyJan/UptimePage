@@ -50,3 +50,27 @@ it('revokes summary and subgroup references only in the denied group', async () 
   ).toBe(true);
   cache.clear();
 });
+
+it('revokes a monitor denied during group hydration even if another member cannot refresh', async () => {
+  const { loadGroup } = await import('../../src/data/loaders.ts');
+  const { createHttpClient } = await import('../../src/data/client.ts');
+  const cache = new QueryClient(),
+    v = publicConfig.configVersion;
+  const group = groupFixture('core', 2);
+  cache.setQueryData(groupKey(v, 'core'), group);
+  cache.setQueryData(monitorKey(v, 'core', 'm1', '24h'), detailFixture('core', 'm1', '24h'));
+  const client = createHttpClient('/api/v1', async (input) => {
+    const path = String(input);
+    if (path.includes('/monitors/m1')) return Response.json({}, { status: 404 });
+    if (path.includes('/monitors/m2')) return Response.json({}, { status: 502 });
+    return Response.json({ ...group, hydrateDetails: true });
+  });
+  await expect(
+    loadGroup(cache, client, 'core', new AbortController().signal),
+  ).rejects.toMatchObject({ code: 'unavailable' });
+  const remaining = cache.getQueryData<GroupSnapshot>(groupKey(v, 'core'))!;
+  expect(remaining.monitors.map((m) => m.id)).toEqual(['m2']);
+  expect(remaining.subgroups.flatMap((s) => s.monitorIds)).not.toContain('m1');
+  expect(cache.getQueryData(monitorKey(v, 'core', 'm1', '24h'))).toBeUndefined();
+  cache.clear();
+});

@@ -36,6 +36,7 @@ export default async function onRequest(context: EdgeContext) {
       config: serverConfig as ServerConfig,
       environment: context.env ?? {},
       cache: new LayeredResponseCache(layers),
+      membershipCache: new LayeredResponseCache([...layers].reverse()),
       inFlight,
     });
   } catch {

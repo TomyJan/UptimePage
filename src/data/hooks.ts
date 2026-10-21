@@ -4,38 +4,14 @@ import type { ApiClient, Range } from '../shared/contracts.ts';
 import { createHttpClient } from './client.ts';
 import { publicConfig } from './config.ts';
 import { groupKey, monitorKey } from './queries.ts';
-import { loadMonitor } from './loaders.ts';
-import { ApiClientError } from './client.ts';
+import { loadMonitor, loadGroup } from './loaders.ts';
 export const ApiContext = createContext<ApiClient>(createHttpClient());
 export function useGroupQuery(id: string) {
   const client = useContext(ApiContext),
     cache = useQueryClient();
   return useQuery({
     queryKey: groupKey(publicConfig.configVersion, id),
-    queryFn: async ({ signal }) => {
-      const data = await client.getGroup(id, signal);
-      if (
-        data.groupId !== id ||
-        data.configVersion !== publicConfig.configVersion ||
-        data.monitors.some((m) => m.groupId !== id)
-      )
-        throw new ApiClientError('invalid-response');
-      if (
-        data.freshness !== 'fresh' &&
-        cache.getQueryData(groupKey(publicConfig.configVersion, id))
-      ) {
-        const error = data.subgroupErrors[0];
-        throw new ApiClientError(
-          error?.code ?? 'unavailable',
-          data.subgroupErrors
-            .flatMap((e) => (e.retryAt ? [e.retryAt] : []))
-            .sort()
-            .at(-1) ?? null,
-          error?.diagnostic,
-        );
-      }
-      return data;
-    },
+    queryFn: ({ signal }) => loadGroup(cache, client, id, signal),
   });
 }
 export function useMonitorQuery(group: string, id: string, range: Range) {

@@ -174,7 +174,7 @@ it('keeps configured subgroup order when Peekaping responses finish out of order
     { KEY: 'key' },
     async (url) => {
       if (String(url).includes('/one/')) await new Promise((resolve) => setTimeout(resolve, 20));
-      const name = String(url).includes('/one/') ? 'First' : 'Second';
+      const name = String(url).includes('/batch?') ? 'Protected' : 'Ignored';
       return Response.json({
         data: [{ id: 'same', name, active: true, heartbeats: [], uptime_24h: 100 }],
       });
@@ -182,6 +182,6 @@ it('keeps configured subgroup order when Peekaping responses finish out of order
     now,
   );
   groupSnapshotSchema.parse(snapshot);
-  expect(snapshot.monitors[0].name).toBe('First');
+  expect(snapshot.monitors[0].name).toBe('Protected');
   expect(snapshot.monitors[0].subgroupIds).toEqual(['one', 'two']);
 });

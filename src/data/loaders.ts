@@ -32,25 +32,57 @@ export async function loadMonitor(
     return data;
   } catch (error) {
     if (error instanceof ApiClientError && error.code === 'not-found') {
-      cache.setQueryData<GroupSnapshot>(
-        groupKey(publicConfig.configVersion, group),
-        (old) =>
-          old && {
-            ...old,
-            monitors: old.monitors.filter((m) => m.id !== id),
-            subgroups: old.subgroups.map((s) => ({
-              ...s,
-              monitorIds: s.monitorIds.filter((member) => member !== id),
-            })),
-          },
-      );
-      const queries = cache
-        .getQueryCache()
-        .findAll({ queryKey: ['monitor', publicConfig.configVersion, group, id] });
-      // Clear data even in active observers; denied ranges must not remain available in memory.
-      for (const query of queries)
-        query.setState({ data: undefined, status: 'pending', isInvalidated: true });
+      revokeMonitor(cache, group, id);
     }
     throw error;
   }
+}
+
+function revokeMonitor(cache: QueryClient, group: string, id: string) {
+  cache.setQueryData<GroupSnapshot>(
+    groupKey(publicConfig.configVersion, group),
+    (old) =>
+      old && {
+        ...old,
+        monitors: old.monitors.filter((m) => m.id !== id),
+        subgroups: old.subgroups.map((s) => ({
+          ...s,
+          monitorIds: s.monitorIds.filter((member) => member !== id),
+        })),
+      },
+  );
+  const queries = cache
+    .getQueryCache()
+    .findAll({ queryKey: ['monitor', publicConfig.configVersion, group, id] });
+  // Clear data even in active observers; denied ranges must not remain available in memory.
+  for (const query of queries)
+    query.setState({ data: undefined, status: 'pending', isInvalidated: true });
+}
+export async function loadGroup(
+  cache: QueryClient,
+  client: ApiClient,
+  id: string,
+  signal: AbortSignal,
+) {
+  const data = await client.getGroup(id, signal);
+  if (
+    data.groupId !== id ||
+    data.configVersion !== publicConfig.configVersion ||
+    data.monitors.some((m) => m.groupId !== id)
+  )
+    throw new ApiClientError('invalid-response');
+  // Apply confirmed removals even when another monitor's refresh failed.
+  for (const revoked of data.revokedMonitorIds ?? []) revokeMonitor(cache, id, revoked);
+  if (data.freshness !== 'fresh' && cache.getQueryData(groupKey(publicConfig.configVersion, id))) {
+    const error = data.subgroupErrors[0];
+    throw new ApiClientError(
+      error?.code ?? 'unavailable',
+      data.subgroupErrors
+        .flatMap((e) => (e.retryAt ? [e.retryAt] : []))
+        .sort()
+        .at(-1) ?? null,
+      error?.diagnostic,
+    );
+  }
+  return data;
 }

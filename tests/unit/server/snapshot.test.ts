@@ -53,7 +53,7 @@ it('merges Peekaping subgroup results while retaining independent subgroup membe
     },
     new Date('2026-10-21T12:00:00Z'),
   );
-  expect(calls).toHaveLength(2);
+  expect(calls).toHaveLength(3);
   expect(snapshot.monitors).toHaveLength(1);
   expect(snapshot.monitors[0].subgroupIds).toEqual(['web', 'api']);
   expect(snapshot.subgroups.map((subgroup) => subgroup.monitorIds)).toEqual([['same'], ['same']]);

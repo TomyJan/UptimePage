@@ -126,7 +126,7 @@ export function normalizePeekapingMonitor(
     name,
     logo: null,
     description: null,
-    state: item.active === false ? 'paused' : peekapingState(latest?.status),
+    state: item.active === false ? 'paused' : peekapingState(item.status ?? latest?.status),
     freshness: 'fresh',
     observedAt:
       iso(latest?.end_time) &&

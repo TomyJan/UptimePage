@@ -11,7 +11,8 @@ import { configuredMonitorIds, findServerGroup, type ServerConfig } from './conf
 import { loadGroupSnapshot } from './snapshot.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
 import { readCache, writeCache, type ResponseCache } from './cache.ts';
-import { fetchPeekapingInterval } from './sources/peekaping.ts';
+import { fetchPeekapingHistory } from './sources/peekaping.ts';
+import { loadPeekapingMembership, type PeekapingMembership } from './peekaping-membership.ts';
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizeUptimeRobotMonitor } from './sources/normalize.ts';
 import { requireSecret } from './config.ts';
@@ -22,6 +23,7 @@ export type ApiRuntime = {
   fetcher?: JsonFetcher;
   now?: Date;
   cache?: ResponseCache;
+  membershipCache?: ResponseCache;
   /** Shared only by requests handled by the same server instance. */
   inFlight?: Map<string, Promise<unknown>>;
 };
@@ -171,11 +173,66 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const key = new Request(`${url.origin}/api/v1/groups/${encodeURIComponent(group.id)}`);
   const now = runtime.now ?? new Date();
   const sourceCredential = runtime.environment[group.source.apiKeyEnv];
-  function coalesce<T>(route: string, load: () => Promise<T>): Promise<T> {
+  let membership: PeekapingMembership | undefined;
+  try {
+    if (group.source.type === 'peekaping')
+      membership = await coalesce(
+        `${key.url}:membership`,
+        () =>
+          loadPeekapingMembership(
+            runtime.config,
+            group.id,
+            runtime.environment,
+            runtime.fetcher,
+            now,
+            runtime.membershipCache ?? runtime.cache,
+            url.origin,
+          ),
+        `${runtime.config.configVersion}:membership`,
+      );
+  } catch (error) {
+    return error instanceof SourceRequestError
+      ? errorResponse(
+          error.status === 429 ? 'rate-limited' : 'unavailable',
+          error.retryAt,
+          error.diagnostic,
+        )
+      : errorResponse('unavailable', null, { reason: 'internal', stage: 'membership' });
+  }
+  // Invalidate old status-page-derived data and bind all status/detail entries to
+  // the membership generation, so a ten-minute refresh also revokes old details.
+  const membershipDigest: string = membership
+    ? Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest('SHA-256', new TextEncoder().encode(membership.generation)),
+        ),
+        (b) => b.toString(16).padStart(2, '0'),
+      ).join('')
+    : '';
+  const cacheVersion: string = `${runtime.config.configVersion}-protected-v1-${membershipDigest}`;
+  if (
+    isDetail &&
+    membership &&
+    !membership.subgroups.some((s) => s.monitorIds.includes(parts[3]))
+  ) {
+    const error = membership.errors[0];
+    return error
+      ? errorResponse(
+          error.code === 'rate-limited' ? 'rate-limited' : 'unavailable',
+          error.retryAt ?? null,
+          error.diagnostic,
+        )
+      : errorResponse('not-found');
+  }
+  function coalesce<T>(
+    route: string,
+    load: () => Promise<T>,
+    version: string = cacheVersion,
+  ): Promise<T> {
     const pending = runtime.inFlight;
     if (!pending) return load();
     // A key rotation or deployment must never join an older credential's load.
-    const flightKey = JSON.stringify([runtime.config.configVersion, route, sourceCredential]);
+    const flightKey = JSON.stringify([version, route, sourceCredential]);
     const existing = pending.get(flightKey);
     if (existing) return existing as Promise<T>;
     const task = Promise.resolve()
@@ -189,7 +246,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const detailKey = new Request(`${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}`);
   if (isDetail) {
     try {
-      const entry = await readCache(runtime.cache, detailKey, runtime.config.configVersion);
+      const entry = await readCache(runtime.cache, detailKey, cacheVersion);
       if (entry) {
         const parsed = monitorDetailSchema.safeParse(await entry.json());
         if (
@@ -208,7 +265,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     }
   }
   try {
-    const entry = await readCache(runtime.cache, key, runtime.config.configVersion);
+    const entry = await readCache(runtime.cache, key, cacheVersion);
     if (entry) {
       const parsed = groupSnapshotSchema.safeParse(await entry.json());
       if (
@@ -235,6 +292,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             runtime.environment,
             runtime.fetcher,
             now,
+            membership,
           ),
         );
         if (loaded.freshness === 'fresh') {
@@ -246,7 +304,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           });
           // Keep the load in flight through the cache write, closing the gap
           // between source completion and the next visitor's cache read.
-          await writeCache(runtime.cache, key, runtime.config.configVersion, stored);
+          await writeCache(runtime.cache, key, cacheVersion, stored);
         }
         return loaded;
       });
@@ -314,7 +372,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         await writeCache(
           runtime.cache,
           detailKey,
-          runtime.config.configVersion,
+          cacheVersion,
           new Response(JSON.stringify(detail), {
             headers: {
               'content-type': 'application/json',
@@ -326,41 +384,41 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
       });
       return detail ? json(detail) : errorResponse('not-found');
     }
-    let detail = detailFromSnapshot(snapshot, parts[3])!;
-    if (detail.intervalSeconds === null && group.source.type === 'peekaping') {
-      try {
-        const interval = await coalesce(`${detailKey.url}:interval`, () =>
-          fetchPeekapingInterval(
-            group.source.type === 'peekaping' ? group.source.baseUrl : '',
-            member.id,
-            requireSecret(runtime.environment, group.source.apiKeyEnv),
-            runtime.fetcher,
-          ),
-        );
-        detail = detailFromSnapshot(
-          { ...snapshot, monitors: [{ ...member, intervalSeconds: interval }] },
-          member.id,
-        )!;
-      } catch (error) {
-        detail.retryAt = error instanceof SourceRequestError ? error.retryAt : null;
-        detail.diagnostic =
-          error instanceof SourceRequestError
-            ? { ...error.diagnostic, stage: 'detail' }
-            : { reason: 'internal', stage: 'detail' };
-      }
-    }
-    if (!detail.diagnostic && snapshot.freshness === 'fresh')
-      await writeCache(
-        runtime.cache,
-        detailKey,
-        runtime.config.configVersion,
-        new Response(JSON.stringify(detail), {
-          headers: {
-            'content-type': 'application/json',
-            'cache-control': `public, max-age=${retainMs / 1000}`,
-          },
-        }),
+    const detail = await coalesce(detailKey.url, async () => {
+      const result = await fetchPeekapingHistory(
+        group.source.type === 'peekaping' ? group.source.baseUrl : '',
+        member,
+        requireSecret(runtime.environment, group.source.apiKeyEnv),
+        now,
+        runtime.fetcher,
       );
+      const detail = detailFromSnapshot(
+        { ...snapshot, fetchedAt: now.toISOString(), monitors: [result.monitor] },
+        member.id,
+      )!;
+      detail.averageResponse24h = {
+        value: result.average,
+        from: result.monitor.uptime24h.from,
+        until: now.toISOString(),
+        basis: 'provider',
+      };
+      // Incident boundaries come from authenticated status transitions, never stat buckets.
+      detail.events = result.events;
+      detail.capabilities.events = 'available';
+      if (snapshot.freshness === 'fresh')
+        await writeCache(
+          runtime.cache,
+          detailKey,
+          cacheVersion,
+          new Response(JSON.stringify(detail), {
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': `public, max-age=${retainMs / 1000}`,
+            },
+          }),
+        );
+      return detail;
+    });
     return json(detail);
   } catch (error) {
     // An unavailable Peekaping status page cannot confirm current membership.

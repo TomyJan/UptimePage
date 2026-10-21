@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { handleApi } from '../../../src/server/api.ts';
 import { monitorDetailSchema } from '../../../src/shared/contracts.ts';
+import { protectedSource } from '../../fixtures/peekaping.ts';
 import { now, epoch, raw, config, fetcher, memoryCache } from '../../fixtures/server.ts';
 
 it('fails closed for Peekaping details when membership cannot be refreshed', async () => {
@@ -8,19 +9,16 @@ it('fails closed for Peekaping details when membership cannot be refreshed', asy
     config: config(true),
     now,
     cache: memoryCache(),
-    environment: { KEY: 'key' },
-    fetcher: async () =>
-      Response.json({
-        data: [{ id: 'm1', name: 'API', active: true, heartbeats: [], uptime_24h: 100 }],
-      }),
+    environment: { KEY: 'secret' },
+    fetcher: protectedSource(),
   };
-  const req = new Request('https://site.test/api/v1/groups/core/monitors/m1');
+  const req = new Request('https://site.test/api/v1/groups/core/monitors/public');
   expect((await handleApi(req, runtime)).status).toBe(200);
   expect(
     (
       await handleApi(req, {
         ...runtime,
-        now: new Date(now.getTime() + 31000),
+        now: new Date(now.getTime() + 600000),
         fetcher: async () => new Response('{}', { status: 503 }),
       })
     ).status,
@@ -170,21 +168,18 @@ it('reuses a group snapshot across details and query noise, with honest stale fa
 it('does not retain a removed Peekaping detail in a separate cache entry', async () => {
   const runtime = {
     config: config(true),
-    environment: { KEY: 'key' },
+    environment: { KEY: 'secret' },
     cache: memoryCache(),
     now,
-    fetcher: async () =>
-      Response.json({
-        data: [{ id: 'm1', name: 'API', active: true, heartbeats: [], uptime_24h: 100 }],
-      }),
+    fetcher: protectedSource(),
   };
-  const request = new Request('https://site.test/api/v1/groups/core/monitors/m1');
+  const request = new Request('https://site.test/api/v1/groups/core/monitors/public');
   expect((await handleApi(request, runtime)).status).toBe(200);
   expect(
     (
       await handleApi(request, {
         ...runtime,
-        now: new Date(now.getTime() + 31000),
+        now: new Date(now.getTime() + 600000),
         fetcher: async () => Response.json({ data: [] }),
       })
     ).status,

@@ -1,5 +1,5 @@
 {
-  "cache": {"kvBinding":"UPTIMEPAGE_KV"},
+  "cache": { "kvBinding": "UPTIMEPAGE_KV" },
   "site": {
     "name": "TomyJan 服务状态",
     "footer": "",
