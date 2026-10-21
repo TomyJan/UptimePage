@@ -3,7 +3,7 @@ import type { HistoryBucket, Metric } from '../../shared/contracts.ts';
 import { DataTooltip } from '../../components/DataTooltip.tsx';
 import { usePreferences } from '../preferences/store.ts';
 import { useCopy } from '../preferences/copy.ts';
-import { buildHistorySegments, formatMetric } from './history.ts';
+import { buildHistoryCells, formatMetric } from './history.ts';
 export function useFormatTime() {
   const { locale, timeZone } = usePreferences();
   return (value: string | null, full = false) =>
@@ -22,7 +22,7 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
     time = useFormatTime(),
     [active, setActive] = useState(0),
     activeBar = useRef<HTMLSpanElement>(null);
-  const segments = buildHistorySegments(
+  const segments = buildHistoryCells(
       history,
       new Date(Date.parse(until) - 86400000).toISOString(),
       until,
@@ -37,9 +37,6 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
           <div className="tip-time">
             {time(selected.from, true)} – {time(selected.until, true)}
           </div>
-          {selected.state !== 'no-data' && selected.duration <= 60000 && (
-            <div className="tip-note">{t('samples')}</div>
-          )}
           <div className="tip-content">
             <span>{t(selected.state)}</span>
             <span className="mono">{formatMetric(selected.responseMs, ' ms')}</span>
@@ -49,9 +46,6 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
     >
       <div
         className="bars"
-        style={{
-          columnGap: `min(3px, ${(Math.min(...segments.map((s) => s.duration)) / 86400000) * 25}%)`,
-        }}
         role="slider"
         tabIndex={0}
         aria-label={`${t('checks')} · ${t('focusHistory')}`}
@@ -78,11 +72,7 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
         {segments.map((s, i) => (
           <span
             key={`${s.from}-${s.until}`}
-            ref={
-              s === selected && (s.state === 'no-data' || s.duration > 60000)
-                ? activeBar
-                : undefined
-            }
+            ref={s === selected ? activeBar : undefined}
             data-active={s === selected}
             className={`bar ${s.state === 'no-data' || s.state === 'unknown' || s.state === 'paused' ? 'none' : s.state}`}
             style={{ flex: s.duration }}
@@ -92,23 +82,6 @@ export function HistoryBars({ history, until }: { history: HistoryBucket[]; unti
             aria-hidden="true"
           />
         ))}
-        {segments.map((s, i) =>
-          s.state !== 'no-data' && s.duration <= 60000 ? (
-            <span
-              key={`point-${s.from}-${s.until}`}
-              ref={s === selected ? activeBar : undefined}
-              className={`history-point ${s.state}`}
-              data-state={s.state}
-              data-active={s === selected}
-              style={{
-                left: `clamp(0px, ${(Date.parse(s.from) - (Date.parse(until) - 86400000)) / 864000}%, calc(100% - 3px))`,
-              }}
-              onPointerEnter={() => setActive(i)}
-              onPointerDown={() => setActive(i)}
-              aria-hidden="true"
-            />
-          ) : null,
-        )}
       </div>
     </DataTooltip>
   );

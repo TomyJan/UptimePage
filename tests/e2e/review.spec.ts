@@ -61,9 +61,7 @@ test('failed range keeps detail shell and allows returning to a successful range
   await expect(page.locator('.chart-line')).toHaveCount(2);
 });
 
-test('dense history retains visible time-proportional bars on a narrow screen', async ({
-  page,
-}) => {
+test('dense history uses visible separated time cells on a narrow screen', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 740 });
   const data = groupFixture('core');
   const until = Date.parse(data.fetchedAt);
@@ -77,17 +75,16 @@ test('dense history retains visible time-proportional bars on a narrow screen', 
   await page.goto('/');
   await expect(page.locator('.monitor')).toHaveCount(10);
   const bars = page.locator('.monitor').first().locator('.bar.operational');
-  await expect(bars).toHaveCount(100);
+  await expect(bars).toHaveCount(4);
   expect(
     await bars.evaluateAll((nodes) =>
       Math.min(...nodes.map((n) => n.getBoundingClientRect().width)),
     ),
   ).toBeGreaterThan(0.1);
-  const gap = await page.locator('.monitor').first().locator('.bar.none').boundingBox();
-  const sample = await bars.first().boundingBox();
-  // CSS layout rounds subpixel widths; the 1340-minute gap stays proportional.
-  expect(gap!.width / sample!.width).toBeGreaterThan(1200);
-  expect(gap!.width / sample!.width).toBeLessThan(1450);
+  await expect(page.locator('.monitor').first().locator('.bar.none')).toHaveCount(44);
+  const first = (await bars.nth(0).boundingBox())!,
+    second = (await bars.nth(1).boundingBox())!;
+  expect(second.x - (first.x + first.width)).toBeGreaterThanOrEqual(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

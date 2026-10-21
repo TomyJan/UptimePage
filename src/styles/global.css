@@ -2568,34 +2568,3 @@ body {
 .bars {
   position: relative;
 }
-.history-point {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--muted);
-}
-.history-point.operational {
-  background: var(--history-up);
-}
-.history-point.down {
-  background: var(--bad);
-}
-.history-point.pending {
-  background: var(--warn);
-}
-.history-point.maintenance {
-  background: var(--blue);
-}
-.history-point.unknown,
-.history-point.paused {
-  background: var(--line);
-}
-.bars:is(:hover, :focus-visible) .history-point[data-active='true'] {
-  transform: scaleY(1.15);
-  z-index: 1;
-}
-.history-point {
-  transition: transform 160ms var(--ease);
-}

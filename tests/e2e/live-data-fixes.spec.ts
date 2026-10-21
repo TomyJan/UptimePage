@@ -63,29 +63,62 @@ test('partial refresh retains the complete previous snapshot and its successful 
   await expect(page.locator('.detail-alert, .state.stale')).toHaveCount(0);
 });
 
-test('short real checks have visible markers at their actual time positions', async ({ page }) => {
+test('dense checks use separated cells and a concise anchored tooltip', async ({ page }) => {
   const data = groupFixture('core', 1);
   const until = Date.parse(data.fetchedAt);
-  data.monitors[0].history = [72000, 36000].map((ago) => ({
-    from: new Date(until - ago * 1000).toISOString(),
-    until: new Date(until - ago * 1000 + 1000).toISOString(),
-    state: 'operational',
-    responseMs: 42,
+  data.monitors[0].history = Array.from({ length: 100 }, (_, i) => ({
+    from: new Date(until - (100 - i) * 60000).toISOString(),
+    until: new Date(until - (100 - i) * 60000 + 1000).toISOString(),
+    state: i === 50 ? 'down' : 'operational',
+    responseMs: i === 50 ? null : 42,
   }));
   await page.route('**/api/v1/groups/core', (route) => route.fulfill({ json: data }));
   await page.goto('/');
-  const markers = page.locator('.history-point');
-  await expect(markers).toHaveCount(2);
-  const row = await page.locator('.bars').boundingBox();
-  for (const [index, fraction] of [
-    [0, 1 / 6],
-    [1, 7 / 12],
-  ]) {
-    const box = await markers.nth(index).boundingBox();
-    expect(box!.width).toBeGreaterThanOrEqual(3);
-    expect(Math.abs((box!.x - row!.x) / row!.width - fraction)).toBeLessThan(0.01);
-    await markers.nth(index).hover();
-    await expect(page.getByRole('tooltip')).toContainText('42 ms');
-    await expect(page.getByRole('tooltip')).toContainText('Observed samples');
-  }
+  const bars = page.locator('.bars .bar');
+  await expect(bars).toHaveCount(48);
+  await expect(page.locator('.history-point')).toHaveCount(0);
+  await expect(page.locator('.bar.down')).toHaveCount(1);
+  const observed = page.locator('.bar.operational');
+  await expect(observed).toHaveCount(3);
+  const a = (await observed.nth(0).boundingBox())!,
+    b = (await observed.nth(1).boundingBox())!;
+  expect(b.x - (a.x + a.width)).toBeGreaterThanOrEqual(2);
+  await observed.first().hover();
+  await expect(page.getByRole('tooltip')).toContainText('42 ms');
+  await expect(page.getByRole('tooltip')).not.toContainText('Observed samples');
+});
+
+test('the production home page hydrates protected monitor data and reports a failed refresh', async ({
+  page,
+}) => {
+  const group = groupFixture('core', 8);
+  let fail = false;
+  await page.route('**/api/v1/groups/core', (route) =>
+    route.fulfill({ json: { ...group, hydrateDetails: true } }),
+  );
+  await page.route('**/api/v1/groups/core/monitors/*?range=24h', (route) => {
+    if (fail)
+      return route.fulfill({
+        status: 502,
+        json: {
+          error: { code: 'unavailable', diagnostic: { reason: 'network', stage: 'detail' } },
+        },
+      });
+    const id = route.request().url().split('/monitors/')[1].split('?')[0];
+    const detail = detailFixture('core', id, '24h')!;
+    detail.monitor.freshness = 'fresh';
+    detail.monitor.responseMs = 321;
+    return route.fulfill({ json: detail });
+  });
+  await page.goto('/');
+  await expect(page.locator('.monitor')).toHaveCount(8);
+  for (const latency of await page.locator('.latency strong').all())
+    await expect(latency).toHaveText('321 ms');
+  const time = await page.locator('.refresh-main time').getAttribute('datetime');
+  fail = true;
+  await page.getByRole('button', { name: 'Refresh now', exact: true }).click();
+  await expect(page.locator('.toast-message')).toContainText('Unable to reach the service');
+  await expect(page.locator('.monitor')).toHaveCount(8);
+  await expect(page.locator('.latency strong').first()).toHaveText('321 ms');
+  await expect(page.locator('.refresh-main time')).toHaveAttribute('datetime', time!);
 });
