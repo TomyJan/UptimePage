@@ -3,6 +3,7 @@ import { cacheBridgeSecret, createRemoteCache } from './cache-bridge.ts';
 import { createMemoryCache } from './memory-cache.ts';
 import { LayeredResponseCache } from './kv-cache.ts';
 import type { ServerConfig } from './config.ts';
+import { createHash } from 'node:crypto';
 
 export type FunctionContext = { request: Request; env?: Record<string, string | undefined> };
 
@@ -57,6 +58,7 @@ export function createCloudApiHandler(config: ServerConfig) {
         'x-uptimepage-cache',
         [
           new URL(origin).protocol === 'https:' ? 'https' : 'http',
+          `origin-${createHash('sha256').update(origin).digest('hex').slice(0, 12)}`,
           ...Array.from(diagnostics, ([operation, result]) => `${operation}:${result}`),
         ].join(',') + (secret ? '' : ',unconfigured'),
       );

@@ -21,6 +21,19 @@ afterEach(() => {
 });
 const request = (suffix = '') => new Request(`https://preview.test/api/v1/groups/core${suffix}`);
 const env = { KEY: 'private-test-key' };
+it('identifies the actual bridge origin without exposing request or forwarding hosts', async () => {
+  const response = await onRequest({
+    request: new Request('http://preview.test/api/v1/groups/missing', {
+      headers: { 'x-forwarded-host': 'private-internal.invalid' },
+    }),
+    env,
+  });
+  expect(response.status).toBe(404);
+  const diagnostic = response.headers.get('x-uptimepage-cache');
+  expect(diagnostic).toContain('origin-41bffbbd05e5');
+  expect(diagnostic).not.toContain('preview.test');
+  expect(diagnostic).not.toContain('private-internal');
+});
 function upstream() {
   let calls = 0;
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {

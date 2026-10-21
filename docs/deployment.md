@@ -57,6 +57,8 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 
 404 后的后缀是拒绝阶段：`configuration` 缺少运行时配置，`signature` 验签失败，`crypto` 加密接口异常，`version` / `origin` 为部署版本 / 请求来源不匹配，`expired` 为签名过期。缓存桥本身的相同标签位于 `X-UptimePage-Cache-Bridge`；其他标签表示报文、路径、写入值或内部处理异常。
 
+`origin-` 后的 12 位是云函数实际请求站点 origin 的 SHA-256 前 12 位，用于排查平台内部地址改写；它不取访客传入的转发头，也不直接显示内部地址。
+
 ## 排错
 
 | 现象                              | 检查                                                                                                            |
