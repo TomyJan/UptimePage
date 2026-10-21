@@ -32,7 +32,7 @@ export const raw = {
   interval: 300,
   monitor_interval: 30,
   create_datetime: epoch - 86400 * 100,
-  custom_uptime_ratios: '98.25',
+  custom_uptime_ratio: '98.25',
   response_times: [
     { datetime: epoch - 600, value: 120 },
     { datetime: epoch - 60, value: 0 },

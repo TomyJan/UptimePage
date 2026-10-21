@@ -137,7 +137,7 @@ it('does not convert absent/blank/invalid values into valid zeroes or paused sta
         ...raw,
         status: null,
         interval: 0,
-        custom_uptime_ratios: '',
+        custom_uptime_ratio: '',
         response_times: [],
         create_datetime: 1e30,
       },

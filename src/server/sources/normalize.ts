@@ -280,9 +280,9 @@ export function normalizeUptimeRobotMonitor(
     : [];
   const latest = points.at(-1);
   const ratio =
-    typeof item.custom_uptime_ratios === 'string'
-      ? item.custom_uptime_ratios.split('-')[0]
-      : item.custom_uptime_ratios;
+    typeof item.custom_uptime_ratio === 'string'
+      ? item.custom_uptime_ratio.split('-')[0]
+      : item.custom_uptime_ratio;
   return {
     id,
     groupId,

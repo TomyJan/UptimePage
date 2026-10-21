@@ -52,7 +52,7 @@ describe('source normalization', () => {
         type: 1,
         interval: 300,
         monitor_interval: 30,
-        custom_uptime_ratios: '98.25-99.10',
+        custom_uptime_ratio: '98.25-99.10',
         average_response_time: null,
       },
       'external',
