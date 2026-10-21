@@ -2,7 +2,7 @@ import { useScrollChrome } from '../features/scroll/useScrollChrome.ts';
 import { BackToTop } from '../features/scroll/BackToTop.tsx';
 import { ToastViewport } from '../features/toasts/ToastViewport.tsx';
 import { TransitionLink } from '../components/TransitionLink.tsx';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { MonitorLoading } from '../features/monitor/MonitorLayout.tsx';
 const MonitorPage = lazy(() =>
   import('../features/monitor/MonitorPage.tsx').then((m) => ({ default: m.MonitorPage })),
@@ -11,7 +11,7 @@ import { StatusPage } from '../features/status/StatusPage.tsx';
 import { useEffect } from 'react';
 import { BrowserRouter, Link, Route, Routes } from 'react-router';
 import { Activity } from 'lucide-react';
-import publicConfig from '../../.generated/public-config.ts';
+import { usePublicConfig } from '../data/config.ts';
 import { PreferencesMenu } from '../features/preferences/PreferencesMenu.tsx';
 import { useCopy } from '../features/preferences/copy.ts';
 import { usePreferences } from '../features/preferences/store.ts';
@@ -28,7 +28,8 @@ export function Unavailable() {
     </>
   );
 }
-export function App() {
+export function App({ children }: { children?: ReactNode }) {
+  const publicConfig = usePublicConfig();
   const { preferences, locale } = usePreferences(),
     t = useCopy(),
     chrome = useScrollChrome();
@@ -44,7 +45,7 @@ export function App() {
   useEffect(() => {
     document.documentElement.lang = locale;
     document.title = localize(publicConfig.site.name, locale);
-  }, [locale]);
+  }, [locale, publicConfig.site.name]);
   return (
     <BrowserRouter>
       <a className="skip" href="#main">
@@ -95,6 +96,7 @@ export function App() {
       </footer>
       <BackToTop visible={chrome.topVisible} onClick={chrome.toTop} />
       <ToastViewport topVisible={chrome.topVisible} />
+      {children}
     </BrowserRouter>
   );
 }

@@ -10,12 +10,18 @@ const client =
   import.meta.env.DEV && import.meta.env.VITE_DEMO === 'true'
     ? (await import('./demo/client.ts')).demoClient
     : createHttpClient();
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ApiContext.Provider value={client}>
-      <Providers>
-        <App />
-      </Providers>
-    </ApiContext.Provider>
-  </StrictMode>,
+let content = (
+  <ApiContext.Provider value={client}>
+    <Providers>
+      <App />
+    </Providers>
+  </ApiContext.Provider>
 );
+if (
+  __UPTIMEPAGE_CONFIG_EDITOR__ &&
+  new URLSearchParams(location.search).get('configeditor') === 'on'
+) {
+  const { EditorRoot } = await import('./features/editor/EditorRoot.tsx');
+  content = <EditorRoot productionClient={client} />;
+}
+createRoot(document.getElementById('root')!).render(<StrictMode>{content}</StrictMode>);

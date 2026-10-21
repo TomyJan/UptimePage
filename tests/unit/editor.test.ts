@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest';
-import { createDraft, editJSON, editForm } from '../../src/features/editor/draft.ts';
+import {
+  createDraft,
+  editJSON,
+  editForm,
+  editLocalizedText,
+} from '../../src/features/editor/draft.ts';
 import { editorTemplate } from '../../src/features/editor/template.ts';
 import { createPreviewClient, previewConfig } from '../../src/features/editor/mock.ts';
 import { groupSnapshotSchema, monitorDetailSchema } from '../../src/shared/contracts.ts';
@@ -41,6 +46,16 @@ it('rejects reserved subgroup IDs without replacing a valid preview', () => {
   value.groups[0].subgroups[0].id = 'all';
   expect(editForm(state, value).error).toContain('subgroups');
   expect(editForm(state, value).valid).toEqual(state.valid);
+});
+it('clearing optional Chinese text preserves English, and editing plain text preserves its fallback', () => {
+  expect(editLocalizedText({ en: 'Original', 'zh-CN': '原文' }, '', 'zh-CN', true)).toEqual({
+    en: 'Original',
+  });
+  expect(editLocalizedText('Original', '新内容', 'zh-CN', false)).toEqual({
+    en: 'Original',
+    'zh-CN': '新内容',
+  });
+  expect(editLocalizedText(undefined, '', 'en', true)).toBeUndefined();
 });
 it('mock data follows explicit selections and wildcard unions, including opaque IDs', async () => {
   const config = createDraft(editorTemplate).valid;

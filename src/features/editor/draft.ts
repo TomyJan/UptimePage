@@ -1,5 +1,20 @@
 import { parseConfig, type SiteConfig } from '../../../config/schema.ts';
 import { editorTemplate } from './template.ts';
+import type { LocalizedText, Locale } from '../../shared/contracts.ts';
+
+export function editLocalizedText(
+  value: LocalizedText | '' | undefined,
+  text: string,
+  language: Locale,
+  optional: boolean,
+): LocalizedText | undefined {
+  const result: Exclude<LocalizedText, string> =
+    typeof value === 'object' ? { ...value } : { en: value || '' };
+  if (language === 'zh-CN' && !text) delete result['zh-CN'];
+  else result[language] = text;
+  if (optional && !result.en && !result['zh-CN']) return undefined;
+  return result;
+}
 
 export interface Draft {
   text: string;

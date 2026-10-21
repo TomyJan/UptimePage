@@ -12,9 +12,15 @@ export const queryClient = new QueryClient({
     },
   },
 });
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({
+  children,
+  client = queryClient,
+}: {
+  children: ReactNode;
+  client?: QueryClient;
+}) {
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={client}>
       <Tooltip.Provider delayDuration={0} skipDelayDuration={0}>
         {children}
       </Tooltip.Provider>

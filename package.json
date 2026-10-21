@@ -16,6 +16,7 @@
     "build": "pnpm run generate && pnpm run typecheck && vite build",
     "preview": "vite preview",
     "test:e2e": "node scripts/test.mjs browser",
+    "test:editor": "node scripts/test.mjs editor",
     "verify:public-build": "node scripts/verify-public-build.ts",
     "verify:deployment": "pnpm run build && node scripts/verify-deployment.ts",
     "verify:browser": "pnpm run generate && playwright test --config=playwright.deployment.config.ts",

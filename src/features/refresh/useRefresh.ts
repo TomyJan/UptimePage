@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { publicConfig } from '../../data/config.ts';
+import { usePublicConfig } from '../../data/config.ts';
 import { usePreferences } from '../preferences/store.ts';
 import { RefreshScheduler } from './scheduler.ts';
 export function useRefresh(
@@ -7,6 +7,7 @@ export function useRefresh(
   identity: string,
   retryAt: string | null = null,
 ) {
+  const publicConfig = usePublicConfig();
   const { preferences } = usePreferences(),
     seconds =
       preferences.refresh === 'auto'

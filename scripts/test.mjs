@@ -3,7 +3,8 @@ import { readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const [suite, ...args] = process.argv.slice(2);
-if (!['unit', 'browser'].includes(suite)) throw new Error('Select unit or browser tests');
+if (!['unit', 'browser', 'editor'].includes(suite))
+  throw new Error('Select unit, browser or editor tests');
 const pnpm = process.env.npm_execpath;
 if (!pnpm) throw new Error('Run tests through pnpm test or pnpm run test:e2e');
 const script = /\.(?:c|m)?js$/i.test(pnpm);
@@ -50,6 +51,7 @@ try {
     process.exitCode = await run([
       'exec',
       ...(suite === 'unit' ? ['vitest', 'run'] : ['playwright', 'test']),
+      ...(suite === 'editor' ? ['--config', 'playwright.editor.config.ts'] : []),
       ...args,
     ]);
 } finally {

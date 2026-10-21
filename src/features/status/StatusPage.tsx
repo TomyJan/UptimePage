@@ -1,14 +1,14 @@
 import { transition } from '../../app/transitions.ts';
 import { useRefreshFeedback } from '../refresh/useRefreshFeedback.ts';
 import { errorMessage } from '../refresh/feedback.ts';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Search } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import { ApiClientError } from '../../data/client.ts';
 import { useGroupCounts, useGroupQuery } from '../../data/hooks.ts';
 
-import { publicConfig } from '../../data/config.ts';
+import { usePublicConfig } from '../../data/config.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
 import { GroupTabs } from './GroupTabs.tsx';
@@ -16,6 +16,8 @@ import { StatusSummary } from './StatusSummary.tsx';
 import { MonitorList } from './MonitorList.tsx';
 import { selectMonitors } from './selectors.ts';
 export function StatusPage() {
+  const publicConfig = usePublicConfig();
+  useEffect(() => setPinned(publicConfig.site.pinAbnormal), [publicConfig.site.pinAbnormal]);
   const t = useCopy(),
     [params, setParams] = useSearchParams(),
     [pinned, setPinned] = useState(publicConfig.site.pinAbnormal);

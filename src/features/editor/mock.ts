@@ -40,7 +40,10 @@ function members(group: SiteConfig['groups'][number]) {
     };
   });
 }
-export function createPreviewClient(config: SiteConfig, pub: PublicConfig): ApiClient {
+export function createPreviewClient(
+  config: SiteConfig,
+  pub: PublicConfig,
+): ApiClient & { snapshot: (id: string) => GroupSnapshot } {
   const checked = (signal: AbortSignal) => {
     if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
   };
@@ -94,6 +97,7 @@ export function createPreviewClient(config: SiteConfig, pub: PublicConfig): ApiC
     };
   }
   return {
+    snapshot,
     async getGroup(id, signal) {
       checked(signal);
       return snapshot(id);

@@ -7,7 +7,7 @@ import { useLocation, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { DataTooltip } from '../../components/DataTooltip.tsx';
 import type { MonitorDetail, Range } from '../../shared/contracts.ts';
-import { publicConfig } from '../../data/config.ts';
+import { usePublicConfig } from '../../data/config.ts';
 import { useMonitorQuery } from '../../data/hooks.ts';
 
 import { ApiClientError } from '../../data/client.ts';
@@ -26,6 +26,7 @@ export function MonitorPage() {
   return <MonitorContent key={`${groupId}:${monitorId}`} groupId={groupId} monitorId={monitorId} />;
 }
 function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: string }) {
+  const publicConfig = usePublicConfig();
   const time = useFormatTime();
   const [range, setRange] = useState<Range>('24h'),
     q = useMonitorQuery(groupId, monitorId, range),

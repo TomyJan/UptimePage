@@ -1,10 +1,29 @@
 import { expect, it } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { loadMonitor } from '../../src/data/loaders.ts';
+import { loadMonitor, loadGroup } from '../../src/data/loaders.ts';
 import { monitorKey, groupKey } from '../../src/data/queries.ts';
 import { ApiClientError } from '../../src/data/client.ts';
 import { detailFixture, groupFixture } from '../../src/demo/fixtures.ts';
 import { publicConfig } from '../../src/data/config.ts';
+
+it('validates and caches preview snapshots against the supplied configuration version', async () => {
+  const cache = new QueryClient();
+  const data = { ...groupFixture('core'), configVersion: 'preview-version' };
+  const client: ApiClient = {
+    getGroup: async () => data,
+    getMonitor: async () => {
+      throw new Error('unused');
+    },
+  };
+  const result = await loadGroup(
+    cache,
+    client,
+    'core',
+    new AbortController().signal,
+    'preview-version',
+  );
+  expect(result.configVersion).toBe('preview-version');
+});
 import type { ApiClient, GroupSnapshot } from '../../src/shared/contracts.ts';
 it('revokes cached details for every range only within the denied group', async () => {
   const cache = new QueryClient(),

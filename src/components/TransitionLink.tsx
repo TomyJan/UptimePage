@@ -1,11 +1,15 @@
 import { Link, useNavigate, type LinkProps } from 'react-router';
 import { transition } from '../app/transitions.ts';
+import { createContext, useContext } from 'react';
+import { withNavigationQuery } from './linkQuery.ts';
+export const NavigationQueryContext = createContext<string | null>(null);
 export function TransitionLink({ onClick, to, state, ...props }: LinkProps) {
   const navigate = useNavigate();
+  const destination = withNavigationQuery(to, useContext(NavigationQueryContext));
   return (
     <Link
       {...props}
-      to={to}
+      to={destination}
       state={state}
       onClick={(e) => {
         onClick?.(e);
@@ -21,7 +25,7 @@ export function TransitionLink({ onClick, to, state, ...props }: LinkProps) {
           return;
         e.preventDefault();
         transition('page-content', () => {
-          void navigate(to, { state });
+          void navigate(destination, { state });
           scrollTo(0, 0);
         });
       }}
