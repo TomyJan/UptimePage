@@ -14,9 +14,16 @@ function canonical(value: unknown): string {
       .join(',')}}`;
   return JSON.stringify(value);
 }
-const config = parseConfig(
-  JSON.parse(await readFile(process.env.UPTIMEPAGE_CONFIG || 'config/site.json', 'utf8')),
-);
+async function readConfig(): Promise<string> {
+  if (process.env.UPTIMEPAGE_CONFIG) return readFile(process.env.UPTIMEPAGE_CONFIG, 'utf8');
+  try {
+    return await readFile('config/site.json', 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    return readFile('config/default.json', 'utf8');
+  }
+}
+const config = parseConfig(JSON.parse(await readConfig()));
 const version = createHash('sha256').update(canonical(config)).digest('hex');
 let commit = process.env.UPTIMEPAGE_COMMIT?.trim() ?? '';
 if (!commit) {

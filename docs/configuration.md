@@ -1,6 +1,14 @@
 # 配置
 
-默认读取 [config/site.json](../config/site.json)。修改后重新构建、部署。
+复制 [config/default.json](../config/default.json) 为 `config/site.json`，修改后提交并推送到 EO 关联分支，再重新部署。`site.json` 可以正常提交，不被 Git 忽略。
+
+构建按以下顺序读取第一份适用的完整配置，不合并文件：
+
+1. `UPTIMEPAGE_CONFIG` 指定的文件（可选，原有用法保留）。
+2. `config/site.json`：你的实际配置。
+3. `config/default.json`：仅在没有 `site.json` 时回退使用。
+
+实际配置格式或内容有错、无法读取时，构建直接失败；显式指定的路径不存在也会失败，不会悄悄改用默认配置。默认配置使用占位地址和 ID，只用于示例与本地构建。
 
 ## 网站
 
@@ -47,7 +55,7 @@
 }
 ```
 
-这是 `groups[]` 的一个元素，完整根结构见示例配置。
+这是 `groups[]` 的一个元素，完整根结构见 `config/default.json`。
 
 ### Peekaping
 

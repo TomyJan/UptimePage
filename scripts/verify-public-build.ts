@@ -18,7 +18,7 @@ const forbidden = [
   'server-config.ts',
 ];
 try {
-  const input = JSON.parse(await readFile('config/site.json', 'utf8'));
+  const input = JSON.parse(await readFile('config/default.json', 'utf8'));
   for (const group of input.groups) {
     group.source.apiKeyEnv =
       group.source.type === 'peekaping' ? 'PRIVATE_PEEK_KEY' : 'PRIVATE_ROBOT_KEY';

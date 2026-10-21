@@ -10,6 +10,8 @@
 
 **规格：** [基础架构](../specs/2026-10-20-uptimepage-foundation-design.md)、[已确认页面设计](../specs/2026-10-21-uptimepage-ui-design.md)、[HTML 视觉基准](../../../design/prototypes/refined-a.html)（确认提交 `4d313b1`）。
 
+后续配置调整：原示例已移到 `config/default.json`，`config/site.json` 改为可提交的实际配置，不存在才回退默认文件；仍支持 `UPTIMEPAGE_CONFIG` 显式指定。以下保留第一阶段实施记录，当前用法见[配置说明](../../configuration.md)。
+
 ## 全局约束
 
 - 完全重写，不读取或参考 `legacy` 分支的技术实现。

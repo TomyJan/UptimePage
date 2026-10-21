@@ -21,8 +21,8 @@ pnpm run dev:demo
 
 ## 使用
 
-1. 修改 [config/site.json](config/site.json)，填写分组、来源地址、状态页别名和监控 ID。
-2. 按[部署指南](docs/deployment.md)导入 EdgeOne 项目，设置服务端密钥。
+1. 复制 [config/default.json](config/default.json) 为 `config/site.json`，填写实际配置，提交并推送。未提供 `site.json` 时使用默认配置。
+2. 按[部署指南](docs/deployment.md)导入 EdgeOne 项目，设置服务端密钥；密钥不写进 JSON。
 3. 部署到预览环境，运行 `pnpm run verify:deployment` 并完成平台检查。
 
 详细说明：[配置](docs/configuration.md) · [开发和测试](docs/development.md) · [数据与接口](docs/data-api.md) · [审查记录](docs/production-review.md)。

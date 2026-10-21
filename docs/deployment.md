@@ -3,7 +3,7 @@
 ## 1. 准备
 
 - 在 Peekaping 建好公开状态页，记录别名；在 UptimeRobot 记录要公开的监控 ID。
-- 修改[配置](configuration.md)。示例地址和 `example-1` 等占位 ID 不能直接用于生产。
+- 复制 `config/default.json` 为 `config/site.json`，填写实际配置，提交并推送到 EO 关联分支。默认文件保留作回退；示例地址和 `example-1` 等占位 ID 不能直接用于生产。字段见[配置说明](configuration.md)。
 - 在 EdgeOne Makers 导入仓库，项目根目录使用仓库根目录。
 
 `edgeone.json` 已设置 Node 版本、`pnpm install --frozen-lockfile`、`pnpm run build` 和输出目录 `dist`。pnpm 版本由 `package.json` 的 `packageManager` 决定，不在命令中另写版本。
@@ -31,7 +31,7 @@ PowerShell：
 
 ```powershell
 $env:UPTIMEPAGE_PREVIEW_URL = 'https://your-preview.example.com'
-# 如果部署用了自定义配置，再设置 UPTIMEPAGE_CONFIG；默认配置无需设置。
+# 使用 config/site.json 时无需设置 UPTIMEPAGE_CONFIG；部署指定了其他路径时，本地也要指定。
 pnpm run verify:deployment
 ```
 
