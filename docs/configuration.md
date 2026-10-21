@@ -23,7 +23,7 @@
 
 名称、导航文字、页脚和监控描述支持普通字符串，或 `{"en":"Services","zh-CN":"服务"}`；多语言对象必须有英文。Logo 和链接可用 `/logo.svg` 这样的站内路径，本地文件放在 `public/`；外部地址使用 HTTPS。
 
-导航项的 `newTab` 默认为 `false`；设为 `true` 时使用新标签页打开，并自动添加安全的 `noreferrer`。
+导航项的 `newTab` 默认为 `false`；设为 `true` 时使用新标签页打开。
 
 页脚左侧固定为 `Powered by UptimePage 短hash | TomyJan`，不由 `footer` 覆盖。hash 构建时取 Git 提交；归档构建可用 `UPTIMEPAGE_COMMIT` 指定完整提交 hash，未提供提交信息时显示 `dev`。
 
