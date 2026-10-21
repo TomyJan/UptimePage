@@ -111,9 +111,6 @@ export function SiteFields({ config, change, language, t }: FormProps) {
           />
         </div>
       ))}
-      <div className="ce-section">
-        <strong>{t('footer')}</strong>
-      </div>
       <LocalizedField
         label={t('footer')}
         value={site.footer}
