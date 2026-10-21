@@ -30,7 +30,7 @@ test('unknown IDs and unavailable capabilities do not invent data', async ({ pag
   await expect(page.locator('.detail-metrics')).toHaveCount(0);
 });
 
-test('unavailable ranges explain why and chart axes identify the chosen timezone', async ({
+test('unavailable ranges explain why and chart times follow timezone without repeating its label', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -45,9 +45,12 @@ test('unavailable ranges explain why and chart axes identify the chosen timezone
     'aria-pressed',
     'true',
   );
+  await page.clock.setFixedTime(new Date('2026-10-21T12:00:00Z'));
   await page.goto('/services/core/m1');
-  await expect(page.locator('.chart-timezone')).toHaveText('UTC');
+  await expect(page.locator('.chart-labels span').first()).toContainText('12:00');
+  await expect(page.locator('.chart-timezone')).toHaveCount(0);
   await page.getByRole('button', { name: 'Timezone', exact: true }).click();
   await page.getByRole('menuitemradio', { name: /Shanghai/ }).click();
-  await expect(page.locator('.chart-timezone')).toHaveText('Asia/Shanghai');
+  await expect(page.locator('.chart-labels span').first()).toContainText('20:00');
+  await expect(page.locator('.chart-timezone')).toHaveCount(0);
 });

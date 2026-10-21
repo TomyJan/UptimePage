@@ -2421,13 +2421,7 @@ body {
   color: var(--ink);
   background: var(--surface-soft);
 }
-.chart-timezone {
-  margin-top: 6px;
-  color: var(--muted);
-  font: 10px var(--mono);
-  text-align: right;
-  overflow-wrap: anywhere;
-}
+
 .chart-note {
   display: flex;
   align-items: center;
