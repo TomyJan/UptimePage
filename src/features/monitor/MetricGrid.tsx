@@ -1,11 +1,20 @@
 import { rangeMilliseconds } from '../../shared/ranges.ts';
-import type { MonitorDetail } from '../../shared/contracts.ts';
+import type { MonitorDetail, Range } from '../../shared/contracts.ts';
+import { Skeleton } from '../../components/Loading.tsx';
 import { useCopy } from '../preferences/copy.ts';
 import { formatMetric } from '../status/history.ts';
 import { DataTooltip } from '../../components/DataTooltip.tsx';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import { useFormatTime } from '../status/HistoryBars.tsx';
-export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
+export function MetricGrid({
+  detail: d,
+  loadingRange,
+  refreshing = false,
+}: {
+  detail: MonitorDetail;
+  loadingRange?: Range;
+  refreshing?: boolean;
+}) {
   const t = useCopy(),
     time = useFormatTime();
   const days =
@@ -21,71 +30,93 @@ export function MetricGrid({ detail: d }: { detail: MonitorDetail }) {
   return (
     <AnimatedHeight>
       <div className="detail-metrics">
-        <div>
+        <div className="loading-surface" aria-busy={Boolean(loadingRange) || refreshing}>
           <small>
-            {d.range} {t('uptime')}
+            {loadingRange ?? d.range} {t('uptime')}
           </small>
-          <DataTooltip
-            content={
-              <>
-                <div>
-                  {t('coverage')}: {time(uptime.from, true)} – {time(uptime.until, true)}
-                </div>
-                <div className="tip-note">
-                  {t(uptime.basis === 'provider' ? 'provider' : 'samples')}
-                </div>
-              </>
-            }
-          >
-            <button
-              className="metric-detail"
-              aria-label={`${t('uptime')} ${formatMetric(uptime.value, '%')}`}
+          {loadingRange ? (
+            <strong>
+              <Skeleton className="skeleton-value" />
+            </strong>
+          ) : (
+            <DataTooltip
+              content={
+                <>
+                  <div>
+                    {t('coverage')}: {time(uptime.from, true)} – {time(uptime.until, true)}
+                  </div>
+                  <div className="tip-note">
+                    {t(uptime.basis === 'provider' ? 'provider' : 'samples')}
+                  </div>
+                </>
+              }
             >
-              <strong>{formatMetric(uptime.value, '%')}</strong>
-            </button>
-          </DataTooltip>
+              <button
+                className="metric-detail"
+                aria-label={`${t('uptime')} ${formatMetric(uptime.value, '%')}`}
+              >
+                <strong>{formatMetric(uptime.value, '%')}</strong>
+              </button>
+            </DataTooltip>
+          )}
           <span>
-            {t(partial ? 'partial' : uptime.basis === 'provider' ? 'provider' : 'samples')}
+            {loadingRange ? (
+              <Skeleton className="skeleton-caption" />
+            ) : (
+              t(partial ? 'partial' : uptime.basis === 'provider' ? 'provider' : 'samples')
+            )}
           </span>
         </div>
-        <div>
+        <div className="loading-surface" aria-busy={refreshing}>
           <small>{t('latestResponse')}</small>
           <strong>{formatMetric(d.monitor.responseMs, ' ms')}</strong>
-          <span>
-            <time dateTime={d.monitor.observedAt ?? undefined}>
-              {time(d.monitor.observedAt, true)}
-            </time>
-          </span>
-        </div>
-        <div>
-          <small>
-            {d.range} {t('average')}
-          </small>
-          <DataTooltip
-            content={
-              <>
-                <div>{t(d.averageResponse.basis === 'provider' ? 'provider' : 'samples')}</div>
-                <div className="tip-note">
-                  {time(d.averageResponse.from, true)} – {time(d.averageResponse.until, true)}
-                </div>
-              </>
-            }
-          >
-            <button
-              className="metric-detail"
-              aria-label={`${t('average')} ${formatMetric(d.averageResponse.value, ' ms')}`}
-            >
-              <strong>{formatMetric(d.averageResponse.value, ' ms')}</strong>
-            </button>
-          </DataTooltip>
-        </div>
-        <div>
-          <small>{t('certificate')}</small>
-          <strong>{days === null ? '—' : `${days} ${t('days')}`}</strong>
-          {days === null && (
+          {d.monitor.responseMs !== null && d.monitor.observedAt !== null && (
             <span>
-              {t(d.capabilities.certificate === 'unsupported' ? 'unsupported' : 'noData')}
+              <time dateTime={d.monitor.observedAt ?? undefined}>
+                {time(d.monitor.observedAt, true)}
+              </time>
             </span>
+          )}
+        </div>
+        <div className="loading-surface" aria-busy={Boolean(loadingRange) || refreshing}>
+          <small>
+            {loadingRange ?? d.range} {t('average')}
+          </small>
+          {loadingRange ? (
+            <strong>
+              <Skeleton className="skeleton-value" />
+            </strong>
+          ) : (
+            <DataTooltip
+              content={
+                <>
+                  <div>{t(d.averageResponse.basis === 'provider' ? 'provider' : 'samples')}</div>
+                  <div className="tip-note">
+                    {time(d.averageResponse.from, true)} – {time(d.averageResponse.until, true)}
+                  </div>
+                </>
+              }
+            >
+              <button
+                className="metric-detail"
+                aria-label={`${t('average')} ${formatMetric(d.averageResponse.value, ' ms')}`}
+              >
+                <strong>{formatMetric(d.averageResponse.value, ' ms')}</strong>
+              </button>
+            </DataTooltip>
+          )}
+        </div>
+        <div className="loading-surface" aria-busy={refreshing}>
+          <small>{t('certificate')}</small>
+          <strong>
+            {d.capabilities.certificate === 'unsupported'
+              ? t('unsupported')
+              : days === null
+                ? '—'
+                : `${days} ${t('days')}`}
+          </strong>
+          {days === null && d.capabilities.certificate !== 'unsupported' && (
+            <span>{t('noData')}</span>
           )}
         </div>
       </div>

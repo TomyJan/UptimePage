@@ -3,19 +3,34 @@ import { ArrowRight, CircleCheck, Clock3 } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 import { useCopy } from '../preferences/copy.ts';
 import { useFormatTime } from '../status/HistoryBars.tsx';
-export function MonitorEvents({ detail: d }: { detail: MonitorDetail }) {
+import { EventsLoading } from '../../components/Loading.tsx';
+export function MonitorEvents({
+  detail: d,
+  loading = false,
+  error = false,
+  refreshing = false,
+}: {
+  detail: MonitorDetail;
+  loading?: boolean;
+  error?: boolean;
+  refreshing?: boolean;
+}) {
   const t = useCopy(),
     time = useFormatTime();
   return (
-    <section className="panel events-panel">
+    <section className="panel events-panel loading-surface" aria-busy={loading || refreshing}>
       <div className="panel-top">
         <h2>{t('events')}</h2>
       </div>
       <AnimatedHeight
         className="events-content"
-        contentKey={`${d.capabilities.events}:${d.events.length > 0}`}
+        contentKey={`${loading ? 'loading' : error ? 'error' : d.capabilities.events}:${d.events.length > 0}`}
       >
-        {d.capabilities.events !== 'available' ? (
+        {loading ? (
+          <EventsLoading />
+        ) : error ? (
+          <div className="events-empty">{t('loadError')}</div>
+        ) : d.capabilities.events !== 'available' ? (
           <div className="events-empty">
             <span className="events-empty-icon">
               <Clock3 size={20} strokeWidth={1.6} />

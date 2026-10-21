@@ -45,6 +45,7 @@ const en = {
   updated: 'Updated',
   refresh: 'Refresh now',
   refreshing: 'Refreshing',
+  loading: 'Loading',
   refreshSettings: 'Refresh interval',
   siteDefault: 'Site default',
   manual: 'Manual only',
@@ -93,6 +94,7 @@ const en = {
   focusHistory: 'Use arrow keys to explore history',
 };
 const zh: typeof en = {
+  loading: '加载中',
   errorConfiguration: '来源凭证未配置，请检查服务端环境变量。',
   errorUpstream: '服务拒绝了请求，请检查凭证、权限或服务是否可用。',
   errorRejected: '来源拒绝了请求，请检查 API Key 和监控选择配置。',

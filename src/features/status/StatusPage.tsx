@@ -12,7 +12,7 @@ import { publicConfig } from '../../data/config.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
 import { GroupTabs } from './GroupTabs.tsx';
-import { StatusSummary } from './StatusSummary.tsx';
+import { StatusSummary, StatusSummaryLoading } from './StatusSummary.tsx';
 import { MonitorList } from './MonitorList.tsx';
 import { selectMonitors } from './selectors.ts';
 export function StatusPage() {
@@ -76,13 +76,17 @@ export function StatusPage() {
         className="status-body"
         contentKey={`${id}:${snapshot ? 'loaded' : q.isError ? 'error' : 'loading'}`}
       >
-        {snapshot ? (
+        {snapshot || !q.isError ? (
           <>
-            <StatusSummary
-              snapshot={snapshot}
-              pinned={pinned}
-              onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
-            />
+            {snapshot ? (
+              <StatusSummary
+                snapshot={snapshot}
+                pinned={pinned}
+                onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
+              />
+            ) : (
+              <StatusSummaryLoading />
+            )}
             <div className="sub-row">
               <GroupTabs
                 sub
@@ -93,10 +97,14 @@ export function StatusPage() {
                 selected={sub}
                 onChange={(s) => transition('monitor-list', () => update({ s }))}
                 label={t('subgroups')}
-                counts={Object.fromEntries([
-                  ['all', snapshot.monitors.length],
-                  ...snapshot.subgroups.map((s) => [s.id, new Set(s.monitorIds).size]),
-                ])}
+                counts={
+                  snapshot
+                    ? Object.fromEntries([
+                        ['all', snapshot.monitors.length],
+                        ...snapshot.subgroups.map((s) => [s.id, new Set(s.monitorIds).size]),
+                      ])
+                    : {}
+                }
               />
               <label className="search">
                 <Search size={14} />
@@ -111,23 +119,19 @@ export function StatusPage() {
             </div>
             <MonitorList
               monitors={monitors}
-              until={snapshot.fetchedAt}
+              until={snapshot?.fetchedAt ?? ''}
               searching={Boolean(search.trim())}
+              loading={!snapshot}
+              refreshing={q.isFetching}
             />
           </>
-        ) : q.isError ? (
+        ) : (
           <div className="empty">
             <p>{t('loadError')}</p>
             <p>{errorMessage(q.error, t)}</p>
             <button className="retry" onClick={() => void refresh().catch(() => {})}>
               {t('retry')}
             </button>
-          </div>
-        ) : (
-          <div className="skeleton" aria-busy="true">
-            <div />
-            <div />
-            <div />
           </div>
         )}
       </AnimatedHeight>

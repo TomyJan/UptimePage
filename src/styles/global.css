@@ -2300,19 +2300,145 @@ body {
   border-radius: 8px;
   background: var(--accent-bg);
 }
-.skeleton {
-  display: grid;
-  gap: 14px;
+.skeleton-piece {
+  display: inline-block;
+  vertical-align: middle;
+  width: 100%;
+  height: 12px;
+  border-radius: 5px;
+  background: linear-gradient(100deg, var(--line) 20%, var(--surface-soft) 45%, var(--line) 70%);
+  background-size: 260% 100%;
+  animation: loading-shimmer 2.2s ease-in-out infinite;
 }
-.skeleton > div {
-  height: 88px;
+.skeleton-piece.service-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+}
+.detail-title .skeleton-piece.service-logo {
+  width: 48px;
+  height: 48px;
   border-radius: 16px;
-  background: var(--hover);
-  animation: pulse 1.8s ease infinite;
 }
-@keyframes pulse {
-  50% {
-    opacity: 0.4;
+.skeleton-name {
+  width: min(120px, 100%);
+  height: 14px;
+}
+.skeleton-title {
+  width: 160px;
+  max-width: 100%;
+  height: 24px;
+}
+.skeleton-badge {
+  width: 70px;
+  height: 22px;
+  border-radius: 20px;
+}
+.skeleton-refresh {
+  width: 150px;
+  height: 36px;
+  border-radius: 10px;
+}
+.skeleton-caption {
+  width: min(110px, 100%);
+  height: 12px;
+}
+.skeleton-count {
+  width: 20px;
+  height: 22px;
+}
+.skeleton-value {
+  width: min(105px, 100%);
+  height: 30px;
+}
+.detail-metrics strong:has(.skeleton-value) {
+  display: flex;
+  align-items: center;
+  min-height: 1.2em;
+}
+.detail-metrics .skeleton-value {
+  height: 1em;
+}
+.detail-metrics > div > span:has(.skeleton-caption) {
+  line-height: 15px;
+}
+.loading-indicator {
+  display: inline-grid;
+  place-items: center;
+  color: var(--accent);
+}
+.loading-spinner {
+  animation: spin 1.4s linear infinite;
+}
+.overview.overview-loading {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+.overview-loading .status-icon {
+  color: var(--accent);
+  background: var(--surface);
+}
+.overview-loading .skeleton-pin {
+  width: 90px;
+  height: 28px;
+  border-radius: 8px;
+}
+.monitor-loading .identity-text {
+  flex: 1;
+}
+.monitor-loading:hover {
+  transform: none;
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+.monitor-loading .history-loading-track {
+  height: 23px;
+}
+.monitor-loading .metric .skeleton-piece {
+  width: 55px;
+}
+.history-loading-track {
+  display: grid;
+  grid-template-columns: repeat(48, minmax(0, 1fr));
+  gap: 3px;
+  height: 32px;
+}
+.history-loading-track .skeleton-piece {
+  height: 100%;
+  border-radius: 3px;
+}
+.history-loading .history-meta > .skeleton-piece {
+  width: 120px;
+  max-width: 60%;
+}
+.loading-fact {
+  display: contents;
+}
+.loading-fact dd > .skeleton-piece {
+  width: 90px;
+  max-width: 100%;
+}
+.loading-surface {
+  position: relative;
+}
+.loading-surface[aria-busy='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0 14px auto;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  background-size: 250% 100%;
+  animation: loading-shimmer 2.2s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0.65;
+}
+@keyframes loading-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
   }
 }
 @media (max-width: 360px) {
@@ -2464,10 +2590,46 @@ body {
 }
 
 .chart-loading {
-  height: 218px;
-  background: var(--hover);
+  min-height: 213px;
+}
+.loading-plot {
+  height: 190px;
+  display: grid;
+  place-items: center;
   border-radius: 10px;
-  animation: pulse 1.8s ease infinite;
+  background: repeating-linear-gradient(to bottom, transparent 0 47px, var(--line) 47px 48px);
+}
+.loading-plot .loading-indicator {
+  width: 42px;
+  height: 42px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+.chart-loading .chart-labels .skeleton-piece {
+  width: 115px;
+  max-width: 40%;
+}
+@media (max-width: 800px) {
+  .monitor-loading .skeleton-piece.service-logo {
+    width: 31px;
+    height: 31px;
+    border-radius: 10px;
+  }
+  .detail-title .skeleton-piece.service-logo {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+  .monitor-loading .history-loading-track {
+    height: 21px;
+  }
+  .skeleton-title {
+    width: 130px;
+  }
+  .detail-loading .skeleton-refresh {
+    margin-right: auto;
+  }
 }
 
 .toast-viewport {

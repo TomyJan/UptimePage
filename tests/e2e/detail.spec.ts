@@ -37,6 +37,7 @@ test('unavailable ranges explain why and chart times follow timezone without rep
     localStorage.setItem('uptimepage.preferences', JSON.stringify({ timeZone: 'UTC' }));
   });
   await page.goto('/services/core/m10');
+  await expect(page.getByRole('heading', { name: 'Backup', exact: true })).toBeVisible();
   const range = page.getByRole('button', { name: '7d', exact: true });
   await range.focus();
   await expect(page.getByRole('tooltip')).toHaveText('This source does not provide this range');

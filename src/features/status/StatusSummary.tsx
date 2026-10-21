@@ -2,6 +2,30 @@ import { ArrowDownWideNarrow, Check, TriangleAlert } from 'lucide-react';
 import type { GroupSnapshot } from '../../shared/contracts.ts';
 import { useCopy } from '../preferences/copy.ts';
 import { summarize } from './selectors.ts';
+import { LoadingIndicator, Skeleton } from '../../components/Loading.tsx';
+
+export function StatusSummaryLoading() {
+  const t = useCopy();
+  return (
+    <section className="overview overview-loading" aria-busy="true" aria-label={t('loading')}>
+      <span className="status-icon">
+        <LoadingIndicator />
+      </span>
+      <div className="overview-heading">
+        <Skeleton className="skeleton-title" />
+        <Skeleton className="skeleton-pin" />
+      </div>
+      <div className="overview-counts">
+        {(['normalCount', 'faultCount', 'otherCount'] as const).map((key) => (
+          <div key={key}>
+            <Skeleton className="skeleton-count" />
+            <small>{t(key)}</small>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 export function StatusSummary({
   snapshot,
   pinned,

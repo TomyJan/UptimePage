@@ -9,13 +9,21 @@ import { usePreferences } from '../features/preferences/store.ts';
 import { useCopy } from '../features/preferences/copy.ts';
 import { HistoryBars, UptimeMetric } from '../features/status/HistoryBars.tsx';
 import { formatMetric } from '../features/status/history.ts';
-export function MonitorCard({ monitor: m, until }: { monitor: MonitorSummary; until: string }) {
+export function MonitorCard({
+  monitor: m,
+  until,
+  refreshing = false,
+}: {
+  monitor: MonitorSummary;
+  until: string;
+  refreshing?: boolean;
+}) {
   const { locale } = usePreferences(),
     t = useCopy(),
     location = useLocation(),
     name = localize(m.name, locale);
   return (
-    <article className="monitor" data-status={m.state}>
+    <article className="monitor loading-surface" data-status={m.state} aria-busy={refreshing}>
       <TransitionLink
         className="monitor-identity card-link"
         to={`/services/${encodeURIComponent(m.groupId)}/${encodeURIComponent(m.id)}`}

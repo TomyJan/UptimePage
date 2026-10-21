@@ -23,6 +23,8 @@ import { MetricGrid } from './MetricGrid.tsx';
 import { ResponseChart } from './ResponseChart.tsx';
 import { MonitorEvents } from './MonitorEvents.tsx';
 import { MonitorFacts } from './MonitorFacts.tsx';
+import { MonitorLoading } from './MonitorLoading.tsx';
+import { ChartLoading, HistoryLoading } from '../../components/Loading.tsx';
 export function MonitorPage() {
   const { groupId = '', monitorId = '' } = useParams();
   return <MonitorContent key={`${groupId}:${monitorId}`} groupId={groupId} monitorId={monitorId} />;
@@ -80,37 +82,28 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         <div className="empty">{t('notFound')}</div>
       </>
     );
+  if (!data && !q.isError) return <MonitorLoading back={back} refreshControl={refreshControl} />;
   if (!data)
     return (
       <>
         {back}
         <section className="intro">{refreshControl}</section>
-        {q.isError ? (
-          <div className="empty">
-            <p>{t('loadError')}</p>
-            <p>{errorMessage(q.error, t)}</p>
-            <button className="retry" onClick={() => void refresh().catch(() => {})}>
-              {t('retry')}
-            </button>
-          </div>
-        ) : (
-          <div className="skeleton" aria-busy="true">
-            <div />
-            <div />
-            <div />
-          </div>
-        )}
+        <div className="empty">
+          <p>{t('loadError')}</p>
+          <p>{errorMessage(q.error, t)}</p>
+          <button className="retry" onClick={() => void refresh().catch(() => {})}>
+            {t('retry')}
+          </button>
+        </div>
       </>
     );
   const d = data,
     windowFrom = new Date(Date.parse(data.fetchedAt) - rangeMilliseconds(data.range)).toISOString(),
     name = localize(d.monitor.name, locale);
-  const chartState =
-    q.isError && (!q.data || data.range !== range)
-      ? 'error'
-      : q.isPlaceholderData || data.range !== range
-        ? 'loading'
-        : d.capabilities.response;
+  const rangeError = q.isError && (!q.data || data.range !== range);
+  const rangeLoading = !rangeError && (q.isPlaceholderData || data.range !== range);
+  const busy = q.isFetching || rangeLoading;
+  const chartState = rangeError ? 'error' : rangeLoading ? 'loading' : d.capabilities.response;
   return (
     <div className="detail-content">
       {back}
@@ -125,8 +118,12 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
         {refreshControl}
       </section>
-      <MetricGrid detail={d} />
-      <section className="panel chart-panel">
+      <MetricGrid
+        detail={d}
+        loadingRange={rangeLoading ? range : undefined}
+        refreshing={q.isFetching}
+      />
+      <section className="panel chart-panel loading-surface" aria-busy={busy}>
         <div className="panel-top">
           <h2>
             {t('response')} <span className="muted mono">ms</span>
@@ -166,7 +163,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
               </button>
             </div>
           ) : chartState === 'loading' ? (
-            <div className="chart-loading" aria-busy="true" />
+            <ChartLoading />
           ) : chartState === 'available' ? (
             <ResponseChart
               points={d.response}
@@ -181,14 +178,22 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
           )}
         </AnimatedHeight>
       </section>
-      <section className="panel">
+      <section className="panel checks-panel loading-surface" aria-busy={busy}>
         <div className="panel-top">
           <h2>
-            {t('checks')} <span className="muted">{d.range}</span>
+            {t('checks')} <span className="muted">{range}</span>
           </h2>
         </div>
-        <AnimatedHeight contentKey={d.capabilities.history}>
-          {d.capabilities.history === 'available' ? (
+        <AnimatedHeight
+          contentKey={`${range}:${rangeLoading ? 'loading' : rangeError ? 'error' : d.capabilities.history}`}
+        >
+          {rangeLoading ? (
+            <HistoryLoading />
+          ) : rangeError ? (
+            <p className="muted" role="status">
+              {t('loadError')}
+            </p>
+          ) : d.capabilities.history === 'available' ? (
             <>
               <HistoryBars
                 history={d.monitor.history}
@@ -209,8 +214,13 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         </AnimatedHeight>
       </section>
       <div className="detail-bottom">
-        <MonitorEvents detail={d} />
-        <MonitorFacts detail={d} />
+        <MonitorEvents
+          detail={d}
+          loading={rangeLoading}
+          error={rangeError}
+          refreshing={q.isFetching}
+        />
+        <MonitorFacts detail={d} refreshing={q.isFetching} />
       </div>
     </div>
   );
