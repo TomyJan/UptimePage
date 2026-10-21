@@ -103,3 +103,14 @@ it('mock handles empty subgroups, missing monitors and cancelled work', async ()
     name: 'AbortError',
   });
 });
+
+it('Peekaping display overrides do not expand preview membership', () => {
+  const config = createDraft(editorTemplate).valid;
+  const group = config.groups[0];
+  const original = createPreviewClient(config, previewConfig(config, 'before')).snapshot(group.id);
+  group.monitors['not-in-status-page'] = { name: 'Must stay private' };
+  group.monitors['web-1'] = { name: 'Renamed homepage' };
+  const changed = createPreviewClient(config, previewConfig(config, 'after')).snapshot(group.id);
+  expect(changed.monitors.map((m) => m.id)).toEqual(original.monitors.map((m) => m.id));
+  expect(changed.monitors.find((m) => m.id === 'web-1')?.name).toBe('Renamed homepage');
+});

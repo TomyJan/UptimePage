@@ -47,6 +47,11 @@ export function EditorWorkspace({
     sequence = useRef(0);
   const latest = useRef(draft);
   latest.current = draft;
+  const change = (next: Draft) => {
+    sequence.current++;
+    latest.current = next;
+    onChange(next);
+  };
   useEffect(() => {
     if (new URLSearchParams(location.search).get('configeditor') !== 'on') onExit();
   }, [location.search, onExit]);
@@ -138,11 +143,14 @@ export function EditorWorkspace({
     }
   };
   const paste = async () => {
+    const current = ++sequence.current;
     try {
       const text = await navigator.clipboard.readText();
-      onChange(editJSON(latest.current, text));
+      if (current !== sequence.current) return;
+      change(editJSON(latest.current, text));
       toastStore.push(t('pasted'));
     } catch {
+      if (current !== sequence.current) return;
       json.current?.focus();
       warn(t('pasteFallback'));
     }
@@ -160,15 +168,16 @@ export function EditorWorkspace({
       const text = await selected.text();
       if (current !== sequence.current) return;
       setMode('json');
-      onChange(editJSON(latest.current, text));
+      change(editJSON(latest.current, text));
       toastStore.push(t('imported'));
     } catch {
+      if (current !== sequence.current) return;
       warn(t('fileError'));
     }
   };
   const format = () => {
     try {
-      onChange(editJSON(draft, JSON.stringify(JSON.parse(draft.text), null, 2)));
+      change(editJSON(draft, JSON.stringify(JSON.parse(draft.text), null, 2)));
     } catch {
       warn(t('invalidJSON'));
     }
@@ -188,6 +197,7 @@ export function EditorWorkspace({
   };
   const [exiting, setExiting] = useState(false);
   const exit = () => {
+    sequence.current++;
     setExiting(true);
     setTimeout(onExit, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 240);
   };
@@ -258,8 +268,7 @@ export function EditorWorkspace({
                     <Menu.Item
                       className="menu-option"
                       onSelect={() => {
-                        sequence.current++;
-                        onChange(createDraft());
+                        change(createDraft());
                         toastStore.push(t('resetDone'));
                       }}
                     >
@@ -330,7 +339,7 @@ export function EditorWorkspace({
                   change={(mutate) => {
                     const next = structuredClone(draft.form);
                     mutate(next);
-                    onChange(editForm(draft, next));
+                    change(editForm(draft, next));
                   }}
                   t={t}
                 />
@@ -366,7 +375,7 @@ export function EditorWorkspace({
                   aria-label={t('json')}
                   aria-invalid={!!draft.error}
                   value={draft.text}
-                  onChange={(e) => onChange(editJSON(draft, e.target.value))}
+                  onChange={(e) => change(editJSON(draft, e.target.value))}
                 />
               </div>
             </section>

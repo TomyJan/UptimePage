@@ -59,7 +59,16 @@ export function EditorRoot({ productionClient }: { productionClient: ApiClient }
   const exit = () => {
     const url = new URL(location.href);
     url.searchParams.delete('configeditor');
-    history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+    let state = history.state;
+    if (typeof state?.usr?.returnTo === 'string' && state.usr.returnTo.startsWith('/?')) {
+      const returnTo = new URL(state.usr.returnTo, location.origin);
+      returnTo.searchParams.delete('configeditor');
+      state = {
+        ...state,
+        usr: { ...state.usr, returnTo: returnTo.pathname + returnTo.search + returnTo.hash },
+      };
+    }
+    history.replaceState(state, '', url.pathname + url.search + url.hash);
     void cache.cancelQueries();
     cache.clear();
     setActive(false);

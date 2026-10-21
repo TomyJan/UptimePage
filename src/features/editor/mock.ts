@@ -17,15 +17,10 @@ export function previewConfig(config: SiteConfig, version: string): PublicConfig
 function members(group: SiteConfig['groups'][number]) {
   const explicit = group.subgroups.flatMap((s) => s.monitorIds?.filter((id) => id !== '*') ?? []);
   const pool = [...new Set([...explicit, ...Array.from({ length: 6 }, (_, i) => `demo-${i + 1}`)])];
-  return group.subgroups.map((sub, index) => {
+  return group.subgroups.map((sub) => {
     const ids =
       group.source.type === 'peekaping'
-        ? [
-            ...new Set([
-              ...(index === 0 ? Object.keys(group.monitors) : []),
-              ...Array.from({ length: 3 }, (_, i) => `${sub.id}-${i + 1}`),
-            ]),
-          ]
+        ? Array.from({ length: 3 }, (_, i) => `${sub.id}-${i + 1}`)
         : sub.monitorIds!.includes('*')
           ? pool
           : [...new Set(sub.monitorIds!)];

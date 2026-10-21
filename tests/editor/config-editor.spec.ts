@@ -128,3 +128,103 @@ test('mobile and reduced-motion layouts keep both modes within the viewport', as
   expect(after!.x + after!.width).toBeLessThanOrEqual(390);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+test('JSON clipboard and formatting actions edit the same draft', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/?configeditor=on');
+  await page.getByRole('button', { name: 'Edit configuration', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep expanded', exact: true }).click();
+  await page.getByRole('button', { name: 'JSON', exact: true }).click();
+  await page.getByRole('button', { name: 'Copy JSON', exact: true }).click();
+  expect(JSON.parse(await page.evaluate(() => navigator.clipboard.readText())).groups).toHaveLength(
+    2,
+  );
+  const imported = structuredClone(editorTemplate);
+  imported.site.name = 'Clipboard status';
+  await page.evaluate((value) => navigator.clipboard.writeText(value), JSON.stringify(imported));
+  await page.getByRole('button', { name: 'Paste JSON', exact: true }).click();
+  await expect(page.locator('.brand')).toContainText('Clipboard status');
+  await page.getByRole('button', { name: 'Format JSON', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'JSON', exact: true })).toHaveValue(/\n  "site":/);
+});
+
+test('exiting a detail clears the editor parameter from its stored return link', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/**', (route) =>
+    route.fulfill({ status: 404, json: { error: { code: 'not-found' } } }),
+  );
+  await page.goto('/?configeditor=on');
+  await page.locator('.intro h1').click();
+  await expect(page.locator('.ce-panel')).toHaveAttribute('data-docked', 'true');
+  await page.locator('.monitor').first().click();
+  await expect(page.locator('.detail-heading')).toBeVisible();
+  expect(await page.evaluate(() => history.state?.usr?.returnTo)).toContain('configeditor=on');
+  await page.getByRole('button', { name: 'Exit preview', exact: true }).click();
+  await expect(page.locator('.ce-workspace')).toHaveCount(0);
+  await expect(page.locator('.back')).not.toHaveAttribute('href', /configeditor=/);
+  await page.locator('.back').click();
+  await expect(page).not.toHaveURL(/configeditor=/);
+  await page.reload();
+  await expect(page.locator('.ce-workspace')).toHaveCount(0);
+});
+
+for (const read of ['paste', 'file'] as const) {
+  for (const action of ['edit', 'reset', 'exit'] as const) {
+    test(`pending ${read} cannot overwrite a newer ${action}`, async ({ page }) => {
+      await page.addInitScript((method) => {
+        const pending = () =>
+          new Promise<string>((resolve) => {
+            Object.assign(window, { completePendingRead: resolve, readStarted: true });
+          });
+        if (method === 'paste')
+          Object.defineProperty(navigator.clipboard, 'readText', { value: pending });
+        else File.prototype.text = pending;
+      }, read);
+      await page.goto('/?configeditor=on');
+      await page.getByRole('button', { name: 'Edit configuration', exact: true }).click();
+      await page.getByRole('button', { name: 'Keep expanded', exact: true }).click();
+      await page.getByRole('button', { name: 'JSON', exact: true }).click();
+      const config = structuredClone(editorTemplate);
+      config.site.name = 'Late stale read';
+      if (read === 'paste')
+        await page.getByRole('button', { name: 'Paste JSON', exact: true }).click();
+      else
+        await page.locator('input[type=file]').setInputFiles({
+          name: 'late.json',
+          mimeType: 'application/json',
+          buffer: Buffer.from('{}'),
+        });
+      await expect
+        .poll(() =>
+          page.evaluate(() => (window as unknown as { readStarted?: boolean }).readStarted),
+        )
+        .toBe(true);
+      if (action === 'edit') {
+        const newer = structuredClone(editorTemplate);
+        newer.site.name = 'Newer manual edit';
+        await page.getByRole('textbox', { name: 'JSON', exact: true }).fill(JSON.stringify(newer));
+      } else if (action === 'reset') {
+        await page.getByRole('button', { name: 'More actions', exact: true }).click();
+        await page.getByRole('menuitem', { name: 'Reset example', exact: true }).click();
+      } else {
+        await page.getByRole('button', { name: 'Exit preview', exact: true }).click();
+        await expect(page.locator('.ce-workspace')).toHaveCount(0);
+      }
+      await page.evaluate(
+        (text) =>
+          (
+            window as unknown as { completePendingRead: (value: string) => void }
+          ).completePendingRead(text),
+        JSON.stringify(config),
+      );
+      // The deferred read has settled before inspecting the next frame.
+      await page.evaluate(() => new Promise(requestAnimationFrame));
+      if (action === 'edit')
+        await expect(page.locator('.brand')).toContainText('Newer manual edit');
+      if (action === 'reset') await expect(page.locator('.brand')).toContainText('My status page');
+      await expect(
+        page.locator('.toast-message').filter({ hasText: /JSON pasted|JSON imported/ }),
+      ).toHaveCount(0);
+    });
+  }
+}
