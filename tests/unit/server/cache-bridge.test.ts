@@ -122,7 +122,7 @@ it.each(['unsigned', 'tampered', 'expired', 'other-version', 'other-origin', 're
         mode === 'replayed-origin' ? 'https://other.test/_uptimepage/cache' : original.url,
         { method: 'POST', headers, body },
       );
-      return handleCacheBridge(
+      const response = await handleCacheBridge(
         request,
         'secret',
         mode === 'other-version' ? 'different' : 'version',
@@ -130,6 +130,16 @@ it.each(['unsigned', 'tampered', 'expired', 'other-version', 'other-origin', 're
         storage,
         mode === 'expired' ? Date.now() + 61000 : Date.now(),
       );
+      const reasons: Record<string, string> = {
+        unsigned: 'signature',
+        tampered: 'signature',
+        expired: 'expired',
+        'other-version': 'version',
+        'replayed-origin': 'origin',
+      };
+      if (reasons[mode])
+        expect(response.headers.get('x-uptimepage-cache-bridge')).toBe(reasons[mode]);
+      return response;
     });
     expect(
       await remote.match(

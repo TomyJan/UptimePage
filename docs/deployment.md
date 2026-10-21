@@ -55,6 +55,8 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 
 排查缓存时查看 API 响应头 `X-UptimePage-Cache`：`status` / `membership` 表示状态 / 成员缓存，`match` / `put` 表示读取 / 写入；`http-404` 表示缓存桥拒绝，`network` / `timeout` 表示连接失败 / 超时，`pending` 表示 API 返回时操作仍未完成，`oversized` 表示超过桥接请求限制。`http-200` 只代表缓存桥响应成功，仍需在 KV 核对新记录；该响应头不包含密钥、来源地址或异常原文。
 
+404 后的后缀是拒绝阶段：`configuration` 缺少运行时配置，`signature` 验签失败，`crypto` 加密接口异常，`version` / `origin` 为部署版本 / 请求来源不匹配，`expired` 为签名过期。缓存桥本身的相同标签位于 `X-UptimePage-Cache-Bridge`；其他标签表示报文、路径、写入值或内部处理异常。
+
 ## 排错
 
 | 现象                              | 检查                                                                                                            |

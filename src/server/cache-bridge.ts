@@ -4,6 +4,21 @@ import type { ServerConfig } from './config.ts';
 
 const endpoint = '/_uptimepage/cache';
 const signatureHeader = 'x-uptimepage-cache-signature';
+const rejectionReasons = [
+  'configuration',
+  'method',
+  'oversized',
+  'signature',
+  'crypto',
+  'message',
+  'version',
+  'origin',
+  'expired',
+  'path',
+  'value',
+  'internal',
+] as const;
+type RejectionReason = (typeof rejectionReasons)[number];
 // Edge Functions accept at most 1 MB per request. Larger snapshots use the
 // bounded cloud-instance cache and remain readable without the bridge.
 const maxMessageBytes = 1_000_000;
@@ -78,19 +93,23 @@ export async function handleCacheBridge(
   membershipCache: ResponseCache,
   now = Date.now(),
 ): Promise<Response> {
-  const denied = () => result({ error: { code: 'not-found' } }, 404);
+  const denied = (reason: RejectionReason = 'internal') => {
+    const response = result({ error: { code: 'not-found' } }, 404);
+    response.headers.set('x-uptimepage-cache-bridge', reason);
+    return response;
+  };
+  let phase: RejectionReason = 'internal';
   try {
-    if (
-      !secret ||
-      request.method !== 'POST' ||
-      Number(request.headers.get('content-length') ?? 0) > maxMessageBytes
-    )
-      return denied();
+    if (!secret) return denied('configuration');
+    if (request.method !== 'POST') return denied('method');
+    if (Number(request.headers.get('content-length') ?? 0) > maxMessageBytes)
+      return denied('oversized');
     const signature = request.headers.get(signatureHeader) ?? '';
-    if (!/^[a-f0-9]{64}$/.test(signature)) return denied();
+    if (!/^[a-f0-9]{64}$/.test(signature)) return denied('signature');
     const text = await request.text();
-    if (new TextEncoder().encode(text).byteLength > maxMessageBytes) return denied();
+    if (new TextEncoder().encode(text).byteLength > maxMessageBytes) return denied('oversized');
     const bytes = Uint8Array.from(signature.match(/../g)!, (value) => parseInt(value, 16));
+    phase = 'crypto';
     if (
       !(await crypto.subtle.verify(
         'HMAC',
@@ -99,17 +118,16 @@ export async function handleCacheBridge(
         new TextEncoder().encode(text),
       ))
     )
-      return denied();
+      return denied('signature');
+    phase = 'message';
     const parsed = messageSchema.safeParse(JSON.parse(text));
     const origin = new URL(request.url).origin;
-    if (
-      !parsed.success ||
-      parsed.data.version !== version ||
-      parsed.data.origin !== origin ||
-      Math.abs(now - parsed.data.at) > 60000 ||
-      !validPath(parsed.data.path, origin, version)
-    )
-      return denied();
+    if (!parsed.success) return denied('message');
+    if (parsed.data.version !== version) return denied('version');
+    if (parsed.data.origin !== origin) return denied('origin');
+    if (Math.abs(now - parsed.data.at) > 60000) return denied('expired');
+    if (!validPath(parsed.data.path, origin, version)) return denied('path');
+    phase = 'internal';
     const message = parsed.data;
     const cache = message.layer === 'membership' ? membershipCache : statusCache;
     const key = new Request(origin + message.path);
@@ -118,10 +136,10 @@ export async function handleCacheBridge(
       if (!found) return result(null);
       return result({ body: await found.text(), headers: [...found.headers.entries()] });
     }
-    if (!message.value) return denied();
+    if (!message.value) return denied('value');
     const headers = new Headers(message.value.headers);
     const ttl = Number(headers.get('cache-control')?.match(/max-age=(\d+)/i)?.[1] ?? 0);
-    if (ttl <= 0 || ttl > 600) return denied();
+    if (ttl <= 0 || ttl > 600) return denied('value');
     // Only representation metadata is accepted; transport and cookie headers never persist.
     await cacheOperation(
       () =>
@@ -138,7 +156,7 @@ export async function handleCacheBridge(
     );
     return result(null);
   } catch {
-    return denied();
+    return denied(phase);
   }
 }
 
@@ -197,7 +215,10 @@ export function createRemoteCache(
       );
       throw error;
     }
-    report?.(`${layer}-${operation}:http-${response.status}`);
+    const reason = response.headers.get('x-uptimepage-cache-bridge');
+    const detail =
+      reason && rejectionReasons.includes(reason as RejectionReason) ? `-${reason}` : '';
+    report?.(`${layer}-${operation}:http-${response.status}${detail}`);
     if (!response.ok) return null;
     return response.json();
   }
