@@ -12,7 +12,7 @@
 - [浮动编辑器](prototypes/config-editor-floating.html)：右下角表单 / JSON 编辑、实时 mock 预览、自动贴边，以及配置导入导出。
 - [原独立页方案](prototypes/config-editor-standalone.html)：保留的上一版布局，不覆盖、不替换。
 
-浮动方案是正式实现的交互基准，原型配色不替换既有前端规范。开关、交互及字段见[设计说明](config-editor.md)。
+浮动方案已实现，正式版使用既有前端配色与组件。使用方式见[配置文档](../docs/configuration.md#可视化编辑器)，交互基准见[设计说明](config-editor.md)。
 
 ## 参考与许可
 

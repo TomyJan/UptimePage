@@ -1,86 +1,54 @@
 # EdgeOne 部署
 
-## 1. 提交实际配置
+## 配置与构建
 
-Fork 本仓库或使用自己的 Git 仓库，复制 `config/default.json` 为 `config/site.json`。填写来源地址、Peekaping 公开状态页别名、UptimeRobot 监控 ID，再提交并推送；字段见[配置说明](configuration.md)。
+项目仅支持 EdgeOne Makers。将完整配置提交为 `config/site.json`；可使用[可视化配置编辑器](https://status.tomys.top/?configeditor=on)生成文件，字段和公开范围见[配置说明](configuration.md)。
 
-`site.json` 是完整配置，无需在 EO 中粘贴 JSON 或设置配置路径。没有这个文件时才使用默认配置；默认地址和 ID 是占位值，不能用于生产。
+在 Makers 导入 Git 仓库，选择部署分支，项目根目录使用仓库根目录。构建设置已由 [edgeone.json](../edgeone.json) 声明：
 
-## 2. 导入项目并设置密钥
+| 设置     | 值                                                                          |
+| -------- | --------------------------------------------------------------------------- |
+| 安装命令 | `pnpm install --frozen-lockfile`                                            |
+| 构建命令 | `pnpm run build`                                                            |
+| 输出目录 | `dist`                                                                      |
+| Node.js  | `edgeone.json` 的 `nodeVersion`；本地兼容范围见 `package.json` 的 `engines` |
+| pnpm     | `package.json` 的 `packageManager`                                          |
 
-在 EdgeOne Makers 导入仓库，根目录选仓库根目录，选择部署分支。`edgeone.json` 已声明构建设置：
+部署需同时包含 `dist/`、`cloud-functions/`、`edge-functions/` 和构建生成的配置，不能只上传静态产物。公开 API 由云函数聚合，边缘函数负责缓存桥；云函数执行上限配置为 120 秒，响应仍受平台大小限制和上游额度约束。
 
-| 项目             | 值                                          |
-| ---------------- | ------------------------------------------- |
-| 安装命令         | `pnpm install --frozen-lockfile`            |
-| 构建命令         | `pnpm run build`                            |
-| 输出目录         | `dist`                                      |
-| Node / pnpm 版本 | 分别由 `edgeone.json` / `package.json` 声明 |
+## 环境变量
 
-在项目环境变量中设置配置所引用的密钥，对需要的生产 / 预览环境生效，并确认函数运行时可读取。默认变量如下，只添加实际使用的来源：
+| 变量                       | 作用域     | 用途                                                      |
+| -------------------------- | ---------- | --------------------------------------------------------- |
+| `PEEKAPING_API_KEY`        | 函数运行时 | Peekaping API Key，变量名可通过 `source.apiKeyEnv` 自定义 |
+| `UPTIMEROBOT_API_KEY`      | 函数运行时 | 能读取所选监控的 UptimeRobot API Key，同样可自定义变量名  |
+| `UPTIMEPAGE_CONFIG_EDITOR` | 构建       | 精确设为 `true` 才编译编辑器，默认不编译                  |
+| `UPTIMEPAGE_CONFIG`        | 构建       | 可选配置文件路径，默认优先读取 `config/site.json`         |
+| `UPTIMEPAGE_COMMIT`        | 构建       | 可选 Git 提交 hash；无法从 Git 获取提交信息时使用         |
 
-| 变量名                | 变量值                               |
-| --------------------- | ------------------------------------ |
-| `PEEKAPING_API_KEY`   | 对应 Peekaping 实例的 API Key        |
-| `UPTIMEROBOT_API_KEY` | 能读取选中监控的 UptimeRobot API Key |
+只设置实际使用的来源密钥，确保相应生产 / 预览环境的云函数和边缘函数均可读取。密钥不写入 JSON，不使用 `VITE_` 前缀。更改配置或环境变量后重新部署。
 
-变量名与 JSON 中的 `apiKeyEnv` 一致；密钥不放进 JSON 或 `VITE_*`。修改变量后重新部署。KV 非必需，启用方式见[可选 KV](configuration.md#可选-kv-cache)。
+KV 非必需。如需跨实例缓存，创建命名空间并绑定变量，再设置 `cache.kvBinding`，见 [KV 配置](configuration.md#可选-kv)。它是资源绑定，不是普通文本环境变量，无需额外缓存密钥。
 
-可选：在构建环境中设置 `UPTIMEPAGE_CONFIG_EDITOR=true`，重新部署后访问 `/?configeditor=on` 使用[配置编辑器](configuration.md#可选配置编辑器)。默认不编译，不带参数时仍显示生产数据；它只导出文件，不在线修改配置。
+启用编辑器后，通过本站的 `/?configeditor=on` 进入；不带参数仍是正常状态页，主页不提供编辑入口。编辑器只在浏览器内编辑、预览和导出文件，不在线修改部署配置。
 
-使用仓库构建部署，不能只上传 `dist/`：还需要 `cloud-functions/`、`edge-functions/` 和构建生成的服务端配置。构建后应有 `/api/v1/*` 云函数和 `/_uptimepage/cache` 边缘缓存函数。两种运行时使用相同的来源环境变量，无需额外配置缓存密钥。
+## 部署验证
 
-API 由 Cloud Functions 聚合，避免 Edge Functions 每次最多 64 次 `fetch` 的限制。`edgeone.json` 已将云函数最长执行时间设为 120 秒；响应仍受平台 6 MB 和来源额度限制。监控数量没有人为上限，冷加载耗时随来源数量增加。运行限制见 [Cloud Functions](https://pages.edgeone.ai/zh/document/cloud-functions)。
+首页应一次加载当前大分组的全部卡片；核对公开监控数量，并直接打开详情、刷新和返回，确认深层路由有效。数据缺失、限流和缓存诊断见[排错](troubleshooting.md)。
 
-## 3. 检查部署
-
-先确认首页有真实数据，再直接打开一个监控详情，刷新页面并返回。核对监控数量、状态和历史是否与上游一致。
-
-运行自动检查时，本地须使用部署的**同一提交、配置和锁文件**；若设置了 `UPTIMEPAGE_CONFIG` 或 `UPTIMEPAGE_COMMIT`，本地使用相同值。不同提交可能产生不同资源 hash。
-
-PowerShell：
-
-```powershell
-$env:UPTIMEPAGE_PREVIEW_URL = 'https://your-preview.example.com'
-pnpm run verify:deployment
-```
-
-sh：
+自动验收须使用与部署一致的提交、配置、锁文件及构建变量，包括编辑器开关；否则静态资源 hash 或配置版本可能不匹配。在终端设置 `UPTIMEPAGE_PREVIEW_URL` 为部署的 HTTPS origin，例如 `https://status.example.com`，不带路径或查询参数，再运行：
 
 ```sh
-UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployment
+pnpm run verify:deployment
+pnpm run verify:browser
 ```
 
-地址使用不带路径的 HTTPS 站点地址。命令先构建，再检查资源、每组完整精简快照及一个监控的 24 小时 / 7 天 / 30 天详情、配置版本、深层路由、公开范围、只读限制、未签名缓存请求拒绝和 `no-store`。无需在本地设置来源密钥。
+HTTP 验收先构建，再检查静态资源、配置版本、整组快照、三种时间范围详情、深层路由、公开范围和缓存桥保护；无需本地来源密钥。非零退出码表示失败，空组的详情检查会跳过。
 
-非零退出码表示失败；空组的详情检查会 `SKIP`。遇到限流应等待退避后重试。自动检查不能代替来源口径、平台缓存和运行配额验证，完整清单见[验证状态](production-review.md)。
-
-同一终端可继续运行 `pnpm run verify:browser`，检查真实部署的手机首页 / 详情、中英文、深浅色、菜单边界、手动刷新和重试。首次运行需安装 Chromium，见[开发指南](development.md)。截图保存在 `test-results/deployment/`。
-
-界面检查还会仅在测试浏览器内模拟 545、部分超时和限流，核对错误脱敏、Toast 和旧数据保留，不修改生产函数或 KV。这些模拟不能替代独立预览环境的函数 / KV 故障演练。命令读取本地生成配置，必须与部署配置一致；默认不在 CI 中访问真实来源。
-
-排查缓存时查看 API 响应头 `X-UptimePage-Cache`：`status` / `membership` 表示状态 / 成员缓存，`match` / `put` 表示读取 / 写入；`http-404` 表示缓存桥拒绝，`network` / `timeout` 表示连接失败 / 超时，`pending` 表示 API 返回时操作仍未完成，`oversized` 表示超过桥接请求限制。`http-200` 只代表缓存桥响应成功，仍需在 KV 核对新记录；该响应头不包含密钥、来源地址或异常原文。
-
-排查耗时可看 `Server-Timing`：`total` 总处理时间、`membership` 成员确认、`snapshot` 整组取数、`detail` 详情取数、`cache` 缓存累计等待，单位毫秒。阶段可能重叠，不能直接相加；`X-UptimePage-Source-Requests` 是本次发起的来源请求数。云函数同时输出 `uptimepage.request` JSON 日志，只含状态码、耗时和请求数，不含密钥、来源地址或原始响应。
-
-404 后的后缀是拒绝阶段：`configuration` 缺少运行时配置，`signature` 验签失败，`crypto` 加密接口异常，`version` / `origin` 为部署版本 / 请求来源不匹配，`expired` 为签名过期。缓存桥本身的相同标签位于 `X-UptimePage-Cache-Bridge`；其他标签表示报文、路径、写入值或内部处理异常。
-
-`origin-` 后的 12 位是缓存桥目标 origin 的 SHA-256 前 12 位；`host-` / `x-forwarded-host-` / `eo-pages-host-` 以同样方式标识对应头中的 HTTPS origin，不直接显示内部地址。EdgeOne 会覆盖 `eo-pages-host` 为公开域名；云函数据此恢复地址，不使用可能指向内部站点的 Request Host，也不采信通用转发头。正常生产请求中，`origin-` 应与 `eo-pages-host-` 相同。
-
-## 排错
-
-| 现象                             | 检查                                                                                                            |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 仍请求示例地址 / 查不到监控      | `site.json` 是否提交到部署分支，最新部署是否生效，是否被 `UPTIMEPAGE_CONFIG` 覆盖                               |
-| 配置构建失败                     | JSON 格式、错误指出的字段；实际配置损坏不会回退默认文件                                                         |
-| API 返回 HTML                    | 函数是否部署，路由是否被 SPA fallback 接管；只上传 `dist` 不够                                                  |
-| 获取失败 / 502                   | 函数能否读取密钥，来源地址、状态页权限和来源版本是否正确                                                        |
-| 545 / `Error return from script` | 平台执行异常；函数外中止无法捕获，查看脱敏诊断，记录时间、请求 ID 及 `X-NWS-LOG-UUID`（若有），核对平台调用记录 |
-| 429 / 限流                       | 来源额度和退避截止时间；失败 Toast 显示原因，旧数据及更新时间保留                                               |
-| 验收报配置版本不符 / 缺少资源    | 本地和部署的提交、配置、锁文件及构建变量是否一致                                                                |
-| 历史缺口 / 没有证书              | 核对来源保留时间，以及 Peekaping TLS 接口 / UptimeRobot SSL 数据是否可用；没有返回值时不主动扫描监控目标        |
-| KV 未命中                        | 项目是否绑定命名空间、绑定变量名是否与 `cache.kvBinding` 一致、重新部署后是否生成 `uptimepage_` 记录            |
+浏览器验收覆盖真实部署的手机布局、中英文、深浅色、菜单和刷新，并在测试浏览器内模拟 545、超时及限流，检查错误反馈和旧数据保留；不修改部署函数或 KV。首次运行需安装 Chromium，见[开发与测试](development.md)。这些模拟不代替独立预览环境的函数 / KV 故障验证，发布前按[检查清单](production-review.md)核对。
 
 ## 更新与回退
 
-修改 `site.json` 后提交推送；开启自动部署时会随推送构建，否则手动重新部署。无需更改默认文件。修改密钥后也要重新部署。回退时回退完整部署，让静态资源和函数使用同一配置版本。
+配置修改提交到部署分支，随自动部署或手动构建生效。回退完整部署，使静态资源与函数使用同一配置版本。来源配额、平台运行限制及 KV 额度以实际环境为准。
+
+平台文档：[Cloud Functions](https://pages.edgeone.ai/zh/document/cloud-functions) · [KV](https://pages.edgeone.ai/zh/document/kv-storage)

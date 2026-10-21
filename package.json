@@ -20,8 +20,8 @@
     "verify:public-build": "node scripts/verify-public-build.ts",
     "verify:deployment": "pnpm run build && node scripts/verify-deployment.ts",
     "verify:browser": "pnpm run generate && playwright test --config=playwright.deployment.config.ts",
-    "format": "prettier --write src config scripts tests edge-functions cloud-functions .github *.ts *.json *.yaml index.html",
-    "format:check": "prettier --check src config scripts tests edge-functions cloud-functions .github *.ts *.json *.yaml index.html"
+    "format": "prettier --write README.md docs design/*.md src config scripts tests edge-functions cloud-functions .github *.ts *.json *.yaml index.html",
+    "format:check": "prettier --check README.md docs design/*.md src config scripts tests edge-functions cloud-functions .github *.ts *.json *.yaml index.html"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "2.2.1",

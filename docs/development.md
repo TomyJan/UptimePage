@@ -1,57 +1,64 @@
 # 开发与测试
 
-使用 `package.json` 声明的 Node.js 和 pnpm 版本。首次使用可运行 `corepack enable`。
+## 本地运行
+
+使用 `package.json` 声明的 Node.js 和 pnpm 版本；首次使用可运行 `corepack enable`。
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm run dev:demo
 ```
 
-演示数据随当前时间移动；`?demoCount=200` 检查大列表，`?demoPartial=1` 检查部分失败。生产包不包含演示入口。
+| 场景         | 运行方式                                                                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------------------- |
+| 页面演示     | `pnpm run dev:demo`；模拟数据随当前时间移动                                                                    |
+| 配置编辑器   | 在终端设置 `UPTIMEPAGE_CONFIG_EDITOR=true`，运行 `pnpm run dev`，访问 `http://127.0.0.1:5173/?configeditor=on` |
+| 真实数据联调 | 部署到 [EO 预览环境](deployment.md)；`pnpm run dev` 不启动 EdgeOne 函数                                        |
+| 静态产物预览 | `pnpm run build` 后运行 `pnpm run preview`；同样不提供云函数                                                   |
 
-`pnpm run dev` 使用真实同源 API，但 Vite 不启动 EdgeOne 函数；接口不存在时显示获取失败。真实数据联调在 [EO 预览环境](deployment.md)进行。
+演示参数：`?demoCount=200` 检查大列表，`?demoPartial=1` 检查部分失败。演示入口仅在开发环境可用，生产包不包含演示数据。
 
-## 验证命令
+编辑器注入独立的配置、mock 客户端和查询缓存，复用正式页面；退出恢复生产客户端。有效草稿实时更新预览，无效输入保留原文和最后有效配置。正式构建只有精确设置 `UPTIMEPAGE_CONFIG_EDITOR=true` 才包含编辑器，URL 参数只是访问入口。
+
+## 验证
 
 ```sh
 pnpm run format:check
 pnpm test
 pnpm run build
 pnpm run verify:public-build
+pnpm exec playwright install chromium
 pnpm run test:e2e
 pnpm run test:editor
 pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 ```
 
-`build` 已包含类型检查；仅检查类型可用 `pnpm run typecheck`。格式化使用 `pnpm run format`。
+- `build` 包含配置生成和类型检查；仅检查类型可用 `pnpm run typecheck`。`pnpm run format` 同时格式化代码和文档。
+- `verify:public-build` 分别构建关闭 / 开启编辑器的产物，检查默认包无编辑器、两种包均不泄露实际服务端配置。
+- `test:e2e` 验证演示页面和默认生产包，运行前清除终端中的编辑器开关；`test:editor` 自行启用编辑器，检查完整编辑流程、零生产监控请求和退出隔离。
+- Linux 安装 Chromium 时加 `--with-deps`；已有 Chromium 可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定。截图和失败 trace 在 `test-results/`。
 
-首次浏览器测试前运行 `pnpm exec playwright install chromium`；Linux CI 使用 `pnpm exec playwright install --with-deps chromium`。已有 Chromium 可通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE` 指定。
+测试端口为 5173（演示）、4173（生产静态预览）、5174（编辑器）。测试前释放这些端口，避免复用其他开发服务。
 
-测试使用 5173（开发演示）、4173（生产静态预览）和 5174（配置编辑器），应保持端口可用；截图及失败 trace 位于 `test-results/`。生成、构建、产物隔离和浏览器测试共用 `.generated/`，请顺序执行，测试期间不要修改源码或配置。
+生成、构建、产物检查和浏览器测试共用 `.generated/`，须顺序运行。单元 / 浏览器测试固定使用 `config/default.json`，结束时恢复生成配置；强制结束进程后先执行 `pnpm run generate`。浏览器测试会重建 `dist/`，发布前重新运行 `pnpm run build`。
 
-编辑器本地开发：在当前终端设置 `UPTIMEPAGE_CONFIG_EDITOR=true` 后运行 `pnpm run dev`，访问 `http://127.0.0.1:5173/?configeditor=on`。默认不编译；`verify:public-build` 会分别构建关闭 / 开启两种产物，检查默认产物无编辑器、两种产物均不泄露部署的服务端配置。
+真实部署验收使用 `UPTIMEPAGE_PREVIEW_URL`，见[部署验证](deployment.md#部署验证)。CI 不访问真实来源。
 
-单元和浏览器测试固定使用 `config/default.json`，不依赖实际站点的分组名；结束后恢复原生成配置，测试失败也会恢复。生产构建仍按[配置优先级](configuration.md#配置文件)读取实际配置。浏览器测试会构建演示测试所需的静态产物，发布前运行 `pnpm run build` 生成实际站点产物。
+## 维护入口
 
-正常取消测试会先结束子进程、还原配置；强制结束进程或断电无法保证恢复，之后先运行 `pnpm run generate`。
+| 路径                                                              | 职责                                          |
+| ----------------------------------------------------------------- | --------------------------------------------- |
+| `src/features/`、`src/components/`                                | 页面、交互和共用组件                          |
+| `src/features/editor/`                                            | 可选编辑器、内存草稿和 mock                   |
+| `src/shared/`                                                     | 前后端契约与响应校验                          |
+| `src/server/`                                                     | 来源适配、公开范围、缓存和脱敏诊断            |
+| `cloud-functions/api/v1/[[default]].ts`                           | 云函数 API 入口                               |
+| `edge-functions/_uptimepage/cache.ts`                             | 签名缓存桥、节点缓存和 KV                     |
+| `config/schema.ts`、`scripts/build-config.ts`                     | 配置校验、公私拆分和构建元数据                |
+| `tests/unit/`、`tests/e2e/`、`tests/editor/`、`tests/deployment/` | 单元 / 集成、本地浏览器、编辑器和真实部署验收 |
 
-## 代码入口
+浏览器只导入 `.generated/public-config.ts`；`.generated/server-config.ts` 仅用于函数。生成物、密钥、`.env`、`*.local.json` 不提交；部署配置使用 `config/site.json`。
 
-| 路径                                          | 职责                        |
-| --------------------------------------------- | --------------------------- |
-| `src/features/`                               | 页面和交互                  |
-| `src/features/editor/`                        | 可选工作台、内存草稿与 mock |
-| `src/shared/`                                 | 前后端契约与响应校验        |
-| `src/server/`                                 | 来源适配、公开范围、缓存    |
-| `src/server/certificates.ts`                  | 来源证书到期时间与能力映射  |
-| `cloud-functions/api/v1/[[default]].ts`       | EO 云函数 API 入口          |
-| `edge-functions/_uptimepage/cache.ts`         | 签名缓存桥、节点缓存与 KV   |
-| `config/schema.ts`、`scripts/build-config.ts` | 配置校验与公私拆分          |
-| `scripts/verify-deployment.ts`                | HTTP 部署验收               |
-| `tests/unit/`、`tests/e2e/`、`tests/editor/`  | 单元 / 集成测试、浏览器回归 |
+新增异步内容应沿用 `MonitorCard` / `MonitorLayout` 及 `AnimatedHeight`，使加载与正常态保留同一布局容器，并遵循减少动画偏好。新增来源或调整缓存时同步[数据契约](data-api.md)，尤其是公开范围、时间口径和故障回退。
 
-浏览器只能导入 `.generated/public-config.ts`；服务端配置在 `.generated/server-config.ts`。不要提交生成物、密钥、`.env` 或 `*.local.json`；实际部署配置使用可提交的 `config/site.json`。
-
-加载态与正常态共用 `MonitorCard` / `MonitorLayout`，切换内容时保留卡片和 `AnimatedHeight` 容器。新增异步内容也应放入同一容器内，避免整体替换导致高度跳变；减少动画偏好会关闭过渡。分组数量仅观察已有查询缓存，不预取未访问分组。
-
-CI 在 `master` 推送、PR 和手动触发时执行上述检查，浏览器失败产物保留 7 天。Dependabot 每日检查 pnpm 依赖、每周检查 Actions；React / React DOM 成组更新。配置见 `.github/`。
+CI 在 `master` 推送、PR 和手动触发时执行格式、类型、单测、构建隔离、浏览器回归和依赖审计；失败产物保留 7 天。Dependabot 每日检查 pnpm 依赖、每周检查 Actions，React / React DOM 成组更新。配置见 `.github/`。

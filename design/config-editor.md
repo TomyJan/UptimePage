@@ -1,6 +1,8 @@
-# 配置编辑器原型
+# 配置编辑器设计
 
 浮动方案已于 2026-10-22 确认，作为正式开发的交互基准。[原型](prototypes/config-editor-floating.html) 可直接打开；[原独立页方案](prototypes/config-editor-standalone.html) 保留供对比。
+
+正式编辑器已实现；入口、开关和使用限制见[配置文档](../docs/configuration.md#可视化编辑器)。以下记录已确认的交互与原型边界。
 
 ## 正式实现约束
 
@@ -24,19 +26,19 @@
 
 ## 字段
 
-| 位置 | 内容 |
-| --- | --- |
-| 网站 | `name`、`logo`、导航 `label` / `href` / `newTab`、`footer`、`refreshIntervalSeconds`、`pinAbnormal` |
-| 分组与来源 | 大分组 `id` / `name` / `logo`；来源类型、`apiKeyEnv`，以及 Peekaping 的 `baseUrl` |
-| 子分组 | 独立的 `id` / `name` / `logo`；Peekaping 的 `slug` 或 UptimeRobot 的 `monitorIds`（含 `*`），可选 `order` |
-| 监控显示 | 以监控 ID 为键的 `name` / `logo` / `description` 覆盖 |
-| 缓存 | 可选 `cache.kvBinding` |
+| 位置       | 内容                                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------- |
+| 网站       | `name`、`logo`、导航 `label` / `href` / `newTab`、`footer`、`refreshIntervalSeconds`、`pinAbnormal`       |
+| 分组与来源 | 大分组 `id` / `name` / `logo`；来源类型、`apiKeyEnv`，以及 Peekaping 的 `baseUrl`                         |
+| 子分组     | 独立的 `id` / `name` / `logo`；Peekaping 的 `slug` 或 UptimeRobot 的 `monitorIds`（含 `*`），可选 `order` |
+| 监控显示   | 以监控 ID 为键的 `name` / `logo` / `description` 覆盖                                                     |
+| 缓存       | 可选 `cache.kvBinding`                                                                                    |
 
 导航、大分组、子分组支持增删与上下移动。“全部”自动合并，不另配；覆盖显示不扩大公开范围。来源切换会重置子分组选择规则，原型会提示。
 
 ## 边界
 
-原型内嵌了当前 `config/schema.ts` 的校验快照和 Zod，仅用于离线设计验证；正式实现应直接复用配置校验，不维护第二份规则。原型含 Zod 的 MIT 许可声明。
+原型内嵌了 `config/schema.ts` 的校验快照和 Zod，仅用于离线设计验证；正式实现直接复用配置校验，不维护第二份规则。原型含 Zod 的 MIT 许可声明。
 
 预览不查询上游。Peekaping 的模拟分组按示例顺序分配监控，不能用于验证真实状态页成员；本地 Logo 用字母标记代替。详情页图表用于展示布局，不代表真实历史。
 

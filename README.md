@@ -1,23 +1,27 @@
 # UptimePage
 
-面向 EdgeOne Makers 的公开监控状态页，支持 Peekaping 和 UptimeRobot。本站负责展示，上游负责检查和告警。
+部署在 EdgeOne Makers 的公开监控状态页，聚合 Peekaping 和 UptimeRobot。监控检查与告警由上游负责。
 
-- 多来源、两级分组、独立监控详情。
-- 简体中文 / 英文、时区、深浅色、自动 / 手动刷新。
-- 状态历史、响应曲线、可用率和事件；节点缓存，可选 KV。
-- 可选[配置编辑器](docs/configuration.md#可选配置编辑器)，表单 / JSON 编辑并实时预览，默认不编译。
+[在线状态页](https://status.tomys.top/) · [可视化配置编辑器](https://status.tomys.top/?configeditor=on)
+
+- 多来源、两级分组、搜索与独立监控详情。
+- 24 小时 / 7 天 / 30 天历史、响应曲线、可用率、事件及来源提供的证书信息。
+- 简中 / 英文、时区、深浅色、自动刷新；实例缓存、节点缓存和可选 KV。
+- 可选编译的配置编辑器，表单 / JSON 双向编辑，实时模拟预览与导入导出。
+
+历史与证书能力取决于来源套餐和保留期，缺失数据不补造。
 
 ## 部署
 
-1. 复制 [config/default.json](config/default.json) 为 `config/site.json`，填写实际配置，提交并推送。
-2. 在 EdgeOne Makers 导入仓库，在项目环境变量中设置来源 API Key。
-3. 重新部署并检查真实数据。构建设置已写在 `edgeone.json`，使用 `site.json` 无需额外设置配置路径。
+1. Fork 仓库，在[编辑器](https://status.tomys.top/?configeditor=on)中生成配置，或参考 [config/default.json](config/default.json)。将完整配置保存为 `config/site.json` 并提交。
+2. 在 EdgeOne Makers 导入仓库，使用仓库根目录及 `edgeone.json` 中的构建设置。
+3. 在函数环境变量中设置配置的 `apiKeyEnv` 所引用的 API Key，部署后核对真实数据。
 
-完整步骤见[部署指南](docs/deployment.md)，字段见[配置说明](docs/configuration.md)。没有 `site.json` 时会回退默认配置；默认地址和监控 ID 是占位值，不能直接用于生产。API Key 不写进 JSON。
+配置中只填密钥变量名，不填密钥值。默认配置含占位地址和 ID，不能直接用于生产。部署包含静态资源、云函数及边缘缓存函数，不能只上传 `dist/`。
 
-详情支持 24 小时、7 天、30 天及来源提供的证书到期时间。Peekaping 使用鉴权统计接口，UptimeRobot 历史与证书能力受套餐限制。缺失数据显示 `—`，不补造历史。上线验收进度见[验证状态](docs/production-review.md)。
+[部署与环境变量](docs/deployment.md) · [配置字段与 KV](docs/configuration.md) · [排错](docs/troubleshooting.md)
 
-## 本地演示
+## 本地预览
 
 使用 `package.json` 声明的 Node.js 和 pnpm 版本：
 
@@ -27,10 +31,13 @@ pnpm install --frozen-lockfile
 pnpm run dev:demo
 ```
 
-演示使用模拟数据；生产构建调用本站 API，不包含演示代码。
+演示使用模拟数据；本地编辑器和真实数据联调见[开发文档](docs/development.md)。
 
 ## 文档
 
-[开发与测试](docs/development.md) · [数据与接口](docs/data-api.md) · [需求与架构](docs/superpowers/specs/2026-10-20-uptimepage-foundation-design.md) · [页面规格与原型](design/README.md)
+- [数据、来源能力与 HTTP API](docs/data-api.md)
+- [开发与测试](docs/development.md)
+- [发布检查](docs/production-review.md)
+- [设计与原型](design/README.md)
 
-`master` 是重写版本，`legacy` 保留旧实现。许可证：[MPL-2.0](LICENSE)。
+`master` 为当前版本，`legacy` 保留旧实现。许可证：[MPL-2.0](LICENSE)。
