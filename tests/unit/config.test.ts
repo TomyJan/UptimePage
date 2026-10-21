@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseConfig, splitConfig } from '../../config/schema.ts';
 const fixture = () => ({
-  site: { name: 'Test', refreshIntervalSeconds: 60 },
+  site: { name: 'Test', nav: [], refreshIntervalSeconds: 60 },
   groups: [
     {
       id: 'core',
@@ -28,6 +28,13 @@ const fixture = () => ({
   ],
 });
 describe('configuration boundary', () => {
+  it('keeps the optional new-tab setting for public navigation links', () => {
+    const f: any = fixture();
+    f.site.nav = [{ label: 'Blog', href: 'https://example.test', newTab: true }];
+    expect(splitConfig(parseConfig(f), 'version').publicConfig.site.nav).toEqual([
+      { label: 'Blog', href: 'https://example.test', newTab: true },
+    ]);
+  });
   it('splits private connection and selection fields from static public output', () => {
     const result = splitConfig(parseConfig(fixture()), 'version');
     expect(JSON.stringify(result.publicConfig)).not.toMatch(

@@ -3,8 +3,12 @@
   "site": {
     "name": "TomyJan 服务状态",
     "nav": [
-      { "label": { "en": "Home", "zh-CN": "首页" }, "href": "https://vov.moe" },
-      { "label": { "en": "Blog", "zh-CN": "博客" }, "href": "https://blog.tomys.top" }
+      { "label": { "en": "Home", "zh-CN": "首页" }, "href": "https://vov.moe", "newTab": true },
+      {
+        "label": { "en": "Blog", "zh-CN": "博客" },
+        "href": "https://blog.tomys.top",
+        "newTab": true
+      }
     ],
     "footer": "",
     "refreshIntervalSeconds": 60,

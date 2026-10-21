@@ -64,7 +64,12 @@ export function App() {
           </TransitionLink>
           <div className="nav-links">
             {publicConfig.site.nav.map((item) => (
-              <a key={item.href} href={item.href}>
+              <a
+                key={item.href}
+                href={item.href}
+                target={item.newTab ? '_blank' : undefined}
+                rel={item.newTab ? 'noreferrer' : undefined}
+              >
                 {localize(item.label, locale)}
               </a>
             ))}

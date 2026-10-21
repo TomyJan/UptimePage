@@ -16,7 +16,7 @@ export interface PublicConfig {
   site: {
     name: LocalizedText;
     logo: string | null;
-    nav: { label: LocalizedText; href: string }[];
+    nav: { label: LocalizedText; href: string; newTab: boolean }[];
     footer: LocalizedText | '';
     refreshIntervalSeconds: number;
     pinAbnormal: boolean;

@@ -60,7 +60,15 @@ const schema = z
         name: localizedTextSchema,
         logo,
         nav: z
-          .array(z.object({ label: localizedTextSchema, href: publicUrl }).strict())
+          .array(
+            z
+              .object({
+                label: localizedTextSchema,
+                href: publicUrl,
+                newTab: z.boolean().default(false),
+              })
+              .strict(),
+          )
           .default([]),
         footer: footerText,
         refreshIntervalSeconds: z.number().int().nonnegative().default(60),
