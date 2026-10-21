@@ -137,12 +137,20 @@ export function MetricGrid({
             t('unsupported')
           ) : days === null ? (
             '—'
+          ) : Date.parse(d.certificateExpiresAt!) <= Date.now() ? (
+            t('expired')
           ) : (
             `${days} ${t('days')}`
           )}
         </strong>
         {d && days === null && d.capabilities.certificate !== 'unsupported' && (
           <span className="metric-note">{t('noData')}</span>
+        )}
+        {d && days !== null && (
+          <span className="metric-note">
+            {t('expiresAt')}{' '}
+            <time dateTime={d.certificateExpiresAt!}>{time(d.certificateExpiresAt, true)}</time>
+          </span>
         )}
       </MetricCard>
     </div>

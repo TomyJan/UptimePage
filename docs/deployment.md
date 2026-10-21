@@ -73,10 +73,10 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 | 配置构建失败                     | JSON 格式、错误指出的字段；实际配置损坏不会回退默认文件                                                         |
 | API 返回 HTML                    | 函数是否部署，路由是否被 SPA fallback 接管；只上传 `dist` 不够                                                  |
 | 获取失败 / 502                   | 函数能否读取密钥，来源地址、状态页权限和来源版本是否正确                                                        |
-| 545 / `Error return from script` | 边缘函数执行异常；日志官方仍在规划中，先查看脱敏诊断，记录时间、响应头 `X-NWS-LOG-UUID`（若有）及可用的平台指标 |
+| 545 / `Error return from script` | 平台执行异常；函数外中止无法捕获，查看脱敏诊断，记录时间、请求 ID 及 `X-NWS-LOG-UUID`（若有），核对平台调用记录 |
 | 429 / 限流                       | 来源额度和退避截止时间；失败 Toast 显示原因，旧数据及更新时间保留                                               |
 | 验收报配置版本不符 / 缺少资源    | 本地和部署的提交、配置、锁文件及构建变量是否一致                                                                |
-| 历史缺口 / 没有证书              | 来源保留时间、缺失采样和证书接口支持情况，见[数据口径](data-api.md#来源能力)                                    |
+| 历史缺口 / 没有证书              | 核对来源保留时间，以及 Peekaping TLS 接口 / UptimeRobot SSL 数据是否可用；没有返回值时不主动扫描监控目标        |
 | KV 未命中                        | 项目是否绑定命名空间、绑定变量名是否与 `cache.kvBinding` 一致、重新部署后是否生成 `uptimepage_` 记录            |
 
 ## 更新与回退

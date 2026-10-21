@@ -24,7 +24,7 @@ test('latest response and check timestamps include seconds, intervals use readab
     return route.fulfill({ json: d });
   });
   await page.goto('/services/core/m1');
-  await expect(page.locator('.detail-metrics time')).toHaveText(/11:59:37/);
+  await expect(page.locator('.detail-metrics > div').nth(1).locator('time')).toHaveText(/11:59:37/);
   await expect(page.locator('.facts')).toContainText('5 分钟');
   await expect(page.locator('.facts time')).toHaveText(/11:59:37/);
   for (const range of ['7d', '30d']) {

@@ -22,19 +22,12 @@ export async function mapConcurrent<T, R>(
   return result;
 }
 
-/** One upstream origin shares its connection budget across groups and visitors. */
-export function limitSourceFetch(fetcher: typeof fetch, limit = 16): typeof fetch {
-  const pools = new Map<string, { active: number; queue: Set<() => void> }>();
-  return async (input, init) => {
-    const origin = new URL(typeof input === 'string' || input instanceof URL ? input : input.url)
-      .origin;
-    let pool = pools.get(origin);
-    if (!pool) {
-      pool = { active: 0, queue: new Set() };
-      pools.set(origin, pool);
-    }
-    const state = pool;
-    const signal = init?.signal;
+export type TaskLimiter = <T>(work: () => Promise<T>, signal?: AbortSignal) => Promise<T>;
+
+/** Reserve a slot before starting work, including its timeout and body reads. */
+export function createTaskLimiter(limit = 16): TaskLimiter {
+  const state = { active: 0, queue: new Set<() => void>() };
+  return async (work, signal) => {
     signal?.throwIfAborted();
     await new Promise<void>((resolve, reject) => {
       const abort = () => {
@@ -54,6 +47,30 @@ export function limitSourceFetch(fetcher: typeof fetch, limit = 16): typeof fetc
     });
     try {
       signal?.throwIfAborted();
+      return await work();
+    } finally {
+      state.active--;
+      const next = state.queue.values().next().value;
+      if (next) {
+        state.queue.delete(next);
+        next();
+      }
+    }
+  };
+}
+
+/** One upstream origin shares its connection budget across groups and visitors. */
+export function limitSourceFetch(fetcher: typeof fetch, limit = 16): typeof fetch {
+  const pools = new Map<string, TaskLimiter>();
+  return async (input, init) => {
+    const origin = new URL(typeof input === 'string' || input instanceof URL ? input : input.url)
+      .origin;
+    let pool = pools.get(origin);
+    if (!pool) {
+      pool = createTaskLimiter(limit);
+      pools.set(origin, pool);
+    }
+    return pool(async () => {
       const response = await fetcher(input, init);
       if (!response.body) return response;
       if (!response.ok) {
@@ -70,13 +87,6 @@ export function limitSourceFetch(fetcher: typeof fetch, limit = 16): typeof fetc
         statusText: response.statusText,
         headers: response.headers,
       });
-    } finally {
-      state.active--;
-      const next = state.queue.values().next().value;
-      if (next) {
-        state.queue.delete(next);
-        next();
-      }
-    }
+    }, init?.signal ?? undefined);
   };
 }

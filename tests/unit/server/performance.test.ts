@@ -4,6 +4,7 @@ import type { GroupSnapshot } from '../../../src/shared/contracts.ts';
 import { config, memoryCache, now } from '../../fixtures/server.ts';
 import { LayeredResponseCache } from '../../../src/server/kv-cache.ts';
 import { protectedSource } from '../../fixtures/peekaping.ts';
+import { handleApi } from '../../../src/server/api.ts';
 
 afterEach(() => vi.useRealTimers());
 
@@ -115,11 +116,134 @@ it('promotes a shared cache hit so the next read needs no network request', asyn
   expect(reads).toBe(1);
 });
 
+it('keeps connection slots busy when statistics are much slower than latest heartbeats', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(now);
+  const ids = Array.from({ length: 40 }, (_, i) => String(i));
+  let active = 0,
+    peak = 0;
+  let result: GroupSnapshot | undefined;
+  const task = loadGroupSnapshot(
+    config(true),
+    'core',
+    { KEY: 'secret' },
+    async (input) => {
+      const url = new URL(String(input));
+      peak = Math.max(peak, ++active);
+      await new Promise((resolve) =>
+        setTimeout(resolve, url.pathname.endsWith('/stats/points') ? 500 : 20),
+      );
+      active--;
+      if (url.pathname.includes('/status-pages/'))
+        return Response.json({ data: ids.map((id) => ({ id })) });
+      if (url.pathname.endsWith('/batch'))
+        return Response.json({
+          data: ids.map((id) => ({ id, name: `Service ${id}`, status: 1, interval: 60 })),
+        });
+      if (url.pathname.endsWith('/stats/points'))
+        return Response.json({ data: { points: [], uptime: 100 } });
+      return Response.json({ data: [{ time: now.toISOString(), status: 1, ping: 42 }] });
+    },
+    now,
+  ).then((snapshot) => (result = snapshot));
+  await vi.advanceTimersByTimeAsync(1900);
+  const finished = Boolean(result);
+  await vi.runAllTimersAsync();
+  const snapshot = await task;
+  expect(snapshot.freshness).toBe('fresh');
+  expect(snapshot.monitors).toHaveLength(40);
+  expect(peak).toBeLessThanOrEqual(16);
+  expect(finished).toBe(true);
+});
+
+it('reads status cache while confirming membership rather than waiting for each network round trip', async () => {
+  const storage = memoryCache();
+  const source = protectedSource();
+  const request = new Request('https://site.test/api/v1/groups/core');
+  const runtime = {
+    config: config(true),
+    environment: { KEY: 'secret' },
+    now,
+    cache: storage,
+    fetcher: source,
+  };
+  expect((await handleApi(request, runtime)).status).toBe(200);
+  const delayed = {
+    async match(req: RequestInfo) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return storage.match(req);
+    },
+    put: storage.put,
+  };
+  let response: Response | undefined;
+  const task = handleApi(request, {
+    ...runtime,
+    cache: delayed,
+    membershipCache: delayed,
+    fetcher: async () => {
+      throw new Error('Fresh cache must not contact source');
+    },
+  }).then((value) => (response = value));
+  const finished = await Promise.race([
+    task.then(() => true),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 400)),
+  ]);
+  expect((await task).status).toBe(200);
+  expect((await response!.json()).freshness).toBe('fresh');
+  expect(finished).toBe(true);
+});
+
+it('does not spend the request timeout while waiting for this aggregation to schedule a slow healthy source', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(now);
+  const ids = Array.from({ length: 40 }, (_, i) => String(i));
+  let active = 0,
+    peak = 0;
+  const task = loadGroupSnapshot(
+    config(true),
+    'core',
+    { KEY: 'secret' },
+    async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes('/status-pages/'))
+        return Response.json({ data: ids.map((id) => ({ id })) });
+      if (url.pathname.endsWith('/batch'))
+        return Response.json({ data: ids.map((id) => ({ id, name: `Service ${id}`, status: 1 })) });
+      peak = Math.max(peak, ++active);
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(resolve, 2500);
+          init!.signal!.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(timer);
+              reject(new DOMException('Aborted', 'AbortError'));
+            },
+            { once: true },
+          );
+        });
+      } finally {
+        active--;
+      }
+      return url.pathname.endsWith('/stats/points')
+        ? Response.json({ data: { points: [], uptime: 100 } })
+        : Response.json({ data: [{ time: now.toISOString(), status: 1, ping: 42 }] });
+    },
+    now,
+  );
+  await vi.runAllTimersAsync();
+  const snapshot = await task;
+  expect(peak).toBeLessThanOrEqual(16);
+  expect(snapshot.freshness).toBe('fresh');
+  expect(snapshot.monitors.every((m) => m.freshness === 'fresh' && m.responseMs === 42)).toBe(true);
+});
+
 it('stops dispatching more homepage work when the source is timing out', async () => {
   vi.useFakeTimers();
   vi.setSystemTime(now);
   const ids = Array.from({ length: 40 }, (_, i) => String(i));
   let checks = 0;
+  const queriedMonitors = new Set<string>();
   let result: GroupSnapshot | undefined;
   const task = loadGroupSnapshot(
     config(true),
@@ -132,6 +256,7 @@ it('stops dispatching more homepage work when the source is timing out', async (
       if (url.pathname.endsWith('/batch'))
         return Response.json({ data: ids.map((id) => ({ id, name: `Service ${id}`, status: 1 })) });
       checks++;
+      queriedMonitors.add(url.pathname.split('/')[4]);
       return new Promise<Response>((_, reject) => {
         init!.signal!.addEventListener(
           'abort',
@@ -153,5 +278,6 @@ it('stops dispatching more homepage work when the source is timing out', async (
   expect(body.monitors).toHaveLength(40);
   expect(body.subgroupErrors.every((error) => error.diagnostic?.reason === 'timeout')).toBe(true);
   expect(finishedOnTime).toBe(true);
-  expect(checks).toBeLessThanOrEqual(16);
+  expect(checks).toBeLessThanOrEqual(32);
+  expect(queriedMonitors.size).toBeLessThanOrEqual(16);
 });

@@ -22,6 +22,7 @@ import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizeUptimeRobotMonitor } from './sources/normalize.ts';
 import { requireSecret } from './config.ts';
 import { RequestTiming } from './timing.ts';
+import { fetchPeekapingCertificate, parseUptimeRobotCertificate } from './certificates.ts';
 
 export type ApiRuntime = {
   config: ServerConfig;
@@ -197,6 +198,16 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   // upstream requests and old per-monitor entries cannot bypass membership.
   const key = new Request(`${url.origin}/api/v1/groups/${encodeURIComponent(group.id)}`);
   const now = runtime.now ?? new Date();
+  // Start storage reads before membership I/O. Records carry the membership
+  // generation internally and are never used until authorization is confirmed.
+  const cacheVersion = `${runtime.config.configVersion}-home-v4`;
+  const detailKey = new Request(
+    `${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}/ranges/${range}`,
+  );
+  const snapshotRead = readCache(runtime.cache, key, cacheVersion).catch(() => null);
+  const detailRead = isDetail
+    ? readCache(runtime.cache, detailKey, cacheVersion).catch(() => null)
+    : Promise.resolve(null);
   const sourceCredential = runtime.environment[group.source.apiKeyEnv];
   let membership: PeekapingMembership | undefined;
   try {
@@ -236,7 +247,17 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         (b) => b.toString(16).padStart(2, '0'),
       ).join('')
     : '';
-  const cacheVersion: string = `${runtime.config.configVersion}-home-v3-${membershipDigest}`;
+  const flightVersion = `${cacheVersion}:${membershipDigest}`;
+  function serializeCached(value: object) {
+    return JSON.stringify({ ...value, cacheMembership: membershipDigest });
+  }
+  async function cachedPayload(entry: Response | undefined | null) {
+    if (!entry) return null;
+    const value = await entry.json();
+    return value && typeof value === 'object' && value.cacheMembership === membershipDigest
+      ? value
+      : null;
+  }
   if (
     isDetail &&
     membership &&
@@ -254,7 +275,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   function coalesce<T>(
     route: string,
     load: () => Promise<T>,
-    version: string = cacheVersion,
+    version: string = flightVersion,
   ): Promise<T> {
     const pending = runtime.inFlight;
     if (!pending) return load();
@@ -278,14 +299,11 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const snapshotKey = isDetail ? new Request(`${key.url}/base`) : key;
   let cached: GroupSnapshot | null = null;
   let cachedDetail: MonitorDetail | null = null;
-  const detailKey = new Request(
-    `${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}/ranges/${range}`,
-  );
   if (isDetail) {
     try {
-      const entry = await readCache(runtime.cache, detailKey, cacheVersion);
-      if (entry) {
-        const parsed = monitorDetailSchema.safeParse(await entry.json());
+      const value = await cachedPayload(await detailRead);
+      if (value) {
+        const parsed = monitorDetailSchema.safeParse(value);
         if (
           parsed.success &&
           parsed.data.configVersion === runtime.config.configVersion &&
@@ -304,14 +322,12 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   try {
     // A fresh full homepage also supplies identity/authorization metadata for details.
     // A cold detail loads metadata only; it must never fetch every monitor's history.
-    let entry = await readCache(runtime.cache, key, cacheVersion);
-    if (isDetail && entry) {
-      const body = await entry.clone().json();
-      if (now.getTime() - Date.parse(body.fetchedAt) >= freshMs) entry = undefined;
-    }
-    if (!entry && isDetail) entry = await readCache(runtime.cache, snapshotKey, cacheVersion);
-    if (entry) {
-      const parsed = groupSnapshotSchema.safeParse(await entry.json());
+    let value = await cachedPayload(await snapshotRead);
+    if (isDetail && value && now.getTime() - Date.parse(value.fetchedAt) >= freshMs) value = null;
+    if (!value && isDetail)
+      value = await cachedPayload(await readCache(runtime.cache, snapshotKey, cacheVersion));
+    if (value) {
+      const parsed = groupSnapshotSchema.safeParse(value);
       if (
         parsed.success &&
         parsed.data.configVersion === runtime.config.configVersion &&
@@ -343,7 +359,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           ),
         );
         if (loaded.freshness === 'fresh') {
-          const stored = new Response(JSON.stringify(loaded), {
+          const stored = new Response(serializeCached(loaded), {
             headers: {
               'content-type': 'application/json',
               'cache-control': `public, max-age=${retainMs / 1000}`,
@@ -389,6 +405,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             runtime.fetcher,
             {
               includeDetails: true,
+              includeCertificate: true,
               uptimeDays: rangeDays(range),
               ...(range === '24h' ? {} : { responseTimesAverage: range === '7d' ? 30 : 60 }),
               startDate: Math.floor((now.getTime() - rangeMilliseconds(range)) / 1000),
@@ -417,7 +434,8 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             );
             let rawDetail: MonitorDetail | null = null;
             try {
-              const parsed = entry && monitorDetailSchema.safeParse(await entry.json());
+              const value = await cachedPayload(entry);
+              const parsed = value && monitorDetailSchema.safeParse(value);
               if (
                 parsed &&
                 parsed.success &&
@@ -467,6 +485,9 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             range,
           )!;
           detail.monitor.uptime24h = member.uptime24h;
+          const certificate = parseUptimeRobotCertificate(record);
+          detail.certificateExpiresAt = certificate.certificateExpiresAt;
+          detail.capabilities.certificate = certificate.capability;
           detail.capabilities.events = Array.isArray((record as Record<string, unknown>).logs)
             ? 'available'
             : 'unavailable';
@@ -474,7 +495,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             runtime.cache,
             detailKey,
             cacheVersion,
-            new Response(JSON.stringify(detail), {
+            new Response(serializeCached(detail), {
               headers: {
                 'content-type': 'application/json',
                 'cache-control': `public, max-age=${retainMs / 1000}`,
@@ -488,14 +509,16 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     }
     const detail = await timed('detail', () =>
       coalesce(detailKey.url, async () => {
-        const result = await fetchPeekapingHistory(
-          group.source.type === 'peekaping' ? group.source.baseUrl : '',
-          member,
-          requireSecret(runtime.environment, group.source.apiKeyEnv),
-          now,
-          runtime.fetcher,
-          range,
-        );
+        const baseUrl = group.source.type === 'peekaping' ? group.source.baseUrl : '';
+        const apiKey = requireSecret(runtime.environment, group.source.apiKeyEnv);
+        const controller = new AbortController();
+        const [result, certificate] = await Promise.all([
+          fetchPeekapingHistory(baseUrl, member, apiKey, now, runtime.fetcher, range),
+          fetchPeekapingCertificate(baseUrl, member.id, apiKey, runtime.fetcher, controller.signal),
+        ]).catch((error) => {
+          controller.abort();
+          throw error;
+        });
         const detail = detailFromSnapshot(
           { ...snapshot, fetchedAt: now.toISOString(), monitors: [result.monitor] },
           member.id,
@@ -512,12 +535,14 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         // Incident boundaries come from authenticated status transitions, never stat buckets.
         detail.events = result.events;
         detail.capabilities.events = 'available';
+        detail.certificateExpiresAt = certificate.certificateExpiresAt;
+        detail.capabilities.certificate = certificate.capability;
         if (detail.monitor.freshness === 'fresh')
           await writeCache(
             runtime.cache,
             detailKey,
             cacheVersion,
-            new Response(JSON.stringify(detail), {
+            new Response(serializeCached(detail), {
               headers: {
                 'content-type': 'application/json',
                 'cache-control': `public, max-age=${retainMs / 1000}`,

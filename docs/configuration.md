@@ -17,13 +17,15 @@
 | `name`                   | 网站名称，必填                                                                |
 | `logo`                   | Logo 路径或 HTTPS 地址，可省略                                                |
 | `nav`                    | 导航链接数组，如 `[{"label":"Blog","href":"https://example.com"}]`，默认 `[]` |
-| `footer`                 | 页脚右侧纯文本，默认空；不解析 HTML / Markdown                                |
+| `footer`                 | 页脚右侧内容，默认空；支持 HTTPS 链接写法，其余按纯文本显示                   |
 | `refreshIntervalSeconds` | 默认刷新间隔，非负整数，默认 `60`；`0` 仅手动                                 |
 | `pinAbnormal`            | 默认异常优先，默认 `false`                                                    |
 
 名称、导航文字、页脚和监控描述支持普通字符串，或 `{"en":"Services","zh-CN":"服务"}`；多语言对象必须有英文。Logo 和链接可用 `/logo.svg` 这样的站内路径，本地文件放在 `public/`；外部地址使用 HTTPS。
 
 页脚左侧固定为 `Powered by UptimePage 短hash | TomyJan`，不由 `footer` 覆盖。hash 构建时取 Git 提交；归档构建可用 `UPTIMEPAGE_COMMIT` 指定完整提交 hash，未提供提交信息时显示 `dev`。
+
+`footer` 可写 `版权所有 [我的博客](https://example.com)`；仅解析这种 HTTPS 链接，不解析 HTML 或完整 Markdown。
 
 访客的语言、时区、外观和刷新偏好保存在各自浏览器。自动语言不匹配时回退英文，时区获取失败时回退 UTC，外观跟随系统；手动偏好优先。
 

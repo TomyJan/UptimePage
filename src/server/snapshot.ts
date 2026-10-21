@@ -17,6 +17,7 @@ import { fetchPeekapingBatch, fetchPeekapingHistory } from './sources/peekaping.
 import { loadPeekapingMembership, type PeekapingMembership } from './peekaping-membership.ts';
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizePeekapingMonitor, normalizeUptimeRobotMonitor } from './sources/normalize.ts';
+import { createTaskLimiter } from './concurrency.ts';
 
 export class PublicGroupNotFoundError extends Error {
   constructor() {
@@ -113,11 +114,15 @@ export async function loadGroupSnapshot(
       monitors.clear();
       for (const monitor of ordered) monitors.set(monitor.id, monitor);
       if (includeHomeData) {
+        // Queue before starting request timers, keeping all connection slots
+        // useful without making slow healthy requests time out in our own queue.
+        const scheduleRequest = createTaskLimiter(16);
+        const stop = new AbortController();
         let next = 0;
         let limited: SourceRequestError | undefined;
         const errors = new Map(subgroupErrors.map((e) => [e.subgroupId, e]));
         await Promise.all(
-          Array.from({ length: Math.min(8, ordered.length) }, async () => {
+          Array.from({ length: Math.min(16, ordered.length) }, async () => {
             for (let index = next++; index < ordered.length; index = next++) {
               const monitor = ordered[index];
               try {
@@ -130,6 +135,8 @@ export async function loadGroupSnapshot(
                   fetcher,
                   '24h',
                   'home',
+                  scheduleRequest,
+                  stop.signal,
                 );
                 monitors.set(monitor.id, monitorSummarySchema.parse(result.monitor));
               } catch (error) {
@@ -138,13 +145,16 @@ export async function loadGroupSnapshot(
                   revokedMonitorIds.push(monitor.id);
                   continue;
                 }
+                error = limited ?? error;
                 if (
                   error instanceof SourceRequestError &&
                   (error.status === 429 ||
                     error.diagnostic.reason === 'timeout' ||
                     error.diagnostic.reason === 'network')
-                )
+                ) {
                   limited = error;
+                  stop.abort(error);
+                }
                 monitors.set(monitor.id, { ...monitor, freshness: 'unavailable' });
                 for (const subgroupId of monitor.subgroupIds) {
                   const previous = errors.get(subgroupId);

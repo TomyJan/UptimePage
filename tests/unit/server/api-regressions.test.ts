@@ -185,3 +185,64 @@ it('does not retain a removed Peekaping detail in a separate cache entry', async
     ).status,
   ).toBe(404);
 });
+
+it('does not reuse a fresh snapshot after membership has been renewed, even if IDs are unchanged', async () => {
+  const storage = memoryCache();
+  const source = protectedSource();
+  const runtime = {
+    config: config(true),
+    environment: { KEY: 'secret' },
+    cache: storage,
+    now,
+    fetcher: source,
+  };
+  const request = new Request('https://site.test/api/v1/groups/core');
+  expect((await handleApi(request, runtime)).status).toBe(200);
+  let batchCalls = 0;
+  const next = new Date(now.getTime() + 1000);
+  const response = await handleApi(request, {
+    ...runtime,
+    now: next,
+    membershipCache: { match: async () => undefined, put: async () => {} },
+    fetcher: async (input, init) => {
+      if (String(input).includes('/batch?')) batchCalls++;
+      return source(input, init);
+    },
+  });
+  expect(response.status).toBe(200);
+  expect((await response.json()).fetchedAt).toBe(next.toISOString());
+  expect(batchCalls).toBe(1);
+});
+
+it('rejects a cache record with the wrong membership binding and keeps the binding out of public JSON', async () => {
+  const storage = memoryCache();
+  const runtime = {
+    config: config(true),
+    environment: { KEY: 'secret' },
+    cache: storage,
+    now,
+    fetcher: protectedSource(),
+  };
+  const request = new Request('https://site.test/api/v1/groups/core');
+  const response = await handleApi(request, runtime);
+  expect(response.status).toBe(200);
+  expect(await response.text()).not.toContain('cacheMembership');
+  const invalidCache = {
+    async match(req: RequestInfo) {
+      const entry = await storage.match(req);
+      if (!entry || !new Request(req).url.includes('/api/v1/groups/')) return entry;
+      const value = await entry.json();
+      return Response.json({ ...value, cacheMembership: 'wrong' });
+    },
+    put: storage.put,
+  };
+  expect(
+    (
+      await handleApi(request, {
+        ...runtime,
+        cache: invalidCache,
+        fetcher: async () => new Response('', { status: 503 }),
+      })
+    ).status,
+  ).toBe(502);
+});

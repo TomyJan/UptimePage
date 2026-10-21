@@ -39,8 +39,9 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 | `src/features/`                               | 页面和交互                  |
 | `src/shared/`                                 | 前后端契约与响应校验        |
 | `src/server/`                                 | 来源适配、公开范围、缓存    |
-| `cloud-functions/api/v1/[[default]].ts`        | EO 云函数 API 入口          |
-| `edge-functions/_uptimepage/cache.ts`        | 签名缓存桥、节点缓存与 KV  |
+| `src/server/certificates.ts`                  | 来源证书到期时间与能力映射  |
+| `cloud-functions/api/v1/[[default]].ts`       | EO 云函数 API 入口          |
+| `edge-functions/_uptimepage/cache.ts`         | 签名缓存桥、节点缓存与 KV   |
 | `config/schema.ts`、`scripts/build-config.ts` | 配置校验与公私拆分          |
 | `scripts/verify-deployment.ts`                | HTTP 部署验收               |
 | `tests/unit/`、`tests/e2e/`                   | 单元 / 集成测试、浏览器回归 |

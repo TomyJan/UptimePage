@@ -2,7 +2,7 @@ import { rangeMilliseconds } from '../../shared/ranges.ts';
 import type { Range } from '../../shared/contracts.ts';
 import type { HistoryBucket, MonitorSummary, MonitorDetail } from '../../shared/contracts.ts';
 import { SourceRequestError, requestJson, type JsonFetcher } from './http.ts';
-import { mapConcurrent } from '../concurrency.ts';
+import { mapConcurrent, type TaskLimiter } from '../concurrency.ts';
 
 const requestTimeoutMs = 4000;
 
@@ -70,6 +70,8 @@ export async function fetchPeekapingHistory(
   fetcher: JsonFetcher = fetch,
   range: Range = '24h',
   purpose: 'home' | 'detail' = 'detail',
+  schedule: TaskLimiter = (work) => work(),
+  signal?: AbortSignal,
 ) {
   const end = until.getTime(),
     start = end - rangeMilliseconds(range);
@@ -80,22 +82,24 @@ export async function fetchPeekapingHistory(
     granularity: purpose === 'home' || range !== '24h' ? 'hour' : 'minute',
   });
   const controller = new AbortController();
+  const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+  const request = (suffix: string) =>
+    schedule(
+      () =>
+        requestJson(
+          fetcher,
+          sourceUrl(baseUrl, `${path}/${suffix}`),
+          auth(apiKey, requestSignal),
+          requestTimeoutMs,
+        ),
+      requestSignal,
+    );
   const [raw, latest, events] = await Promise.all([
-    requestJson(
-      fetcher,
-      sourceUrl(baseUrl, `${path}/stats/points?${query}`),
-      auth(apiKey, controller.signal),
-      requestTimeoutMs,
-    ).then(peekapingData),
-    requestJson(
-      fetcher,
-      sourceUrl(baseUrl, `${path}/heartbeats?limit=1&page=0`),
-      auth(apiKey, controller.signal),
-      requestTimeoutMs,
-    ).then(peekapingData),
+    request(`stats/points?${query}`).then(peekapingData),
+    request('heartbeats?limit=1&page=0').then(peekapingData),
     purpose === 'home'
       ? Promise.resolve([])
-      : fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range, controller.signal),
+      : fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range, requestSignal),
   ]).catch((error) => {
     controller.abort();
     throw error;

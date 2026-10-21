@@ -63,6 +63,7 @@ function upstream() {
     if (url.includes('/stats/points?'))
       return Response.json({ data: { points: [], avgPing: null, uptime: null } });
     if (url.includes('/heartbeats?')) return Response.json({ data: [] });
+    if (url.endsWith('/tls')) return Response.json({ data: null });
     expect(url).toMatch(
       /^https:\/\/source.test\/api\/v1\/status-pages\/slug\/(one|two)\/monitors$/,
     );
@@ -119,7 +120,7 @@ it.each(['lost', 'hung'])('recovers from KV when the node cache is %s', async (m
   expect((await onRequest({ request: request(), env })).status).toBe(200);
   expect(entries.size).toBe(3);
   expect((await onRequest({ request: request('/monitors/1'), env })).status).toBe(200);
-  expect(calls()).toBe(8);
+  expect(calls()).toBe(9);
   vi.stubGlobal('caches', {
     default:
       mode === 'hung' ? { match: () => new Promise(() => {}), put: async () => {} } : memoryCache(),
@@ -233,5 +234,5 @@ it('ignores failed cache and KV services and continues to the real source adapte
   const response = await onRequest({ request: request('/monitors/1'), env });
   expect(response.status).toBe(200);
   expect((await response.json()).monitor).toMatchObject({ id: '1', freshness: 'fresh' });
-  expect(calls()).toBe(6);
+  expect(calls()).toBe(7);
 });

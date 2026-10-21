@@ -134,6 +134,7 @@ for (const count of [50, 200])
 
 it('stops scheduling homepage checks after a rate limit and preserves its safe deadline', async () => {
   let queries = 0;
+  const monitors = new Set<string>();
   const response = await handleApi(new Request('https://site.test/api/v1/groups/core'), {
     config: config(true),
     environment: { KEY: 'secret' },
@@ -148,6 +149,7 @@ it('stops scheduling homepage checks after a rate limit and preserves its safe d
       if (url.pathname.includes('/status-pages/') || url.pathname.endsWith('/batch'))
         return Response.json({ data });
       queries++;
+      monitors.add(url.pathname.split('/')[4]);
       return new Response('', {
         status: 429,
         headers: { 'retry-after': 'Wed, 21 Oct 2026 12:10:00 GMT' },
@@ -155,7 +157,8 @@ it('stops scheduling homepage checks after a rate limit and preserves its safe d
     },
   });
   const body = await response.json();
-  expect(queries).toBeLessThanOrEqual(16);
+  expect(queries).toBeLessThanOrEqual(32);
+  expect(monitors.size).toBeLessThanOrEqual(16);
   expect(
     body.subgroupErrors.every(
       (e: { code: string; retryAt: string }) =>

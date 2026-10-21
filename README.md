@@ -14,7 +14,7 @@
 
 完整步骤见[部署指南](docs/deployment.md)，字段见[配置说明](docs/configuration.md)。没有 `site.json` 时会回退默认配置；默认地址和监控 ID 是占位值，不能直接用于生产。API Key 不写进 JSON。
 
-详情支持 24 小时、7 天、30 天；Peekaping 使用鉴权统计接口，UptimeRobot 历史受套餐限制。证书未接入。缺失数据显示 `—`，不补造历史。上线验收进度见[验证状态](docs/production-review.md)。
+详情支持 24 小时、7 天、30 天及来源提供的证书到期时间。Peekaping 使用鉴权统计接口，UptimeRobot 历史与证书能力受套餐限制。缺失数据显示 `—`，不补造历史。上线验收进度见[验证状态](docs/production-review.md)。
 
 ## 本地演示
 

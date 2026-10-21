@@ -20,6 +20,8 @@ export type UptimeRobotRequestOptions = {
   responseTimesAverage?: number;
   uptimeDays?: number | null;
   latestOnly?: boolean;
+  /** Optional certificate metadata, requested only with the main detail window. */
+  includeCertificate?: boolean;
   /** Internal boundary lookup: recent transitions only, no response samples. */
   boundaryLogsLimit?: number;
 };
@@ -70,6 +72,7 @@ export async function fetchUptimeRobotMonitors(
         responseTimesStartDate: from,
         includeLogs: false,
         uptimeDays: null,
+        includeCertificate: false,
       });
       if (
         older.length !== selectedIds.length ||
@@ -110,6 +113,7 @@ export async function fetchUptimeRobotMonitors(
     if (options.uptimeDays !== null)
       body.set('custom_uptime_ratios', String(options.uptimeDays ?? 1));
     if (monitorIds?.length) body.set('monitors', monitorIds.join('-'));
+    if (options.includeCertificate) body.set('ssl', '1');
     if (options.boundaryLogsLimit) {
       body.set('logs', '1');
       body.set('logs_limit', String(options.boundaryLogsLimit));
