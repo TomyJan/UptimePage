@@ -36,6 +36,9 @@ it('merges Peekaping subgroup results while retaining independent subgroup membe
     { KEY: 'secret' },
     async (url) => {
       calls.push(String(url));
+      if (String(url).includes('/stats/points'))
+        return Response.json({ data: { points: [], uptime: null } });
+      if (String(url).includes('/heartbeats')) return Response.json({ data: [] });
       const slug = String(url).split('/').at(-2);
       return new Response(
         JSON.stringify({
@@ -53,7 +56,7 @@ it('merges Peekaping subgroup results while retaining independent subgroup membe
     },
     new Date('2026-10-21T12:00:00Z'),
   );
-  expect(calls).toHaveLength(3);
+  expect(calls).toHaveLength(5);
   expect(snapshot.monitors).toHaveLength(1);
   expect(snapshot.monitors[0].subgroupIds).toEqual(['web', 'api']);
   expect(snapshot.subgroups.map((subgroup) => subgroup.monitorIds)).toEqual([['same'], ['same']]);

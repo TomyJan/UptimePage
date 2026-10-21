@@ -13,7 +13,7 @@ import {
   type ServerConfig,
 } from './config.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
-import { fetchPeekapingBatch } from './sources/peekaping.ts';
+import { fetchPeekapingBatch, fetchPeekapingHistory } from './sources/peekaping.ts';
 import { loadPeekapingMembership, type PeekapingMembership } from './peekaping-membership.ts';
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizePeekapingMonitor, normalizeUptimeRobotMonitor } from './sources/normalize.ts';
@@ -65,6 +65,7 @@ export async function loadGroupSnapshot(
   fetcher: JsonFetcher = fetch,
   now = new Date(),
   membership?: PeekapingMembership,
+  includeHomeData = true,
 ): Promise<GroupSnapshot> {
   const group = findServerGroup(config, groupId);
   if (!group) throw new PublicGroupNotFoundError();
@@ -111,6 +112,64 @@ export async function loadGroupSnapshot(
       const ordered = ids.flatMap((id) => (monitors.has(id) ? [monitors.get(id)!] : []));
       monitors.clear();
       for (const monitor of ordered) monitors.set(monitor.id, monitor);
+      if (includeHomeData) {
+        let next = 0;
+        let limited: SourceRequestError | undefined;
+        const errors = new Map(subgroupErrors.map((e) => [e.subgroupId, e]));
+        await Promise.all(
+          Array.from({ length: Math.min(4, ordered.length) }, async () => {
+            for (let index = next++; index < ordered.length; index = next++) {
+              const monitor = ordered[index];
+              try {
+                if (limited) throw limited;
+                const result = await fetchPeekapingHistory(
+                  group.source.type === 'peekaping' ? group.source.baseUrl : '',
+                  monitor,
+                  key,
+                  now,
+                  fetcher,
+                  '24h',
+                  'home',
+                );
+                monitors.set(monitor.id, monitorSummarySchema.parse(result.monitor));
+              } catch (error) {
+                if (error instanceof SourceRequestError && error.status === 404) {
+                  monitors.delete(monitor.id);
+                  revokedMonitorIds.push(monitor.id);
+                  continue;
+                }
+                if (error instanceof SourceRequestError && error.status === 429) limited = error;
+                monitors.set(monitor.id, { ...monitor, freshness: 'unavailable' });
+                for (const subgroupId of monitor.subgroupIds) {
+                  const previous = errors.get(subgroupId);
+                  const preferred =
+                    previous?.code === 'rate-limited' && sourceErrorCode(error) !== 'rate-limited'
+                      ? previous
+                      : {
+                          subgroupId,
+                          code: sourceErrorCode(error),
+                          diagnostic:
+                            error instanceof SourceRequestError
+                              ? error.diagnostic
+                              : { reason: 'internal' as const },
+                        };
+                  const retryAt = [
+                    previous?.retryAt,
+                    error instanceof SourceRequestError ? error.retryAt : null,
+                  ]
+                    .filter((v): v is string => Boolean(v))
+                    .sort()
+                    .at(-1);
+                  errors.set(subgroupId, { ...preferred, ...(retryAt ? { retryAt } : {}) });
+                }
+              }
+            }
+          }),
+        );
+        subgroupErrors.splice(0, subgroupErrors.length, ...errors.values());
+        for (const subgroup of members.subgroups)
+          subgroupIds[subgroup.id] = subgroup.monitorIds.filter((id) => monitors.has(id));
+      }
     } catch (error) {
       monitors.clear();
       for (const subgroup of group.subgroups)
@@ -133,7 +192,7 @@ export async function loadGroupSnapshot(
         configuredMonitorIds(group) ? refs.map((ref) => ref.id) : undefined,
         fetcher,
         {
-          includeDetails: true,
+          includeDetails: includeHomeData,
           responseTimesAverage: 30,
           startDate: Math.floor((now.getTime() - 86400000) / 1000),
           endDate: Math.floor(now.getTime() / 1000),
@@ -198,7 +257,7 @@ export async function loadGroupSnapshot(
   }));
   return {
     groupId: group.id,
-    ...(group.source.type === 'peekaping' ? { hydrateDetails: true, revokedMonitorIds } : {}),
+    ...(group.source.type === 'peekaping' ? { revokedMonitorIds } : {}),
     fetchedAt,
     configVersion: config.configVersion,
     freshness: subgroupErrors.length === 0 ? 'fresh' : monitors.size > 0 ? 'stale' : 'unavailable',

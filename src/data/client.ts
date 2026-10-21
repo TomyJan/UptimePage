@@ -1,9 +1,9 @@
 import { z } from 'zod';
+import { groupResponseSchema } from '../shared/home.ts';
 import {
   apiErrorCodeSchema,
   diagnosticSchema,
   type Diagnostic,
-  groupSnapshotSchema,
   monitorDetailSchema,
   type ApiClient,
   type ApiErrorCode,
@@ -84,80 +84,8 @@ export function createHttpClient(basePath = '/api/v1', fetcher: typeof fetch = f
     return parsed.data;
   }
   return {
-    async getGroup(id, signal) {
-      const group = await request(`/groups/${encodeURIComponent(id)}`, groupSnapshotSchema, signal);
-      if (!group.hydrateDetails) return group;
-      let next = 0;
-      let limited: ApiClientError | null = null;
-      const revoked = new Set(group.revokedMonitorIds ?? []);
-      const errors = new Map(group.subgroupErrors.map((e) => [e.subgroupId, e]));
-      await Promise.all(
-        Array.from({ length: Math.min(4, group.monitors.length) }, async () => {
-          for (let i = next++; i < group.monitors.length; i = next++) {
-            if (signal.aborted) throw signal.reason;
-            const member = group.monitors[i];
-            try {
-              if (limited) throw limited;
-              const detail = await request(
-                `/groups/${encodeURIComponent(id)}/monitors/${encodeURIComponent(member.id)}?range=24h`,
-                monitorDetailSchema,
-                signal,
-              );
-              if (
-                detail.configVersion !== group.configVersion ||
-                detail.monitor.id !== member.id ||
-                detail.monitor.groupId !== id
-              )
-                throw new ApiClientError('invalid-response');
-              group.monitors[i] = { ...detail.monitor, subgroupIds: member.subgroupIds };
-              if (detail.diagnostic || detail.monitor.freshness !== 'fresh')
-                throw new ApiClientError('unavailable', detail.retryAt ?? null, detail.diagnostic);
-            } catch (error) {
-              if (signal.aborted) throw error;
-              const failure =
-                error instanceof ApiClientError ? error : new ApiClientError('unavailable');
-              if (failure.code === 'rate-limited') limited = failure;
-              if (failure.code === 'not-found') {
-                revoked.add(member.id);
-                continue;
-              }
-              for (const subgroupId of member.subgroupIds) {
-                const previous = errors.get(subgroupId);
-                const preferred =
-                  previous?.code === 'rate-limited' && failure.code !== 'rate-limited'
-                    ? previous
-                    : failure;
-                const retryAt = [previous?.retryAt, failure.retryAt]
-                  .filter((value): value is string => Boolean(value))
-                  .sort((a, b) => Date.parse(a) - Date.parse(b))
-                  .at(-1);
-                errors.set(subgroupId, {
-                  subgroupId,
-                  code: preferred.code,
-                  diagnostic: preferred.diagnostic,
-                  ...(retryAt ? { retryAt } : {}),
-                });
-              }
-            }
-          }
-        }),
-      );
-      group.revokedMonitorIds = [...revoked];
-      group.monitors = group.monitors.filter((m) => !revoked.has(m.id));
-      group.subgroups = group.subgroups.map((s) => ({
-        ...s,
-        monitorIds: s.monitorIds.filter((id) => !revoked.has(id)),
-      }));
-      group.subgroupErrors = [...errors.values()];
-      if (errors.size) {
-        group.freshness = 'stale';
-        group.subgroups = group.subgroups.map((s) => ({
-          ...s,
-          freshness: errors.has(s.id) ? 'unavailable' : s.freshness,
-        }));
-      }
-      return group;
-    },
+    getGroup: (id, signal) =>
+      request(`/groups/${encodeURIComponent(id)}`, groupResponseSchema, signal),
     getMonitor: (group, id, range, signal) =>
       request(
         `/groups/${encodeURIComponent(group)}/monitors/${encodeURIComponent(id)}?range=${range}`,

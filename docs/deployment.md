@@ -47,7 +47,7 @@ sh：
 UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployment
 ```
 
-地址使用不带路径的 HTTPS 站点地址。命令先构建，再检查资源、每组快照及一个详情、配置版本、深层路由、公开范围、只读限制和 `no-store`。无需在本地设置来源密钥。
+地址使用不带路径的 HTTPS 站点地址。命令先构建，再检查资源、每组完整精简快照及一个监控的 24 小时 / 7 天 / 30 天详情、配置版本、深层路由、公开范围、只读限制和 `no-store`。无需在本地设置来源密钥。
 
 非零退出码表示失败；空组的详情检查会 `SKIP`。遇到限流应等待退避后重试。自动检查不能代替来源口径、平台缓存和运行配额验证，完整清单见[验证状态](production-review.md)。
 
@@ -62,7 +62,7 @@ UPTIMEPAGE_PREVIEW_URL=https://your-preview.example.com pnpm run verify:deployme
 | 545 / `Error return from script`  | 边缘函数执行异常；日志官方仍在规划中，先查看脱敏诊断，记录时间、响应头 `X-NWS-LOG-UUID`（若有）及可用的平台指标 |
 | 429 / 限流                        | 来源额度和退避截止时间；失败 Toast 显示原因，旧数据及更新时间保留                                               |
 | 验收报配置版本不符 / 缺少资源     | 本地和部署的提交、配置、锁文件及构建变量是否一致                                                                |
-| 历史不满一天 / 没有证书或 7d、30d | 当前来源能力限制，见[数据口径](data-api.md#来源能力)                                                            |
+| 历史缺口 / 没有证书 | 来源保留时间、缺失采样和证书接口支持情况，见[数据口径](data-api.md#来源能力)                                                            |
 | KV 未命中                         | 项目是否绑定命名空间、绑定变量名是否与 `cache.kvBinding` 一致、重新部署后是否生成 `uptimepage_` 记录            |
 
 ## 更新与回退

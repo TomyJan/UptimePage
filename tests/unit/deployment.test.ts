@@ -22,7 +22,9 @@ type Mode =
   | 'asset-html'
   | 'dependency-missing'
   | 'accepts-write'
-  | 'public-cache';
+  | 'public-cache'
+  | 'legacy-home'
+  | 'broken-long-range';
 async function serve(mode: Mode = 'ok') {
   const server = createServer(async (req, res) => {
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
@@ -41,6 +43,18 @@ async function serve(mode: Mode = 'ok') {
         response = Response.json(body, { headers: { 'cache-control': 'no-store' } });
       }
       if (mode === 'public-cache') response.headers.set('cache-control', 'public, max-age=3600');
+      if (mode === 'legacy-home' && response.ok && url.pathname === '/api/v1/groups/core') {
+        const { groupResponseSchema } = await import('../../src/shared/home.ts');
+        response = Response.json(groupResponseSchema.parse(await response.json()), {
+          headers: { 'cache-control': 'no-store' },
+        });
+      }
+      if (mode === 'broken-long-range' && response.ok && url.searchParams.get('range') === '7d') {
+        const body = await response.json();
+        body.range = '24h';
+        response = Response.json(body, { headers: { 'cache-control': 'no-store' } });
+      }
+
       if (
         mode === 'accepts-write' &&
         url.pathname === '/api/v1/groups/core' &&
@@ -80,6 +94,8 @@ it('checks the real API over HTTP, errors, deep routes and JavaScript assets', a
       'Unknown group rejected',
       'core: snapshot',
       'core: detail',
+      'core: detail 7d',
+      'core: detail 30d',
       'core: unknown monitor rejected',
       'core: unsupported range rejected',
       'core: deep link',
@@ -97,6 +113,8 @@ it.each([
   ['public-cache', /no-store/],
   ['dependency-missing', /CSS|JavaScript/],
   ['accepts-write', /HTTP 200/],
+  ['legacy-home', /home-v1/i],
+  ['broken-long-range', /7d.*identity|7d.*range/i],
 ] as const)('fails deployment validation for %s', async (mode, reason) => {
   await expect(verifyDeployment(await serve(mode), publicConfig)).rejects.toThrow(reason);
 });

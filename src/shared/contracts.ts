@@ -71,7 +71,6 @@ export const monitorSummarySchema = z.object({
   history: z.array(historyBucketSchema),
 });
 export const groupSnapshotSchema = z.object({
-  hydrateDetails: z.boolean().optional(),
   revokedMonitorIds: z.array(z.string().min(1)).optional(),
   groupId: z.string(),
   fetchedAt: utc,

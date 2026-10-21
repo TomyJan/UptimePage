@@ -89,7 +89,7 @@ it('uses global Cache and KV bindings and survives loss of the node cache', asyn
   expect((await onRequest({ request: request(), env })).status).toBe(200);
   expect(entries.size).toBe(3);
   expect((await onRequest({ request: request('/monitors/1'), env })).status).toBe(200);
-  expect(calls()).toBe(6);
+  expect(calls()).toBe(8);
   vi.stubGlobal('caches', { default: memoryCache() });
   vi.stubGlobal('fetch', async () => {
     throw new Error('upstream offline');

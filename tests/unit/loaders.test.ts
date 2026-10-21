@@ -51,7 +51,7 @@ it('revokes summary and subgroup references only in the denied group', async () 
   cache.clear();
 });
 
-it('revokes a monitor denied during group hydration even if another member cannot refresh', async () => {
+it('revokes a confirmed removal from a partial group snapshot even if another member cannot refresh', async () => {
   const { loadGroup } = await import('../../src/data/loaders.ts');
   const { createHttpClient } = await import('../../src/data/client.ts');
   const cache = new QueryClient(),
@@ -59,12 +59,22 @@ it('revokes a monitor denied during group hydration even if another member canno
   const group = groupFixture('core', 2);
   cache.setQueryData(groupKey(v, 'core'), group);
   cache.setQueryData(monitorKey(v, 'core', 'm1', '24h'), detailFixture('core', 'm1', '24h'));
-  const client = createHttpClient('/api/v1', async (input) => {
-    const path = String(input);
-    if (path.includes('/monitors/m1')) return Response.json({}, { status: 404 });
-    if (path.includes('/monitors/m2')) return Response.json({}, { status: 502 });
-    return Response.json({ ...group, hydrateDetails: true });
-  });
+  const { encodeGroupSnapshot } = await import('../../src/server/home.ts');
+  const partial = {
+    ...group,
+    freshness: 'stale' as const,
+    revokedMonitorIds: ['m1'],
+    monitors: group.monitors.slice(1),
+    subgroupErrors: [{ subgroupId: 'api', code: 'unavailable' as const }],
+    subgroups: group.subgroups.map((s) => ({
+      ...s,
+      monitorIds: s.monitorIds.filter((id) => id !== 'm1'),
+    })),
+  };
+  const client = createHttpClient('/api/v1', async () =>
+    Response.json(encodeGroupSnapshot(partial)),
+  );
+
   await expect(
     loadGroup(cache, client, 'core', new AbortController().signal),
   ).rejects.toMatchObject({ code: 'unavailable' });

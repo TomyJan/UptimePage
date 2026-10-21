@@ -20,10 +20,11 @@ it('uses status pages solely for membership and protected APIs for every display
     id: 'public',
     name: 'Protected API',
     state: 'operational',
-    intervalSeconds: 60,
-    history: [],
+    responseMs: 42,
+    uptime24h: 99.5,
   });
-  expect(group.hydrateDetails).toBe(true);
+  expect(group).not.toHaveProperty('hydrateDetails');
+  expect(group.monitors[0].history.some((c: unknown[]) => c[0] === 'partial')).toBe(true);
   const response = await handleApi(
     new Request('https://site.test/api/v1/groups/core/monitors/public'),
     runtime,
@@ -75,7 +76,7 @@ it('caches only member IDs for ten minutes independently of live status and fail
   });
   expect(removed.status).toBe(404);
   expect(calls.filter((p) => p.includes('/status-pages/'))).toHaveLength(4);
-  expect(calls.filter((p) => p.includes('/stats/'))).toHaveLength(0);
+  expect(calls.filter((p) => p.includes('/stats/'))).toHaveLength(2);
 });
 it('does not reuse expired membership when its source is unavailable', async () => {
   const runtime = {

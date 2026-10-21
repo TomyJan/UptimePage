@@ -55,7 +55,7 @@ export function protectedSource(
       });
     }
     if (url.pathname.endsWith('/stats/points')) {
-      expect(url.searchParams.get('granularity')).toBe('minute');
+      expect(['minute', 'hour']).toContain(url.searchParams.get('granularity'));
       expect(
         Date.parse(url.searchParams.get('until')!) - Date.parse(url.searchParams.get('since')!),
       ).toBe(86400000);

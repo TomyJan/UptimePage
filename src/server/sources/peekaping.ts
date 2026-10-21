@@ -62,6 +62,7 @@ export async function fetchPeekapingHistory(
   until: Date,
   fetcher: JsonFetcher = fetch,
   range: Range = '24h',
+  purpose: 'home' | 'detail' = 'detail',
 ) {
   const end = until.getTime(),
     start = end - rangeMilliseconds(range);
@@ -69,7 +70,7 @@ export async function fetchPeekapingHistory(
   const query = new URLSearchParams({
     since: new Date(start).toISOString(),
     until: until.toISOString(),
-    granularity: range === '24h' ? 'minute' : 'hour',
+    granularity: purpose === 'home' || range !== '24h' ? 'hour' : 'minute',
   });
   const raw = peekapingData(
     await requestJson(fetcher, sourceUrl(baseUrl, `${path}/stats/points?${query}`), auth(apiKey)),
@@ -80,7 +81,7 @@ export async function fetchPeekapingHistory(
   const number = (n: unknown): number | null =>
     typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
   const interval =
-    range === '24h'
+    purpose !== 'home' && range === '24h'
       ? Math.max(60, Math.round((monitor.intervalSeconds ?? 60) / 60) * 60) * 1000
       : 3600000;
   const history: HistoryBucket[] = stats.points
@@ -100,7 +101,8 @@ export async function fetchPeekapingHistory(
         !Number.isSafeInteger(up + down + maintenance)
       )
         throw new SourceRequestError('Invalid Peekaping stat point');
-      const count = up + down + maintenance;
+      // Peekaping counts maintenance within up, and also exposes it separately.
+      const count = up + down;
       return {
         from: new Date(Math.max(start, at)).toISOString(),
         until: new Date(Math.min(end, at + interval)).toISOString(),
@@ -110,10 +112,10 @@ export async function fetchPeekapingHistory(
             ? 'down'
             : maintenance === count
               ? 'maintenance'
-              : up === count
+              : up === count && maintenance === 0
                 ? 'operational'
                 : 'partial',
-        responseMs: up ? number(p.ping) : null,
+        responseMs: up > maintenance ? number(p.ping) : null,
       };
     })
     .filter((p) => Date.parse(p.until) > Date.parse(p.from))
@@ -141,6 +143,7 @@ export async function fetchPeekapingHistory(
   return {
     monitor: {
       ...monitor,
+      freshness: 'fresh' as const,
       history,
       sampleIntervalSeconds: interval / 1000,
       observedAt:
@@ -154,7 +157,10 @@ export async function fetchPeekapingHistory(
       },
     },
     average: number(stats.avgPing),
-    events: await fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range),
+    events:
+      purpose === 'home'
+        ? []
+        : await fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range),
   };
 }
 

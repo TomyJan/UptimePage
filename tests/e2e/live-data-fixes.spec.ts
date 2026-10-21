@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { groupFixture, detailFixture } from '../../src/demo/fixtures.ts';
+import { encodeGroupSnapshot } from '../../src/server/home.ts';
 test.use({ baseURL: 'http://127.0.0.1:4173' });
 for (const detail of [false, true]) {
   test(`retry reports safe errors and success on the ${detail ? 'detail' : 'home'} page`, async ({
@@ -88,32 +89,37 @@ test('dense checks use separated cells and a concise anchored tooltip', async ({
   await expect(page.getByRole('tooltip')).not.toContainText('Observed samples');
 });
 
-test('the production home page hydrates protected monitor data and reports a failed refresh', async ({
+test('the production home page loads all card data in one request and reports a failed refresh', async ({
   page,
 }) => {
   const group = groupFixture('core', 8);
-  let fail = false;
-  await page.route('**/api/v1/groups/core', (route) =>
-    route.fulfill({ json: { ...group, hydrateDetails: true } }),
-  );
-  await page.route('**/api/v1/groups/core/monitors/*?range=24h', (route) => {
-    if (fail)
-      return route.fulfill({
-        status: 502,
-        json: {
-          error: { code: 'unavailable', diagnostic: { reason: 'network', stage: 'detail' } },
-        },
-      });
-    const id = route.request().url().split('/monitors/')[1].split('?')[0];
-    const detail = detailFixture('core', id, '24h')!;
-    detail.monitor.freshness = 'fresh';
-    detail.monitor.responseMs = 321;
-    return route.fulfill({ json: detail });
+  group.monitors.forEach((m) => {
+    m.responseMs = 321;
+  });
+  let fail = false,
+    groupRequests = 0,
+    detailRequests = 0;
+  await page.route('**/api/v1/groups/core', (route) => {
+    groupRequests++;
+    return fail
+      ? route.fulfill({
+          status: 502,
+          json: {
+            error: { code: 'unavailable', diagnostic: { reason: 'network', stage: 'source' } },
+          },
+        })
+      : route.fulfill({ json: encodeGroupSnapshot(group) });
+  });
+  await page.route('**/api/v1/groups/core/monitors/**', (route) => {
+    detailRequests++;
+    return route.fulfill({ status: 500, json: {} });
   });
   await page.goto('/');
   await expect(page.locator('.monitor')).toHaveCount(8);
   for (const latency of await page.locator('.latency strong').all())
     await expect(latency).toHaveText('321 ms');
+  expect(groupRequests).toBe(1);
+  expect(detailRequests).toBe(0);
   const time = await page.locator('.refresh-main time').getAttribute('datetime');
   fail = true;
   await page.getByRole('button', { name: 'Refresh now', exact: true }).click();
@@ -121,4 +127,6 @@ test('the production home page hydrates protected monitor data and reports a fai
   await expect(page.locator('.monitor')).toHaveCount(8);
   await expect(page.locator('.latency strong').first()).toHaveText('321 ms');
   await expect(page.locator('.refresh-main time')).toHaveAttribute('datetime', time!);
+  expect(groupRequests).toBe(2);
+  expect(detailRequests).toBe(0);
 });

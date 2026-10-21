@@ -1,3 +1,4 @@
+import { encodeGroupSnapshot } from './home.ts';
 import {
   apiErrorCodeSchema,
   rangeSchema,
@@ -231,7 +232,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         (b) => b.toString(16).padStart(2, '0'),
       ).join('')
     : '';
-  const cacheVersion: string = `${runtime.config.configVersion}-ranges-v2-${membershipDigest}`;
+  const cacheVersion: string = `${runtime.config.configVersion}-home-v3-${membershipDigest}`;
   if (
     isDetail &&
     membership &&
@@ -255,7 +256,11 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     if (!pending) return load();
     // A key rotation or deployment must never join an older credential's load.
     const flightKey = JSON.stringify([version, route, sourceCredential]);
-    const existing = pending.get(flightKey);
+    const existing =
+      pending.get(flightKey) ??
+      (isDetail && route === `${key.url}/base`
+        ? pending.get(JSON.stringify([version, key.url, sourceCredential]))
+        : undefined);
     if (existing) return existing as Promise<T>;
     const task = Promise.resolve()
       .then(load)
@@ -263,6 +268,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     pending.set(flightKey, task);
     return task;
   }
+  const snapshotKey = isDetail ? new Request(`${key.url}/base`) : key;
   let cached: GroupSnapshot | null = null;
   let cachedDetail: MonitorDetail | null = null;
   const detailKey = new Request(
@@ -289,7 +295,14 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     }
   }
   try {
-    const entry = await readCache(runtime.cache, key, cacheVersion);
+    // A fresh full homepage also supplies identity/authorization metadata for details.
+    // A cold detail loads metadata only; it must never fetch every monitor's history.
+    let entry = await readCache(runtime.cache, key, cacheVersion);
+    if (isDetail && entry) {
+      const body = await entry.clone().json();
+      if (now.getTime() - Date.parse(body.fetchedAt) >= freshMs) entry = undefined;
+    }
+    if (!entry && isDetail) entry = await readCache(runtime.cache, snapshotKey, cacheVersion);
     if (entry) {
       const parsed = groupSnapshotSchema.safeParse(await entry.json());
       if (
@@ -308,7 +321,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   try {
     let snapshot = cached && now.getTime() - Date.parse(cached.fetchedAt) < freshMs ? cached : null;
     if (!snapshot) {
-      snapshot = await coalesce(key.url, async () => {
+      snapshot = await coalesce(snapshotKey.url, async () => {
         const loaded = groupSnapshotSchema.parse(
           await loadGroupSnapshot(
             runtime.config,
@@ -317,6 +330,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             runtime.fetcher,
             now,
             membership,
+            !isDetail,
           ),
         );
         if (loaded.freshness === 'fresh') {
@@ -328,7 +342,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           });
           // Keep the load in flight through the cache write, closing the gap
           // between source completion and the next visitor's cache read.
-          await writeCache(runtime.cache, key, cacheVersion, stored);
+          await writeCache(runtime.cache, snapshotKey, cacheVersion, stored);
         }
         return loaded;
       });
@@ -351,7 +365,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         );
       }
     }
-    if (!isDetail) return json(snapshot);
+    if (!isDetail) return json(encodeGroupSnapshot(snapshot));
     const member = snapshot.monitors.find((m) => m.id === parts[3]);
     if (!member) return errorResponse('not-found');
     // A detail cache cannot bypass current public membership.
@@ -486,7 +500,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
       // Incident boundaries come from authenticated status transitions, never stat buckets.
       detail.events = result.events;
       detail.capabilities.events = 'available';
-      if (snapshot.freshness === 'fresh')
+      if (detail.monitor.freshness === 'fresh')
         await writeCache(
           runtime.cache,
           detailKey,
@@ -522,7 +536,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             : 'unavailable',
         ...(error instanceof SourceRequestError && error.retryAt ? { retryAt: error.retryAt } : {}),
       }));
-      return json(fallback);
+      return json(encodeGroupSnapshot(fallback));
     }
     if (error instanceof SourceRequestError)
       return errorResponse(

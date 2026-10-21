@@ -1,4 +1,6 @@
-import { groupSnapshotSchema, monitorDetailSchema } from '../src/shared/contracts.ts';
+import { monitorDetailSchema } from '../src/shared/contracts.ts';
+import { compactGroupSchema, decodeGroupSnapshot } from '../src/shared/home.ts';
+import { rangeMilliseconds } from '../src/shared/ranges.ts';
 
 export interface DeploymentConfig {
   configVersion: string;
@@ -140,8 +142,8 @@ export async function verifyDeployment(
     for (const method of ['POST', 'PUT', 'PATCH', 'DELETE'])
       await rejected(path, 'not-found', 404, method);
     checks.push(`${group.id}: write methods rejected`);
-    const parsed = groupSnapshotSchema.safeParse(await json(path));
-    ensure(parsed.success, `${group.id}: invalid snapshot contract`);
+    const parsed = compactGroupSchema.transform(decodeGroupSnapshot).safeParse(await json(path));
+    ensure(parsed.success, `${group.id}: expected complete home-v1 snapshot contract`);
     const snapshot = parsed.data;
     ensure(
       snapshot.configVersion === config.configVersion,
@@ -202,6 +204,38 @@ export async function verifyDeployment(
       `${group.id}: expected fresh detail`,
     );
     checks.push(`${group.id}: detail`);
+    ensure(
+      ['24h', '7d', '30d'].every((range) =>
+        detail.data.supportedRanges.includes(range as '24h' | '7d' | '30d'),
+      ),
+      `${group.id}: expected all supported ranges`,
+    );
+    for (const range of ['7d', '30d'] as const) {
+      const parsedRange = monitorDetailSchema.safeParse(await json(`${detailPath}?range=${range}`));
+      ensure(parsedRange.success, `${group.id}: ${range} invalid detail contract`);
+      const value = parsedRange.data;
+      ensure(
+        value.range === range &&
+          value.monitor.id === monitor.id &&
+          value.monitor.groupId === group.id &&
+          value.configVersion === config.configVersion,
+        `${group.id}: ${range} detail identity mismatch`,
+      );
+      ensure(
+        value.periodUptime.from !== null &&
+          value.periodUptime.until !== null &&
+          Date.parse(value.periodUptime.until) - Date.parse(value.periodUptime.from) ===
+            rangeMilliseconds(range),
+        `${group.id}: ${range} incorrect metric window`,
+      );
+      const age = Date.now() - Date.parse(value.fetchedAt);
+      ensure(
+        value.monitor.freshness === 'fresh' && !value.diagnostic && age >= -60000 && age < 300000,
+        `${group.id}: ${range} expected fresh detail`,
+      );
+      checks.push(`${group.id}: detail ${range}`);
+    }
+
     await rejected(`${detailPath}?range=invalid`, 'invalid-response', 502);
     checks.push(`${group.id}: unsupported range rejected`);
     const deepAssets = await html(
