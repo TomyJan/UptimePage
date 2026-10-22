@@ -26,4 +26,4 @@ if (editing) {
   content = <EditorRoot productionClient={client} />;
 }
 createRoot(document.getElementById('root')!).render(<StrictMode>{content}</StrictMode>);
-loadUmami(publicConfig.site.umami, { production: import.meta.env.PROD, editor: editing });
+loadUmami(publicConfig.site.umami, { production: import.meta.env.PROD });

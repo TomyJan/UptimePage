@@ -58,7 +58,9 @@ test('form and JSON edit the actual page, block invalid exports and retain fixed
   expect(calls).toBe(0);
 });
 
-test('Umami configuration round-trips without loading the tracker in preview', async ({ page }) => {
+test('Umami configuration round-trips without executing a draft tracker in development', async ({
+  page,
+}) => {
   let requests = 0;
   await page.route('https://analytics.example.test/**', (route) => {
     requests++;

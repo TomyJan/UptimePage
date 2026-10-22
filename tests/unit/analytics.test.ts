@@ -19,16 +19,13 @@ it.each([null, undefined])('does not load a tracker without configuration', (val
   loadUmami(value, env);
   expect(env.dom.createElement).not.toHaveBeenCalled();
 });
-it.each([
-  [false, false],
-  [true, true],
-])('skips development and editor sessions', (production, editor) => {
-  const env = environment(production, editor);
+it.each([false, true])('skips development sessions', (editor) => {
+  const env = environment(false, editor);
   loadUmami(config, env);
   expect(env.dom.createElement).not.toHaveBeenCalled();
 });
-it('loads one asynchronous tracker with the public website ID', () => {
-  const env = environment();
+it.each([false, true])('loads one asynchronous tracker, including in editor sessions', (editor) => {
+  const env = environment(true, editor);
   loadUmami(config, env);
   expect(env.script.src).toBe(config.scriptUrl);
   expect(env.script.async).toBe(true);

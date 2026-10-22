@@ -155,7 +155,6 @@ export function SiteFields({ config, change, language, t }: FormProps) {
               })
             }
           />
-          <p className="ce-hint">{t('umamiHint')}</p>
         </>
       )}
     </>
