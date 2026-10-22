@@ -4,6 +4,33 @@ import { editorTemplate } from '../../src/features/editor/template.ts';
 import { parseConfig } from '../../config/schema.ts';
 import { groupFixture } from '../../src/demo/fixtures.ts';
 
+test('the text language switches the page and editing fields together on home and detail', async ({
+  page,
+}) => {
+  await page.goto('/?configeditor=on');
+  await page.getByRole('button', { name: 'Edit configuration', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep expanded', exact: true }).click();
+  await page.getByRole('button', { name: '简中', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(page.locator('.brand-name')).toHaveText('我的服务状态');
+  await expect(page.getByLabel('名称', { exact: true })).toHaveValue('我的服务状态');
+  await expect(page.locator('.monitor-name').filter({ hasText: '主页' })).toBeVisible();
+  await page.getByLabel('名称', { exact: true }).fill('中文预览');
+  await expect(page.locator('.brand-name')).toHaveText('中文预览');
+
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('.brand-name')).toHaveText('My status page');
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('My status page');
+  await page.getByRole('link', { name: 'Homepage', exact: true }).click();
+  await expect(page.locator('.detail-name h1')).toHaveText('Homepage');
+
+  await page.getByRole('button', { name: '简中', exact: true }).click();
+  await expect(page.locator('.detail-name h1')).toHaveText('主页');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  await expect(page.getByLabel('名称', { exact: true })).toHaveValue('中文预览');
+});
+
 test('without the query parameter an enabled build still uses the production API', async ({
   page,
 }) => {

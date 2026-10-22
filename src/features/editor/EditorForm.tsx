@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import type { Locale } from '../../shared/contracts.ts';
 import { localize } from '../preferences/locale.ts';
 import { Field, Toggle, type FormProps } from './fields.tsx';
 import { SiteFields } from './SiteFields.tsx';
 import { GroupFields, newGroup } from './GroupFields.tsx';
 import { MonitorFields } from './MonitorFields.tsx';
-import { usePreferences } from '../preferences/store.ts';
+import { setPreferences, usePreferences } from '../preferences/store.ts';
 export type EditorCategory = 'site' | 'groups' | 'monitors' | 'cache';
 export function EditorForm({
   category,
@@ -13,8 +12,7 @@ export function EditorForm({
   change,
   t,
 }: Omit<FormProps, 'language'> & { category: EditorCategory }) {
-  const { locale } = usePreferences();
-  const [language, setLanguage] = useState<Locale>(locale);
+  const { locale: language } = usePreferences();
   const [selected, setSelected] = useState(0),
     index = Math.min(selected, config.groups.length - 1);
   const props = { config, change, t, language };
@@ -28,7 +26,7 @@ export function EditorForm({
               <button
                 key={locale}
                 className={language === locale ? 'active' : ''}
-                onClick={() => setLanguage(locale)}
+                onClick={() => setPreferences({ language: locale })}
                 aria-pressed={language === locale}
               >
                 {locale === 'zh-CN' ? '简中' : 'English'}
