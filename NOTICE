@@ -1,0 +1,17 @@
+UptimePage 第三方归属
+
+界面使用了经改编的 OpenDesign 布局和视觉参数。
+来源：https://opendesign.cc/ ，https://github.com/qiuyiwu1989-star/opendesign
+作者：OpenDesign 项目贡献者
+许可：CC BY 4.0，https://creativecommons.org/licenses/by/4.0/
+使用的规范：
+- https://opendesign.cc/packs/mercury/spec.json
+- https://opendesign.cc/packs/vercel/spec.json
+- https://opendesign.cc/packs/linear/spec.json
+- https://opendesign.cc/packs/supabase/spec.json
+- https://opendesign.cc/packs/raycast/spec.json
+- https://opendesign.cc/packs/aesop/spec.json
+- https://opendesign.cc/packs/posthog/spec.json
+
+MiSans 字体通过 https://cdn.amoe.cc/web-static/public/font/misans/misans.css 加载，
+字体版权与许可归原权利人所有，不适用本项目的 MPL-2.0 许可。

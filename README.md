@@ -37,7 +37,6 @@ pnpm run dev:demo
 
 - [数据、来源能力与 HTTP API](docs/data-api.md)
 - [开发与测试](docs/development.md)
-- [发布检查](docs/production-review.md)
-- [设计与原型](design/README.md)
+- [发布检查](docs/release.md)
 
-`master` 为当前版本，`legacy` 保留旧实现。许可证：[MPL-2.0](LICENSE)。
+`master` 为当前版本，`legacy` 保留旧实现。许可证：[MPL-2.0](LICENSE)；第三方归属见 [NOTICE](NOTICE)。

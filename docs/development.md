@@ -18,7 +18,7 @@ pnpm run dev:demo
 
 演示参数：`?demoCount=200` 检查大列表，`?demoPartial=1` 检查部分失败。演示入口仅在开发环境可用，生产包不包含演示数据。
 
-编辑器注入独立的配置、mock 客户端和查询缓存，复用正式页面；退出恢复生产客户端。有效草稿实时更新预览，无效输入保留原文和最后有效配置。正式构建只有精确设置 `UPTIMEPAGE_CONFIG_EDITOR=true` 才包含编辑器，URL 参数只是访问入口。
+编辑器使用独立的配置、模拟客户端和查询缓存，复用正式页面；退出恢复生产客户端。开关及使用方式见[配置编辑器](configuration.md#可视化编辑器)。
 
 ## 验证
 
@@ -60,5 +60,9 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 浏览器只导入 `.generated/public-config.ts`；`.generated/server-config.ts` 仅用于函数。生成物、密钥、`.env`、`*.local.json` 不提交；部署配置使用 `config/site.json`。
 
 新增异步内容应沿用 `MonitorCard` / `MonitorLayout` 及 `AnimatedHeight`，使加载与正常态保留同一布局容器，并遵循减少动画偏好。新增来源或调整缓存时同步[数据契约](data-api.md)，尤其是公开范围、时间口径和故障回退。
+
+界面样式集中在 `src/styles/`，编辑器样式在 `src/features/editor/editor.css`。统一使用自托管 MiSans 和 `tabular-nums`；字体样式地址位于 `index.html`。新增组件沿用现有颜色、字体与动效变量，兼容 320 px 窄屏、键盘操作和深浅色。
+
+监控状态与取数状态分别处理；请求失败不改写监控状态或成功更新时间。缺失数据使用 `null`，不能用零值、当前状态或模拟采样补齐；公开范围必须由服务端检查，详情缓存不能绕过授权。
 
 CI 在 `master` 推送、PR 和手动触发时执行格式、类型、单测、构建隔离、浏览器回归和依赖审计；失败产物保留 7 天。Dependabot 每日检查 pnpm 依赖、每周检查 Actions，React / React DOM 成组更新。配置见 `.github/`。

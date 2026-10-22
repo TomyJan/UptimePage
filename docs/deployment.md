@@ -14,7 +14,7 @@
 | Node.js  | `edgeone.json` 的 `nodeVersion`；本地兼容范围见 `package.json` 的 `engines` |
 | pnpm     | `package.json` 的 `packageManager`                                          |
 
-部署需同时包含 `dist/`、`cloud-functions/`、`edge-functions/` 和构建生成的配置，不能只上传静态产物。公开 API 由云函数聚合，边缘函数负责缓存桥；云函数执行上限配置为 120 秒，响应仍受平台大小限制和上游额度约束。
+Makers 需从仓库构建并部署 `dist/`、`cloud-functions/`、`edge-functions/` 及构建生成的配置，不能只上传静态产物。公开 API 由云函数聚合，边缘函数负责缓存桥；云函数执行上限为 120 秒，实际容量受平台限制和上游额度约束。
 
 ## 环境变量
 
@@ -47,7 +47,7 @@ pnpm run verify:browser
 
 HTTP 验收先构建，再检查静态资源、配置版本、整组快照、三种时间范围详情、深层路由、公开范围和缓存桥保护；无需本地来源密钥。非零退出码表示失败，空组的详情检查会跳过。
 
-浏览器验收覆盖真实部署的手机布局、中英文、深浅色、菜单和刷新，并在测试浏览器内模拟 545、超时及限流，检查错误反馈和旧数据保留；不修改部署函数或 KV。首次运行需安装 Chromium，见[开发与测试](development.md)。这些模拟不代替独立预览环境的函数 / KV 故障验证，发布前按[检查清单](production-review.md)核对。
+浏览器验收覆盖手机布局、中英文、深浅色、菜单和刷新，并在浏览器内模拟 545、超时及限流，不修改部署函数或 KV。首次运行需安装 Chromium，见[开发与测试](development.md)。函数与 KV 的故障降级需在独立预览环境验证，见[发布检查](release.md)。
 
 ## 更新与回退
 
