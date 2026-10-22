@@ -75,7 +75,10 @@ export function StatusPage() {
         label={t('groups')}
         counts={counts}
       />
-      <AnimatedHeight className="status-body" contentKey={id}>
+      <AnimatedHeight
+        className="status-body"
+        contentKey={`${id}:${snapshot || !q.isError ? 'content' : 'error'}`}
+      >
         {snapshot || !q.isError ? (
           <>
             <StatusSummary

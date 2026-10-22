@@ -203,6 +203,16 @@ test('history tooltips stay on screen at both ends on a narrow viewport', async 
 });
 
 test('reduced motion skips size and content animations during range changes', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.addInitScript(() => {
+    window.addEventListener('error', (event) => {
+      if (event.message.includes('ResizeObserver')) {
+        const observed = window as Window & { resizeErrors?: string[] };
+        (observed.resizeErrors ??= []).push(event.message);
+      }
+    });
+  });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/services/core/m1');
   await expect(page.locator('.chart-line')).toHaveCount(2);
@@ -216,6 +226,10 @@ test('reduced motion skips size and content animations during range changes', as
       el.getAnimations({ subtree: true }).some((a) => a.playState === 'running'),
     ),
   ).toBe(false);
+  expect(errors).toEqual([]);
+  expect(
+    await page.evaluate(() => (window as Window & { resizeErrors?: string[] }).resizeErrors ?? []),
+  ).toEqual([]);
 });
 
 test('continuous samples have no gap notice and unavailable events do not look like a healthy history', async ({

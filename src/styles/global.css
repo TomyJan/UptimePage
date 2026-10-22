@@ -2630,8 +2630,21 @@ button.nav-links-mobile {
   overflow-clip-margin: 4px;
 }
 .content-swap {
+  --content-opacity: 0;
   display: flow-root;
   animation: content-appear 300ms var(--ease) both;
+}
+.content-swap.is-leaving {
+  animation: content-disappear 160ms ease both;
+  pointer-events: none;
+}
+@keyframes content-disappear {
+  from {
+    opacity: var(--content-opacity, 1);
+  }
+  to {
+    opacity: 0;
+  }
 }
 .detail-alert {
   animation: content-appear 280ms var(--ease) both;
@@ -2668,7 +2681,7 @@ button.nav-links-mobile {
 }
 @keyframes content-appear {
   from {
-    opacity: 0;
+    opacity: var(--content-opacity, 0);
   }
   to {
     opacity: 1;

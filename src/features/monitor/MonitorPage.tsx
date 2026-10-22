@@ -21,6 +21,7 @@ import { HistoryBars, useFormatTime } from '../status/HistoryBars.tsx';
 import { ResponseChart } from './ResponseChart.tsx';
 import { MonitorLayout, MonitorToolbar } from './MonitorLayout.tsx';
 import { ChartLoading, HistoryLoading } from '../../components/Loading.tsx';
+import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
 export function MonitorPage() {
   const { groupId = '', monitorId = '' } = useParams();
   return <MonitorContent key={`${groupId}:${monitorId}`} groupId={groupId} monitorId={monitorId} />;
@@ -79,19 +80,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
         <div className="empty">{t('notFound')}</div>
       </>
     );
-  if (!data && q.isError)
-    return (
-      <div className="detail-content">
-        <MonitorToolbar back={back} refreshControl={refreshControl} />
-        <div className="empty">
-          <p>{t('loadError')}</p>
-          <p>{errorMessage(q.error, t)}</p>
-          <button className="retry" onClick={() => void refresh().catch(() => {})}>
-            {t('retry')}
-          </button>
-        </div>
-      </div>
-    );
+  const failed = !data && q.isError;
   const d = data,
     windowFrom = data
       ? new Date(Date.parse(data.fetchedAt) - rangeMilliseconds(data.range)).toISOString()
@@ -105,59 +94,10 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       ? 'loading'
       : (d?.capabilities.response ?? 'loading');
   return (
-    <MonitorLayout
-      back={back}
-      refreshControl={refreshControl}
-      detail={d ?? undefined}
-      range={range}
-      rangeLoading={rangeLoading}
-      rangeError={rangeError}
-      refreshing={q.isFetching}
-      heading={
-        d ? (
-          <div className="detail-title">
-            <Logo src={d.monitor.logo} name={name} className="service-logo" />
-            <div>
-              <div className="detail-name">
-                <h1>{name}</h1>
-                <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
-              </div>
-              {d.monitor.description && <p>{localize(d.monitor.description, locale)}</p>}
-            </div>
-          </div>
-        ) : undefined
-      }
-      tabs={
-        d ? (
-          <div className="window-tabs" aria-label={t('response')}>
-            {(['24h', '7d', '30d'] as Range[]).map((r) => {
-              const supported = d.supportedRanges.includes(r);
-              const button = (
-                <button
-                  key={r}
-                  aria-pressed={r === range}
-                  aria-disabled={!supported}
-                  className={r === range ? 'active' : ''}
-                  onClick={() => supported && setRange(r)}
-                  aria-label={r}
-                >
-                  {r}
-                </button>
-              );
-              return supported ? (
-                button
-              ) : (
-                <DataTooltip key={r} content={t('rangeUnsupported')}>
-                  {button}
-                </DataTooltip>
-              );
-            })}
-          </div>
-        ) : undefined
-      }
-      chartState={chartState}
-      chart={
-        chartState === 'error' ? (
+    <AnimatedHeight className="detail-stage" contentKey={failed ? 'error' : 'content'}>
+      {failed ? (
+        <div className="detail-content">
+          <MonitorToolbar back={back} refreshControl={refreshControl} />
           <div className="empty" role="status">
             <p>{t('loadError')}</p>
             <p>{errorMessage(q.error, t)}</p>
@@ -165,50 +105,114 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
               {t('retry')}
             </button>
           </div>
-        ) : chartState === 'loading' ? (
-          <ChartLoading />
-        ) : chartState === 'available' && d ? (
-          <ResponseChart
-            points={d.response}
-            from={windowFrom}
-            until={d.fetchedAt}
-            animationKey={`${groupId}:${monitorId}:${range}`}
-          />
-        ) : (
-          <div className="empty">
-            {t(d?.capabilities.response === 'unsupported' ? 'unsupported' : 'noData')}
-          </div>
-        )
-      }
-      historyState={
-        rangeLoading ? 'loading' : rangeError ? 'error' : (d?.capabilities.history ?? 'loading')
-      }
-      history={
-        rangeLoading ? (
-          <HistoryLoading />
-        ) : rangeError ? (
-          <p className="muted" role="status">
-            {t('loadError')}
-          </p>
-        ) : d && d.capabilities.history === 'available' ? (
-          <>
-            <HistoryBars
-              history={d.monitor.history}
-              from={windowFrom}
-              until={d.fetchedAt}
-              sampleIntervalSeconds={d.monitor.sampleIntervalSeconds}
-            />
-            <div className="history-meta">
-              <span>{time(windowFrom, true)}</span>
-              <span>{t('now')}</span>
-            </div>
-          </>
-        ) : (
-          <p className="muted">
-            {t(d?.capabilities.history === 'unsupported' ? 'unsupported' : 'noData')}
-          </p>
-        )
-      }
-    />
+        </div>
+      ) : (
+        <MonitorLayout
+          back={back}
+          refreshControl={refreshControl}
+          detail={d ?? undefined}
+          range={range}
+          rangeLoading={rangeLoading}
+          rangeError={rangeError}
+          refreshing={q.isFetching}
+          heading={
+            d ? (
+              <div className="detail-title">
+                <Logo src={d.monitor.logo} name={name} className="service-logo" />
+                <div>
+                  <div className="detail-name">
+                    <h1>{name}</h1>
+                    <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
+                  </div>
+                  {d.monitor.description && <p>{localize(d.monitor.description, locale)}</p>}
+                </div>
+              </div>
+            ) : undefined
+          }
+          tabs={
+            d ? (
+              <div className="window-tabs" aria-label={t('response')}>
+                {(['24h', '7d', '30d'] as Range[]).map((r) => {
+                  const supported = d.supportedRanges.includes(r);
+                  const button = (
+                    <button
+                      key={r}
+                      aria-pressed={r === range}
+                      aria-disabled={!supported}
+                      className={r === range ? 'active' : ''}
+                      onClick={() => supported && setRange(r)}
+                      aria-label={r}
+                    >
+                      {r}
+                    </button>
+                  );
+                  return supported ? (
+                    button
+                  ) : (
+                    <DataTooltip key={r} content={t('rangeUnsupported')}>
+                      {button}
+                    </DataTooltip>
+                  );
+                })}
+              </div>
+            ) : undefined
+          }
+          chartState={chartState}
+          chart={
+            chartState === 'error' ? (
+              <div className="empty" role="status">
+                <p>{t('loadError')}</p>
+                <p>{errorMessage(q.error, t)}</p>
+                <button className="retry" onClick={() => void refresh().catch(() => {})}>
+                  {t('retry')}
+                </button>
+              </div>
+            ) : chartState === 'loading' ? (
+              <ChartLoading />
+            ) : chartState === 'available' && d ? (
+              <ResponseChart
+                points={d.response}
+                from={windowFrom}
+                until={d.fetchedAt}
+                animationKey={`${groupId}:${monitorId}:${range}`}
+              />
+            ) : (
+              <div className="empty">
+                {t(d?.capabilities.response === 'unsupported' ? 'unsupported' : 'noData')}
+              </div>
+            )
+          }
+          historyState={
+            rangeLoading ? 'loading' : rangeError ? 'error' : (d?.capabilities.history ?? 'loading')
+          }
+          history={
+            rangeLoading ? (
+              <HistoryLoading />
+            ) : rangeError ? (
+              <p className="muted" role="status">
+                {t('loadError')}
+              </p>
+            ) : d && d.capabilities.history === 'available' ? (
+              <>
+                <HistoryBars
+                  history={d.monitor.history}
+                  from={windowFrom}
+                  until={d.fetchedAt}
+                  sampleIntervalSeconds={d.monitor.sampleIntervalSeconds}
+                />
+                <div className="history-meta">
+                  <span>{time(windowFrom, true)}</span>
+                  <span>{t('now')}</span>
+                </div>
+              </>
+            ) : (
+              <p className="muted">
+                {t(d?.capabilities.history === 'unsupported' ? 'unsupported' : 'noData')}
+              </p>
+            )
+          }
+        />
+      )}
+    </AnimatedHeight>
   );
 }

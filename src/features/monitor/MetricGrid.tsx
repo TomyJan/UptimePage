@@ -39,7 +39,7 @@ export function MetricGrid({
     <div className="detail-metrics">
       <MetricCard
         busy={!d || Boolean(loadingRange) || refreshing}
-        state={!d || loadingRange ? 'loading' : 'loaded'}
+        state={!d || loadingRange ? 'loading' : uptime.value === null ? 'empty' : 'loaded'}
       >
         <small>
           {loadingRange ?? d?.range ?? '24h'} {t('uptime')}
@@ -77,7 +77,10 @@ export function MetricGrid({
           )}
         </span>
       </MetricCard>
-      <MetricCard busy={!d || refreshing} state={d ? 'loaded' : 'loading'}>
+      <MetricCard
+        busy={!d || refreshing}
+        state={!d ? 'loading' : d.monitor.responseMs === null ? 'empty' : 'loaded'}
+      >
         <small>{t('latestResponse')}</small>
         <strong>
           {d ? formatMetric(d.monitor.responseMs, ' ms') : <Skeleton className="skeleton-value" />}
@@ -99,7 +102,9 @@ export function MetricGrid({
       </MetricCard>
       <MetricCard
         busy={!d || Boolean(loadingRange) || refreshing}
-        state={!d || loadingRange ? 'loading' : 'loaded'}
+        state={
+          !d || loadingRange ? 'loading' : d.averageResponse.value === null ? 'empty' : 'loaded'
+        }
       >
         <small>
           {loadingRange ?? d?.range ?? '24h'} {t('average')}
@@ -128,7 +133,14 @@ export function MetricGrid({
           </DataTooltip>
         )}
       </MetricCard>
-      <MetricCard busy={!d || refreshing} state={d ? 'loaded' : 'loading'}>
+      <MetricCard
+        busy={!d || refreshing}
+        state={
+          d
+            ? `${d.capabilities.certificate}:${days === null ? 'empty' : days <= 0 ? 'expired' : 'valid'}`
+            : 'loading'
+        }
+      >
         <small>{t('certificate')}</small>
         <strong>
           {!d ? (

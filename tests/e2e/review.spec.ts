@@ -32,9 +32,14 @@ test('initial detail rate limit keeps its scheduler and recovers at retryAt', as
   });
   await page.goto('/services/core/m1');
   await expect(page.getByText('Unable to load')).toBeVisible();
-  await page.clock.fastForward(179000);
+  // Animation and navigation consume real time. Check the absolute server
+  // deadline rather than assuming the error is visible at the clock's epoch.
+  await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+  const remaining = Date.parse('2026-10-21T12:03:00Z') - (await page.evaluate(() => Date.now()));
+  await page.clock.fastForward(remaining - 1000);
   expect(requests).toBe(1);
   await page.clock.fastForward(1000);
+  await page.clock.resume();
   await expect(page.locator('h1')).toHaveText('Website');
   expect(requests).toBe(2);
   await expect(page.locator('.toast-message')).toHaveText('Refreshed');
