@@ -19,7 +19,7 @@ import { useCopy } from '../preferences/copy.ts';
 import { RefreshControl } from '../refresh/RefreshControl.tsx';
 import { HistoryBars, useFormatTime } from '../status/HistoryBars.tsx';
 import { ResponseChart } from './ResponseChart.tsx';
-import { MonitorLayout } from './MonitorLayout.tsx';
+import { MonitorLayout, MonitorToolbar } from './MonitorLayout.tsx';
 import { ChartLoading, HistoryLoading } from '../../components/Loading.tsx';
 export function MonitorPage() {
   const { groupId = '', monitorId = '' } = useParams();
@@ -81,9 +81,8 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
     );
   if (!data && q.isError)
     return (
-      <>
-        {back}
-        <section className="intro">{refreshControl}</section>
+      <div className="detail-content">
+        <MonitorToolbar back={back} refreshControl={refreshControl} />
         <div className="empty">
           <p>{t('loadError')}</p>
           <p>{errorMessage(q.error, t)}</p>
@@ -91,7 +90,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
             {t('retry')}
           </button>
         </div>
-      </>
+      </div>
     );
   const d = data,
     windowFrom = data
@@ -116,17 +115,16 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
       refreshing={q.isFetching}
       heading={
         d ? (
-          <>
-            <div className="detail-title">
-              <Logo src={d.monitor.logo} name={name} className="service-logo" />
-              <div>
+          <div className="detail-title">
+            <Logo src={d.monitor.logo} name={name} className="service-logo" />
+            <div>
+              <div className="detail-name">
                 <h1>{name}</h1>
-                {d.monitor.description && <p>{localize(d.monitor.description, locale)}</p>}
+                <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
               </div>
+              {d.monitor.description && <p>{localize(d.monitor.description, locale)}</p>}
             </div>
-            <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
-            {refreshControl}
-          </>
+          </div>
         ) : undefined
       }
       tabs={

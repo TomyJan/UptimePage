@@ -860,11 +860,28 @@ input {
   max-width: 1064px;
 }
 .detail-heading {
+  margin-bottom: 24px;
+}
+.detail-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 12px;
+  min-height: 36px;
   margin-bottom: 24px;
+}
+.detail-toolbar .back {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  min-height: 36px;
+}
+.detail-name h1 {
+  display: inline;
+  vertical-align: middle;
+}
+.detail-name > :is(.state, .skeleton-badge) {
+  margin-inline-start: 10px;
+  vertical-align: middle;
 }
 .detail-title {
   display: flex;
@@ -1438,11 +1455,6 @@ body,
   }
   .floating-menu {
     border-radius: 13px;
-  }
-  .detail-heading {
-    align-items: flex-start;
-    gap: 16px;
-    flex-direction: column;
   }
   .detail-title h1 {
     font-size: 25px;
@@ -2523,9 +2535,6 @@ button.nav-links-mobile {
 .detail-title p {
   overflow-wrap: anywhere;
 }
-.detail-heading .refresh-control {
-  margin-left: auto;
-}
 .metric-detail {
   display: block;
   text-align: left;
@@ -2596,17 +2605,6 @@ button.nav-links-mobile {
   }
 }
 @media (max-width: 800px) {
-  .detail-heading {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .detail-title {
-    flex: 1 1 calc(100% - 100px);
-  }
-  .detail-heading .refresh-control {
-    margin-left: 0;
-  }
   .detail-metrics strong {
     font-size: 20px;
   }
@@ -2652,9 +2650,6 @@ button.nav-links-mobile {
   }
   .skeleton-title {
     width: 130px;
-  }
-  .detail-loading .skeleton-refresh {
-    margin-right: auto;
   }
 }
 

@@ -9,6 +9,27 @@ import { TransitionLink } from '../../components/TransitionLink.tsx';
 import { ChartLoading, HistoryLoading, Skeleton } from '../../components/Loading.tsx';
 import { useCopy } from '../preferences/copy.ts';
 
+export function MonitorToolbar({
+  back,
+  refreshControl,
+}: {
+  back?: ReactNode;
+  refreshControl?: ReactNode;
+}) {
+  const t = useCopy();
+  return (
+    <div className="detail-toolbar">
+      {back ?? (
+        <TransitionLink className="back" to="/">
+          <ArrowLeft size={14} />
+          {t('back')}
+        </TransitionLink>
+      )}
+      {refreshControl ?? <Skeleton className="skeleton-refresh" />}
+    </div>
+  );
+}
+
 /** The lazy-module fallback and first data request share the detail page's layout. */
 export function MonitorLayout({
   back,
@@ -42,27 +63,21 @@ export function MonitorLayout({
   const t = useCopy();
   return (
     <div className={`detail-content ${detail ? '' : 'detail-loading'}`}>
-      {back ?? (
-        <TransitionLink className="back" to="/">
-          <ArrowLeft size={14} />
-          {t('back')}
-        </TransitionLink>
-      )}
+      <MonitorToolbar back={back} refreshControl={refreshControl} />
       <AnimatedHeight>
         <section className="detail-heading" aria-busy={!detail}>
           {heading ?? (
-            <>
-              <div className="detail-title">
-                <Skeleton className="service-logo" />
-                <div>
+            <div className="detail-title">
+              <Skeleton className="service-logo" />
+              <div>
+                <div className="detail-name">
                   <h1>
                     <Skeleton className="skeleton-title" />
                   </h1>
+                  <Skeleton className="skeleton-badge" />
                 </div>
               </div>
-              <Skeleton className="skeleton-badge" />
-              {refreshControl ?? <Skeleton className="skeleton-refresh" />}
-            </>
+            </div>
           )}
         </section>
       </AnimatedHeight>
