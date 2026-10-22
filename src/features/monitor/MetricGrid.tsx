@@ -143,6 +143,11 @@ export function MetricGrid({
             `${days} ${t('days')}`
           )}
         </strong>
+        {!d && (
+          <span className="metric-note">
+            <Skeleton className="skeleton-caption" />
+          </span>
+        )}
         {d && days === null && d.capabilities.certificate !== 'unsupported' && (
           <span className="metric-note">{t('noData')}</span>
         )}

@@ -66,6 +66,15 @@ for (const width of [1280, 390]) {
     release();
     await expect(page.locator('.chart-line')).toHaveCount(2);
     await expect(chart).toHaveAttribute('aria-busy', 'false');
+    await page.locator('.detail-metrics').evaluate(async (node) => {
+      await new Promise(requestAnimationFrame);
+      await Promise.allSettled(
+        node
+          .getAnimations({ subtree: true })
+          .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+          .map((animation) => animation.finished),
+      );
+    });
     const after = (await chart.boundingBox())!;
     expect(Math.abs(after.y - before.y)).toBeLessThan(12);
     expect(Math.abs(after.width - before.width)).toBeLessThan(1);
