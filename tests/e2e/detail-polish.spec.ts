@@ -8,10 +8,26 @@ test('history tooltip follows the selected record on the list and detail pages',
     await page.goto(url);
     const history = page.locator('.bars').first();
     await expect(history).toBeVisible();
+    // Keep scaled cells clear of viewport edges: hover's automatic 1 px scroll
+    // correctly dismisses the tooltip, which is separate from positioning.
+    await page.mouse.move(0, 0);
+    await history.evaluate(async (node) => {
+      node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+      let last = '',
+        stable = 0;
+      while (stable < 4) {
+        await new Promise(requestAnimationFrame);
+        const box = node.getBoundingClientRect();
+        const position = `${scrollY}:${box.x}:${box.y}:${box.width}:${box.height}`;
+        stable = position === last ? stable + 1 : 0;
+        last = position;
+      }
+    });
     const lastIndex = (await history.locator('.bar').count()) - 4;
     for (const index of [4, lastIndex]) {
       const bar = history.locator('.bar').nth(index);
-      await bar.hover();
+      const target = (await bar.boundingBox())!;
+      await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2);
       const tip = page.getByRole('tooltip');
       await expect(tip).toBeVisible();
       await expect
