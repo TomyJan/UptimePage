@@ -65,7 +65,7 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 
 加载、失败、数据缺失和恢复使用明确的 `contentKey`，由 `AnimatedHeight` 统一处理退场、入场和高度变化；普通数值刷新不重播。公开权限撤销时直接卸载旧内容，不等待退场。
 
-界面样式集中在 `src/styles/`，编辑器样式在 `src/features/editor/editor.css`。统一使用自托管 MiSans 和 `tabular-nums`；字体样式地址位于 `index.html`。新增组件沿用现有颜色、字体与动效变量，兼容 320 px 窄屏、键盘操作和深浅色。
+界面样式集中在 `src/styles/`，编辑器样式在 `src/features/editor/editor.css`。统一使用 MiSans；字体样式地址位于 `index.html`，异步加载，不阻塞页面。新增组件沿用现有颜色、字体与动效变量，兼容 320 px 窄屏、键盘操作和深浅色。
 
 监控状态与取数状态分别处理；请求失败不改写监控状态或成功更新时间。缺失数据使用 `null`，不能用零值、当前状态或模拟采样补齐；公开范围必须由服务端检查，详情缓存不能绕过授权。
 
