@@ -94,9 +94,7 @@
             "zh-CN": "默认"
           },
           "logo": null,
-          "monitorIds": [
-            "*"
-          ]
+          "monitorIds": ["*"]
         }
       ],
       "monitors": {}
