@@ -50,17 +50,20 @@ for (const width of [1280, 390]) {
     await expect(page.locator('.detail-heading')).toBeVisible();
     await expect(page.locator('.detail-metrics > div')).toHaveCount(4);
     await expect(page.locator('.detail-content .panel')).toHaveCount(4);
-    const chart = page.locator('.chart-panel');
+    // The lazy route fallback has the same shell but is replaced when its module
+    // loads. Observe the route's mounted spinner, not a detached fallback node.
+    const chart = page.locator('.detail-stage .chart-panel');
     await expect(chart).toHaveAttribute('aria-busy', 'true');
     await expect(page.locator('.checks-panel')).toHaveAttribute('aria-busy', 'true');
-    expect(
-      await page
-        .locator('.loading-spinner')
-        .first()
-        .evaluate((el) =>
-          el.getAnimations().some((animation) => animation.playState === 'running'),
-        ),
-    ).toBe(true);
+    await expect
+      .poll(() =>
+        chart
+          .locator('.loading-spinner')
+          .evaluate((el) =>
+            el.getAnimations().some((animation) => animation.playState === 'running'),
+          ),
+      )
+      .toBe(true);
     const before = (await chart.boundingBox())!;
     await page.screenshot({ path: info.outputPath('detail-loading.png'), fullPage: true });
     release();
