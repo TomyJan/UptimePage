@@ -134,10 +134,9 @@ input {
   height: 34px;
   display: grid;
   place-items: center;
-  background: var(--accent);
-  color: var(--surface);
+  background: transparent;
+  color: var(--accent);
   border-radius: 11px;
-  box-shadow: 0 3px 8px #426ce425;
 }
 .nav-tools {
   display: flex;
@@ -1623,11 +1622,6 @@ body,
 
 /* Palette study: neutral surfaces, one brand accent, fixed status semantics. */
 
-.brand-mark {
-  background: var(--brand);
-  color: var(--accent-on);
-  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 12%, transparent);
-}
 .logo {
   background: var(--hover);
 }
