@@ -3,8 +3,8 @@
 :root {
   color-scheme: light;
   --radius: 14px;
-  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
-  --sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --mono: var(--sans);
+  --sans: 'MiSans', 'Microsoft YaHei', sans-serif;
 }
 [data-theme='dark'] {
   color-scheme: dark;
@@ -17,6 +17,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font: 14px/1.5 var(--sans);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 button,

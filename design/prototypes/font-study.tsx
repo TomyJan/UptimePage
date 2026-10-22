@@ -27,7 +27,10 @@ config.site.footer = '';
 const pub = previewConfig(config, 'font-study');
 const client = createPreviewClient(config, pub);
 document.documentElement.style.setProperty('--sans', "'MiSans', 'Microsoft YaHei', sans-serif");
-if (choice === 'b') document.documentElement.style.setProperty('--mono', 'var(--sans)');
+document.documentElement.style.setProperty(
+  '--mono',
+  choice === 'b' ? 'var(--sans)' : "ui-monospace, 'Cascadia Code', Consolas, monospace",
+);
 const path = (variant: string, showDetail = detail) =>
   `/design/prototypes/font-${variant}.html${showDetail ? '?view=detail' : ''}`;
 
