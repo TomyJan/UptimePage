@@ -228,3 +228,71 @@ for (const read of ['paste', 'file'] as const) {
     });
   }
 }
+
+test('corrected monitor and subgroup logos recover after a failed image load', async ({ page }) => {
+  await page.route('**/missing-logo.svg', (route) => route.fulfill({ status: 404, body: '' }));
+  await page.route('**/valid-logo.svg', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="red"/></svg>',
+    }),
+  );
+  await page.goto('/?configeditor=on');
+  await page.getByRole('button', { name: 'Edit configuration', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep expanded', exact: true }).click();
+  await page.getByRole('button', { name: 'JSON', exact: true }).click();
+  const config = structuredClone(editorTemplate);
+  const json = page.getByRole('textbox', { name: 'JSON', exact: true });
+  config.groups[0].monitors['web-1'].logo = '/missing-logo.svg';
+  config.groups[0].subgroups[0].logo = '/missing-logo.svg';
+  await json.fill(JSON.stringify(config));
+  const broken = page.locator('img[src="/missing-logo.svg"]');
+  await expect(broken).toHaveCount(2);
+  await expect(broken.first()).toHaveCSS('visibility', 'hidden');
+  await expect(broken.last()).toHaveCSS('visibility', 'hidden');
+  config.groups[0].monitors['web-1'].logo = '/valid-logo.svg';
+  config.groups[0].subgroups[0].logo = '/valid-logo.svg';
+  await json.fill(JSON.stringify(config));
+  const repaired = page.locator('img[src="/valid-logo.svg"]');
+  await expect(repaired).toHaveCount(2);
+  for (const image of await repaired.all()) {
+    await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(20);
+    await expect(image).toHaveCSS('visibility', 'visible');
+  }
+});
+
+test('configured navigation remains accessible on mobile and keeps link behavior', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto('/?configeditor=on');
+  await page.getByRole('button', { name: 'Edit configuration', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep expanded', exact: true }).click();
+  await page.getByRole('button', { name: 'JSON', exact: true }).click();
+  const config = structuredClone(editorTemplate);
+  config.site.name = 'A longer status page name';
+  config.site.nav = [
+    { label: { en: 'Home', 'zh-CN': '首页' }, href: 'https://example.com/', newTab: true },
+    { label: 'Docs', href: '/docs', newTab: false },
+  ];
+  await page.getByRole('textbox', { name: 'JSON', exact: true }).fill(JSON.stringify(config));
+  await page.getByRole('button', { name: 'Dock to edge', exact: true }).click();
+  await page.getByRole('button', { name: 'Navigation', exact: true }).click();
+  const home = page.getByRole('menuitem', { name: 'Home', exact: true });
+  await expect(home).toHaveAttribute('href', 'https://example.com/');
+  await expect(home).toHaveAttribute('target', '_blank');
+  await expect(home).not.toHaveAttribute('rel', /noreferrer/);
+  await expect(page.getByRole('menuitem', { name: 'Docs', exact: true })).not.toHaveAttribute(
+    'target',
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const menu = await page.getByRole('menu', { name: 'Navigation', exact: true }).boundingBox();
+  expect(menu!.x).toBeGreaterThanOrEqual(0);
+  expect(menu!.x + menu!.width).toBeLessThanOrEqual(320);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Navigation', exact: true })).toBeFocused();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(
+    page.locator('.nav-links').getByRole('link', { name: 'Home', exact: true }),
+  ).toBeVisible();
+});

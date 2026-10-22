@@ -2,6 +2,7 @@ import { Clock3, Globe2, Moon, Sun } from 'lucide-react';
 import { Dropdown } from '../../components/Dropdown.tsx';
 import { useCopy } from './copy.ts';
 import { usePreferences, setPreferences, type Preferences } from './store.ts';
+import { NavigationMenu } from '../../components/NavigationMenu.tsx';
 export function PreferencesMenu() {
   const { preferences: p, locale, timeZone } = usePreferences(),
     t = useCopy();
@@ -23,6 +24,7 @@ export function PreferencesMenu() {
       className="nav-tools"
       aria-label={`${t('language')} / ${t('timezone')} / ${t('appearance')}`}
     >
+      <NavigationMenu />
       <Dropdown
         label={t('language')}
         value={p.language}

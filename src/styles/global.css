@@ -2211,6 +2211,16 @@ body {
   min-width: 0;
   white-space: nowrap;
 }
+.brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button.nav-links-mobile {
+  display: none;
+}
+.nav-tools {
+  flex-shrink: 0;
+}
 .site-footer {
   min-height: 60px;
 }
@@ -2221,6 +2231,9 @@ body {
 @media (max-width: 800px) {
   .nav-links {
     display: none;
+  }
+  button.nav-links-mobile {
+    display: inline-flex;
   }
 }
 

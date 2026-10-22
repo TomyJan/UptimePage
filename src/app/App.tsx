@@ -61,7 +61,7 @@ export function App({ children }: { children?: ReactNode }) {
                 <Activity size={23} />
               </span>
             )}
-            {localize(publicConfig.site.name, locale)}
+            <span className="brand-name">{localize(publicConfig.site.name, locale)}</span>
           </TransitionLink>
           <div className="nav-links">
             {publicConfig.site.nav.map((item) => (

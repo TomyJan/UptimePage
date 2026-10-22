@@ -13,6 +13,9 @@ export function Logo({
       src={src}
       alt=""
       loading="lazy"
+      onLoad={(event) => {
+        event.currentTarget.style.visibility = '';
+      }}
       onError={(event) => {
         event.currentTarget.style.visibility = 'hidden';
       }}

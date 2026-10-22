@@ -40,6 +40,8 @@
 
 以上是 `site` 的局部示例。页脚左侧固定为 `Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；hash 构建时从 Git 注入，也可用 `UPTIMEPAGE_COMMIT` 指定。未指定且无法从 Git 读取时显示 `dev`。
 
+自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
+
 访客语言、时区、外观和刷新偏好保存在浏览器，手动选择优先。自动语言不支持时回退英文，时区获取失败时回退 UTC，外观跟随系统。
 
 ## 分组 `groups`
