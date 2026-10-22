@@ -26,6 +26,7 @@
 | `footer`                 | 页脚右侧内容，默认空；支持 `[文字](https://example.com)` 链接，其余按纯文本显示 |
 | `refreshIntervalSeconds` | 非负整数，默认 `60`；`0` 为仅手动刷新                                           |
 | `pinAbnormal`            | 默认异常优先，默认 `false`                                                      |
+| `umami`                  | 可选 Umami 统计配置，默认 `null`，见下文                                        |
 
 名称、导航文字、页脚和监控描述支持字符串或双语对象，例如 `{"en":"Services","zh-CN":"服务"}`；双语对象必须有英文。Logo 和导航地址支持 `/logo.svg` 这样的站内路径或 HTTPS URL，本地资源放在 `public/`。
 
@@ -43,6 +44,23 @@
 自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
 
 访客语言、时区、外观和刷新偏好保存在浏览器，手动选择优先。自动语言不支持时回退英文，时区获取失败时回退 UTC，外观跟随系统。
+
+### Umami
+
+在 `site.umami` 配置统计脚本地址和 Website ID，提交后重新构建部署；不使用环境变量。两项都会进入浏览器，不能填写管理端密钥或访问令牌。
+
+```json
+{
+  "umami": {
+    "scriptUrl": "https://analytics.example.com/script.js",
+    "websiteId": "94db1cb1-74f4-4a40-ad6c-962362670409"
+  }
+}
+```
+
+以上是 `site` 的局部示例。`scriptUrl` 支持 HTTPS URL 或 `/analytics/script.js` 这样的同源绝对路径；`websiteId` 使用 Umami 站点设置提供的 UUID。删除此项或设为 `null` 即关闭。配置编辑器的网站设置中也可填写。
+
+只在生产构建的普通访问中异步加载一次，使用 Umami 脚本原生的页面与 SPA 路由统计；脚本被拦截或不可用不影响监控页面。开发环境、字体原型和从配置编辑入口打开的会话均不统计；退出编辑后如需恢复统计，重新正常访问站点。
 
 ## 分组 `groups`
 

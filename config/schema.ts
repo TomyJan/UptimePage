@@ -73,6 +73,29 @@ const schema = z
         footer: footerText,
         refreshIntervalSeconds: z.number().int().nonnegative().default(60),
         pinAbnormal: z.boolean().default(false),
+        umami: z
+          .object({
+            scriptUrl: z.string().refine((value) => {
+              try {
+                const base = 'https://uptimepage.invalid';
+                const url = new URL(value, base);
+                const local =
+                  value.startsWith('/') && !value.startsWith('//') && !value.includes('\\');
+                return (
+                  (local ? url.origin === base : value.startsWith('https://')) &&
+                  url.protocol === 'https:' &&
+                  !url.username &&
+                  !url.password
+                );
+              } catch {
+                return false;
+              }
+            }, 'Expected a local script path or HTTPS URL without credentials'),
+            websiteId: z.uuid(),
+          })
+          .strict()
+          .nullable()
+          .default(null),
       })
       .strict(),
     groups: z

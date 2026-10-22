@@ -4,6 +4,8 @@ import { Providers } from './app/providers.tsx';
 import { App } from './app/App.tsx';
 import { ApiContext } from './data/hooks.ts';
 import { createHttpClient } from './data/client.ts';
+import { publicConfig } from './data/config.ts';
+import { loadUmami } from './app/analytics.ts';
 import './styles/tokens.css';
 import './styles/global.css';
 const client =
@@ -17,11 +19,11 @@ let content = (
     </Providers>
   </ApiContext.Provider>
 );
-if (
-  __UPTIMEPAGE_CONFIG_EDITOR__ &&
-  new URLSearchParams(location.search).get('configeditor') === 'on'
-) {
+const editing =
+  __UPTIMEPAGE_CONFIG_EDITOR__ && new URLSearchParams(location.search).get('configeditor') === 'on';
+if (editing) {
   const { EditorRoot } = await import('./features/editor/EditorRoot.tsx');
   content = <EditorRoot productionClient={client} />;
 }
 createRoot(document.getElementById('root')!).render(<StrictMode>{content}</StrictMode>);
+loadUmami(publicConfig.site.umami, { production: import.meta.env.PROD, editor: editing });

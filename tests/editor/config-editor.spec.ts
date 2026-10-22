@@ -57,6 +57,29 @@ test('form and JSON edit the actual page, block invalid exports and retain fixed
   expect(Math.abs(after!.y - before!.y)).toBeLessThan(1);
   expect(calls).toBe(0);
 });
+
+test('Umami configuration round-trips without loading the tracker in preview', async ({ page }) => {
+  let requests = 0;
+  await page.route('https://analytics.example.test/**', (route) => {
+    requests++;
+    return route.abort();
+  });
+  await page.goto('/?configeditor=on');
+  await page.getByRole('button', { name: 'Edit configuration', exact: true }).click();
+  await page.getByRole('button', { name: 'Keep expanded', exact: true }).click();
+  await page.getByRole('button', { name: 'Enable Umami', exact: true }).click();
+  await page
+    .getByLabel('Tracker script URL', { exact: true })
+    .fill('https://analytics.example.test/script.js');
+  await page.getByLabel('Website ID', { exact: true }).fill('94db1cb1-74f4-4a40-ad6c-962362670409');
+  await page.getByRole('button', { name: 'JSON', exact: true }).click();
+  const exported = parseConfig(
+    JSON.parse(await page.getByRole('textbox', { name: 'JSON', exact: true }).inputValue()),
+  );
+  expect(exported.site.umami?.websiteId).toBe('94db1cb1-74f4-4a40-ad6c-962362670409');
+  await expect(page.locator('#uptimepage-umami')).toHaveCount(0);
+  expect(requests).toBe(0);
+});
 test('file import, detail navigation and refresh remain mock-only; exit restores production', async ({
   page,
 }) => {

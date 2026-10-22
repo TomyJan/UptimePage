@@ -28,6 +28,27 @@ const fixture = () => ({
   ],
 });
 describe('configuration boundary', () => {
+  it('keeps Umami disabled by default and exposes its public configuration when provided', () => {
+    expect(parseConfig(fixture()).site.umami).toBeNull();
+    const f: any = fixture();
+    f.site.umami = {
+      scriptUrl: 'https://analytics.example.test/script.js',
+      websiteId: '94db1cb1-74f4-4a40-ad6c-962362670409',
+    };
+    expect(splitConfig(parseConfig(f), 'version').publicConfig.site.umami).toEqual(f.site.umami);
+  });
+  it.each([
+    { scriptUrl: 'javascript:alert(1)', websiteId: '94db1cb1-74f4-4a40-ad6c-962362670409' },
+    {
+      scriptUrl: 'https://user:password@analytics.example.test/script.js',
+      websiteId: '94db1cb1-74f4-4a40-ad6c-962362670409',
+    },
+    { scriptUrl: 'https://analytics.example.test/script.js', websiteId: 'not-a-website-id' },
+  ])('rejects malformed Umami configuration', (umami) => {
+    const f: any = fixture();
+    f.site.umami = umami;
+    expect(() => parseConfig(f)).toThrow('site.umami');
+  });
   it('keeps the optional new-tab setting for public navigation links', () => {
     const f: any = fixture();
     f.site.nav = [{ label: 'Blog', href: 'https://example.test', newTab: true }];

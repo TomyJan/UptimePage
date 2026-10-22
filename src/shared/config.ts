@@ -20,6 +20,7 @@ export interface PublicConfig {
     footer: LocalizedText | '';
     refreshIntervalSeconds: number;
     pinAbnormal: boolean;
+    umami: { scriptUrl: string; websiteId: string } | null;
   };
   groups: PublicGroup[];
 }

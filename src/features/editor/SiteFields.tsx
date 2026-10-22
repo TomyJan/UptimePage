@@ -123,6 +123,41 @@ export function SiteFields({ config, change, language, t }: FormProps) {
         }
       />
       <p className="ce-hint">{t('footerHint')}</p>
+      <div className="ce-section">
+        <strong>Umami</strong>
+        <Toggle
+          label={t('enableUmami')}
+          value={Boolean(site.umami)}
+          onChange={(enabled) =>
+            change((c) => {
+              c.site.umami = enabled ? { scriptUrl: '', websiteId: '' } : null;
+            })
+          }
+        />
+      </div>
+      {site.umami && (
+        <>
+          <Field
+            label={t('umamiScript')}
+            value={site.umami.scriptUrl}
+            onChange={(value) =>
+              change((c) => {
+                c.site.umami!.scriptUrl = value;
+              })
+            }
+          />
+          <Field
+            label="Website ID"
+            value={site.umami.websiteId}
+            onChange={(value) =>
+              change((c) => {
+                c.site.umami!.websiteId = value;
+              })
+            }
+          />
+          <p className="ce-hint">{t('umamiHint')}</p>
+        </>
+      )}
     </>
   );
 }
