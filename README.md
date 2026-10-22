@@ -1,6 +1,10 @@
 # UptimePage
 
-部署在 EdgeOne Makers 的公开监控状态页，聚合 Peekaping 和 UptimeRobot。监控检查与告警由上游负责。
+UptimePage 是一个部署在 EdgeOne Makers 上的现代状态页，支持聚合多个监控来源，清晰展示服务状态与历史数据。
+
+UptimePage is a modern status page for EdgeOne Makers, aggregating multiple monitoring sources to clearly display service status and historical data.
+
+目前支持 Peekaping 和 UptimeRobot；监控检查与告警由上游负责。
 
 [在线状态页](https://status.tomys.top/) · [可视化配置编辑器](https://status.tomys.top/?configeditor=on)
 
