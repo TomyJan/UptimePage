@@ -63,24 +63,26 @@ export function MonitorLayout({
   const t = useCopy();
   return (
     <div className={`detail-content ${detail ? '' : 'detail-loading'}`}>
-      <MonitorToolbar back={back} refreshControl={refreshControl} />
-      <AnimatedHeight>
-        <section className="detail-heading" aria-busy={!detail}>
-          {heading ?? (
-            <div className="detail-title">
-              <Skeleton className="service-logo" />
-              <div>
-                <div className="detail-name">
-                  <h1>
-                    <Skeleton className="skeleton-title" />
-                  </h1>
-                  <Skeleton className="skeleton-badge" />
+      <div className="detail-header">
+        <MonitorToolbar back={back} refreshControl={refreshControl} />
+        <AnimatedHeight className="detail-heading-frame">
+          <section className="detail-heading" aria-busy={!detail}>
+            {heading ?? (
+              <div className="detail-title">
+                <Skeleton className="service-logo" />
+                <div>
+                  <div className="detail-name">
+                    <h1>
+                      <Skeleton className="skeleton-title" />
+                    </h1>
+                    <Skeleton className="skeleton-badge" />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </section>
-      </AnimatedHeight>
+            )}
+          </section>
+        </AnimatedHeight>
+      </div>
       <MetricGrid
         detail={detail}
         loadingRange={rangeLoading ? range : undefined}

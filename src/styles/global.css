@@ -860,7 +860,62 @@ input {
   max-width: 1064px;
 }
 .detail-heading {
+  margin-bottom: 0;
+}
+.detail-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px 20px;
+  align-items: center;
   margin-bottom: 24px;
+}
+.detail-header .detail-toolbar {
+  display: contents;
+}
+.detail-header .back {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-height: 0;
+  justify-self: start;
+}
+.detail-header .detail-toolbar > :last-child {
+  grid-column: 2;
+  grid-row: 2;
+}
+.detail-heading-frame {
+  grid-column: 1;
+  grid-row: 2;
+}
+.detail-header .detail-title {
+  display: grid;
+  grid-template-columns: 48px minmax(0, max-content) max-content;
+  column-gap: 14px;
+}
+.detail-header .detail-title > div:last-child,
+.detail-header .detail-name {
+  display: contents;
+}
+.detail-header .service-logo {
+  grid-column: 1;
+  grid-row: 1 / 3;
+}
+.detail-header h1 {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+.detail-header .detail-title:has(p) h1 {
+  grid-row: 1;
+  align-self: end;
+}
+.detail-header .detail-title p {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+}
+.detail-header .detail-name > :is(.state, .skeleton-badge) {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  margin-inline-start: 6px;
 }
 .detail-toolbar {
   display: flex;
@@ -874,6 +929,20 @@ input {
   flex-shrink: 0;
   margin-bottom: 0;
   min-height: 36px;
+}
+@media (min-width: 801px) {
+  .detail-content > .detail-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .detail-content > .detail-toolbar .back {
+    min-height: 0;
+    justify-self: start;
+  }
+  .detail-content > .detail-toolbar > :last-child {
+    justify-self: end;
+  }
 }
 .detail-name h1 {
   display: inline;
@@ -2605,6 +2674,25 @@ button.nav-links-mobile {
   }
 }
 @media (max-width: 800px) {
+  .detail-header {
+    display: block;
+  }
+  .detail-header .detail-toolbar {
+    display: flex;
+  }
+  .detail-header .back {
+    min-height: 36px;
+  }
+  .detail-header .detail-title {
+    display: flex;
+  }
+  .detail-header .detail-title > div:last-child,
+  .detail-header .detail-name {
+    display: block;
+  }
+  .detail-header .detail-name > :is(.state, .skeleton-badge) {
+    margin-inline-start: 10px;
+  }
   .detail-metrics strong {
     font-size: 20px;
   }
