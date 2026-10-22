@@ -2,9 +2,21 @@
 
 ## 配置与构建
 
-项目仅支持 EdgeOne Makers。将完整配置提交为 `config/site.json`；可使用[可视化配置编辑器](https://status.tomys.top/?configeditor=on)生成文件，字段和公开范围见[配置说明](configuration.md)。
+项目仅支持 EdgeOne Makers。
 
-在 Makers 导入 Git 仓库，选择部署分支，项目根目录使用仓库根目录。构建设置已由 [edgeone.json](../edgeone.json) 声明：
+1. Fork 仓库，使用[可视化配置编辑器](https://status.tomys.top/?configeditor=on)生成完整 JSON，字段见[配置说明](configuration.md)。
+2. 将 JSON 上传到可匿名读取的 HTTPS 地址。可在 Fork 中新建 `config` 分支存放 `site.json`，也可自行托管；代码部署分支无需提交实际配置。
+3. 在 Makers 导入代码分支（通常为 `master`），根目录选仓库根目录，添加构建环境变量 `UPTIMEPAGE_CONFIG`，填写 JSON 直链。例如配置文件位于 `config` 分支时：
+
+   ```text
+   https://raw.githubusercontent.com/<用户名>/UptimePage/config/site.json
+   ```
+
+4. 在函数环境变量中设置配置引用的来源 API Key，按下表构建并部署。
+
+使用文件原始内容地址，不填 GitHub 的 `blob` 网页地址。GitHub 直链会自动先请求 `https://ghfast.top/<原始直链>`，失败后请求原始地址；其他托管地址直接读取。每次请求超时为 10 秒，HTTP 错误、非 JSON 或配置校验失败均算失败；所有尝试失败则终止构建，不改用仓库中的配置。
+
+构建设置已由 [edgeone.json](../edgeone.json) 声明：
 
 | 设置     | 值                                                                          |
 | -------- | --------------------------------------------------------------------------- |
@@ -23,7 +35,7 @@ Makers 需从仓库构建并部署 `dist/`、`cloud-functions/`、`edge-function
 | `PEEKAPING_API_KEY`        | 函数运行时 | Peekaping API Key，变量名可通过 `source.apiKeyEnv` 自定义 |
 | `UPTIMEROBOT_API_KEY`      | 函数运行时 | 能读取所选监控的 UptimeRobot API Key，同样可自定义变量名  |
 | `UPTIMEPAGE_CONFIG_EDITOR` | 构建       | 精确设为 `true` 才编译编辑器，默认不编译                  |
-| `UPTIMEPAGE_CONFIG`        | 构建       | 可选配置文件路径，默认优先读取 `config/site.json`         |
+| `UPTIMEPAGE_CONFIG`        | 构建       | 配置 JSON 的 HTTPS 直链；也支持本地文件路径               |
 | `UPTIMEPAGE_COMMIT`        | 构建       | 可选 Git 提交 hash；无法从 Git 获取提交信息时使用         |
 
 只设置实际使用的来源密钥，确保相应生产 / 预览环境的云函数和边缘函数均可读取。密钥不写入 JSON，不使用 `VITE_` 前缀。更改配置或环境变量后重新部署。
@@ -51,6 +63,8 @@ HTTP 验收先构建，再检查静态资源、配置版本、整组快照、三
 
 ## 更新与回退
 
-配置修改提交到部署分支，随自动部署或手动构建生效。回退完整部署，使静态资源与函数使用同一配置版本。来源配额、平台运行限制及 KV 额度以实际环境为准。
+更新配置分支或托管文件后，重新部署状态页才会生效；现有部署不会在运行时重读直链。需要固定配置版本时，可将 GitHub 直链中的分支名换为配置文件的提交 hash。
+
+回退完整部署，使静态资源与函数使用同一配置版本。若从源码重新构建旧版本，还需使用对应的配置文件版本。来源配额、平台运行限制及 KV 额度以实际环境为准。
 
 平台文档：[Cloud Functions](https://pages.edgeone.ai/zh/document/cloud-functions) · [KV](https://pages.edgeone.ai/zh/document/kv-storage)

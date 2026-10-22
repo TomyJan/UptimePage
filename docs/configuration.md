@@ -2,11 +2,13 @@
 
 ## 配置文件
 
-配置为完整 JSON，包含 `site`、`groups` 和可选 `cache`。使用[可视化配置编辑器](https://status.tomys.top/?configeditor=on)生成，或参考 [config/default.json](../config/default.json)，保存为 `config/site.json` 并提交。修改后需要重新构建部署。
+配置为完整 JSON，包含 `site`、`groups` 和可选 `cache`。使用[可视化配置编辑器](https://status.tomys.top/?configeditor=on)生成，或参考 [config/default.json](../config/default.json)。将文件放在独立配置分支或自行托管，在 EO 构建环境变量 `UPTIMEPAGE_CONFIG` 中填写可匿名读取的 HTTPS JSON 直链，见[部署步骤](deployment.md#配置与构建)。
 
-构建读取顺序：`UPTIMEPAGE_CONFIG` 指定文件 → `config/site.json` → `config/default.json`。完整替换，不合并；只有 `site.json` 不存在才回退默认文件。显式路径不存在、配置损坏或读取失败会终止构建。
+`UPTIMEPAGE_CONFIG` 也接受本地文件路径。配置完整替换，不合并；显式指定的直链或文件读取、解析、校验失败会终止构建。只有未设置变量时，才依次读取仓库的 `config/site.json`、`config/default.json`；仅 `site.json` 不存在时回退默认文件。
 
-`site.json` 可提交，公开仓库中的内容也会公开；`*.local.json` 被 Git 忽略，仅适合本地通过 `UPTIMEPAGE_CONFIG` 指定。构建脚本不自动加载 `.env`。运行 `pnpm run generate` 校验配置，它不连接上游；字段和约束以 [config/schema.ts](../config/schema.ts) 为准，未知字段会被拒绝。
+GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `github.com`）先经 [ghfast](https://ghfast.top) 加载，失败后直连；其他地址直接加载。请求超时、HTTP 错误、非 JSON 或无效配置均触发回退，每次请求最多 10 秒，跳转仅接受 HTTPS；均失败则报错，不使用默认配置。
+
+配置只在构建时读取，修改托管文件后需重新部署。使用 GitHub 配置提交 hash 的直链可以固定版本。`*.local.json` 被 Git 忽略，适合本地预览；构建脚本不自动加载 `.env`。`pnpm run generate` 会读取并校验配置（直链需要联网），但不查询监控来源。字段以 [config/schema.ts](../config/schema.ts) 为准，未知字段会被拒绝。
 
 ## 可视化编辑器
 
@@ -16,7 +18,7 @@
 
 编辑面板位于右下角，失去悬停和输入焦点后自动贴边，悬停、点击或键盘聚焦可展开，也可固定展开。表单与 JSON 共用草稿；导入、复制、粘贴和格式化工具在 JSON 面板中。
 
-导出的 `site.json` 提交到自己的仓库并重新部署后才生效。只想生成配置，可直接使用上述在线入口；要在自己的站点提供编辑器，在构建环境设置 `UPTIMEPAGE_CONFIG_EDITOR=true`，重新部署后访问 `/?configeditor=on`。默认不编译，移除变量或设为 `false` 后重新部署即可移除。编辑器与状态页一同部署，无后台写入、登录或主页入口。
+将导出的 `site.json` 上传到配置直链对应位置，重新部署状态页后生效。只想生成配置，可直接使用上述在线入口；要在自己的站点提供编辑器，在构建环境设置 `UPTIMEPAGE_CONFIG_EDITOR=true`，重新部署后访问 `/?configeditor=on`。默认不编译，移除变量或设为 `false` 后重新部署即可移除。编辑器与状态页一同部署，无后台写入、登录或主页入口。
 
 ## 网站 `site`
 
@@ -30,7 +32,7 @@
 | `pinAbnormal`            | 是否默认将异常条目置顶，默认 `false`                                            |
 | `umami`                  | 可选 Umami 统计配置，默认 `null`，见下文                                        |
 
-名称、导航文字、页脚和监控描述支持字符串或双语对象，例如 `{"en":"Services","zh-CN":"服务"}`；双语对象必须有英文。Logo 和导航地址支持 `/logo.svg` 这样的站内路径或 HTTPS URL，本地资源放在 `public/`。
+名称、导航文字、页脚和监控描述支持字符串或双语对象，例如 `{"en":"Services","zh-CN":"服务"}`；双语对象必须有英文。Logo 和导航地址支持 `/logo.svg` 这样的站内路径或 HTTPS URL，本地资源放在 `public/`；站内路径相对于状态页站点，不是配置文件地址。
 
 ```json
 {
@@ -49,7 +51,7 @@
 
 ### Umami
 
-在 `site.umami` 配置统计脚本地址和 Website ID，提交后重新构建部署；不使用环境变量。两项都会进入浏览器，不能填写管理端密钥或访问令牌。
+在 `site.umami` 配置统计脚本地址和 Website ID，更新配置文件后重新构建部署；不使用环境变量。两项都会进入浏览器，不能填写管理端密钥或访问令牌。
 
 ```json
 {
@@ -129,7 +131,7 @@
 
 `apiKeyEnv` 只填写环境变量名，格式为大写字母 / 下划线开头，后续可含数字，例如 `PEEKAPING_API_KEY`。实际值在 EO 函数环境变量中设置；多个连接可引用不同变量名。不要把密钥值写入 JSON 或 `VITE_*`。
 
-网站设置和分组名称 / Logo 进入静态产物；来源地址、选择规则和密钥变量名只用于函数。浏览器接口只返回公开展示字段，不透传上游目标地址和私有配置。提交到公开仓库的配置文件本身仍然公开。
+网站设置和分组名称 / Logo 进入静态产物；来源地址、选择规则和密钥变量名只用于函数。浏览器接口只返回公开展示字段，不透传上游目标地址和私有配置。公开托管的配置文件本身仍然公开，不能在其中填写密钥值。
 
 ## 可选 KV
 
@@ -137,7 +139,7 @@
 
 1. 在 Makers 创建 KV 命名空间，例如 `uptimepage-cache`。空间名称无项目专属要求，遵守平台规则即可；建议本站使用独立空间。
 2. 将空间绑定到本站项目，绑定变量名例如 `UPTIMEPAGE_KV`。
-3. 在配置中设置 `"cache": {"kvBinding":"UPTIMEPAGE_KV"}`，提交并重新部署。
+3. 在配置中设置 `"cache": {"kvBinding":"UPTIMEPAGE_KV"}`，更新托管文件并重新部署。
 
 `cache.kvBinding` 与绑定变量名必须一致，区分大小写；使用字母 / 下划线开头，后续可含数字。命名空间名称、自动生成的 ID 均不填入此字段；绑定是资源，不是在普通环境变量里填写空间名称，也不需要 KV Token 或修改 `edgeone.json`。
 

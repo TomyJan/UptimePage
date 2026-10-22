@@ -46,18 +46,20 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 
 ## 维护入口
 
-| 路径                                                              | 职责                                          |
-| ----------------------------------------------------------------- | --------------------------------------------- |
-| `src/features/`、`src/components/`                                | 页面、交互和共用组件                          |
-| `src/features/editor/`                                            | 可选编辑器、内存草稿和 mock                   |
-| `src/shared/`                                                     | 前后端契约与响应校验                          |
-| `src/server/`                                                     | 来源适配、公开范围、缓存和脱敏诊断            |
-| `cloud-functions/api/v1/[[default]].ts`                           | 云函数 API 入口                               |
-| `edge-functions/_uptimepage/cache.ts`                             | 签名缓存桥、节点缓存和 KV                     |
-| `config/schema.ts`、`scripts/build-config.ts`                     | 配置校验、公私拆分和构建元数据                |
-| `tests/unit/`、`tests/e2e/`、`tests/editor/`、`tests/deployment/` | 单元 / 集成、本地浏览器、编辑器和真实部署验收 |
+| 路径                                                                      | 职责                                          |
+| ------------------------------------------------------------------------- | --------------------------------------------- |
+| `src/features/`、`src/components/`                                        | 页面、交互和共用组件                          |
+| `src/features/editor/`                                                    | 可选编辑器、内存草稿和 mock                   |
+| `src/shared/`                                                             | 前后端契约与响应校验                          |
+| `src/server/`                                                             | 来源适配、公开范围、缓存和脱敏诊断            |
+| `cloud-functions/api/v1/[[default]].ts`                                   | 云函数 API 入口                               |
+| `edge-functions/_uptimepage/cache.ts`                                     | 签名缓存桥、节点缓存和 KV                     |
+| `config/schema.ts`、`scripts/config-source.ts`、`scripts/build-config.ts` | 配置读取校验、公私拆分和构建元数据            |
+| `tests/unit/`、`tests/e2e/`、`tests/editor/`、`tests/deployment/`         | 单元 / 集成、本地浏览器、编辑器和真实部署验收 |
 
-浏览器只导入 `.generated/public-config.ts`；`.generated/server-config.ts` 仅用于函数。生成物、密钥、`.env`、`*.local.json` 不提交；部署配置使用 `config/site.json`。
+浏览器只导入 `.generated/public-config.ts`；`.generated/server-config.ts` 仅用于函数。生成物、密钥、`.env`、`*.local.json` 不提交。部署配置由 `UPTIMEPAGE_CONFIG` 指定 HTTPS JSON 直链；本地也可指定文件路径。
+
+`pnpm run build` 通过类型检查命令生成一次配置，避免同次构建重复下载远程文件。读取顺序与代理回退见[配置文件](configuration.md#配置文件)。
 
 新增异步内容应沿用 `MonitorCard` / `MonitorLayout` 及 `AnimatedHeight`，使加载与正常态保留同一布局容器，并遵循减少动画偏好。新增来源或调整缓存时同步[数据契约](data-api.md)，尤其是公开范围、时间口径和故障回退。
 

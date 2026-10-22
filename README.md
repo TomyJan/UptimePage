@@ -13,11 +13,13 @@
 
 ## 部署
 
-1. Fork 仓库，在[编辑器](https://status.tomys.top/?configeditor=on)中生成配置，或参考 [config/default.json](config/default.json)。将完整配置保存为 `config/site.json` 并提交。
-2. 在 EdgeOne Makers 导入仓库，使用仓库根目录及 `edgeone.json` 中的构建设置。
+1. Fork 仓库，在[编辑器](https://status.tomys.top/?configeditor=on)中生成配置，或参考 [config/default.json](config/default.json)。将 JSON 放在独立配置分支或自行托管，取得 HTTPS 直链。
+2. 在 EdgeOne Makers 导入代码部署分支（通常为 `master`），使用仓库根目录及 `edgeone.json` 的构建设置；添加构建环境变量 `UPTIMEPAGE_CONFIG`，值为配置 JSON 直链。
 3. 在函数环境变量中设置配置的 `apiKeyEnv` 所引用的 API Key，部署后核对真实数据。
 
 配置中只填密钥变量名，不填密钥值。默认配置含占位地址和 ID，不能直接用于生产。部署包含静态资源、云函数及边缘缓存函数，不能只上传 `dist/`。
+
+GitHub 直链会先通过 [ghfast](https://ghfast.top) 加载，失败后直连 GitHub，两次均失败则终止构建。配置只在构建时读取，更新后需重新部署状态页。
 
 [部署与环境变量](docs/deployment.md) · [配置字段与 KV](docs/configuration.md) · [排错](docs/troubleshooting.md)
 

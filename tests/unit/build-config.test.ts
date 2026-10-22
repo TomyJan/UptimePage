@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 
 const run = promisify(execFile);
@@ -19,11 +20,15 @@ const config = (name: string) => ({
     },
   ],
 });
-async function generate(path?: string) {
+async function generate(path?: string, preload?: string) {
   const env: NodeJS.ProcessEnv = { ...process.env, UPTIMEPAGE_COMMIT: 'aabbccd' };
   delete env.UPTIMEPAGE_CONFIG;
   if (path !== undefined) env.UPTIMEPAGE_CONFIG = path;
-  await run(process.execPath, [generator], { cwd: root, env });
+  await run(
+    process.execPath,
+    [...(preload ? ['--import', pathToFileURL(preload).href] : []), generator],
+    { cwd: root, env },
+  );
   return readFile(join(root, '.generated/public-config.ts'), 'utf8');
 }
 beforeEach(async () => {
@@ -62,4 +67,34 @@ it.each(['{broken', JSON.stringify({ site: { name: 'Invalid site' }, groups: [] 
 it('fails on unreadable actual configuration rather than falling back', async () => {
   await mkdir(join(root, 'config/site.json'));
   await expect(generate()).rejects.toThrow();
+});
+
+it('generates build configuration from a remote URL ahead of repository configuration', async () => {
+  await writeFile(join(root, 'config/site.json'), JSON.stringify(config('Repository site')));
+  const preload = join(root, 'transport.mjs');
+  await writeFile(
+    preload,
+    `globalThis.fetch = async (url) => {
+    if (url !== 'https://ghfast.top/https://raw.githubusercontent.com/example/status/config/site.json') throw new Error('Unexpected URL');
+    return Response.json(${JSON.stringify(config('Remote site'))});
+  };`,
+  );
+  const output = await generate(
+    'https://raw.githubusercontent.com/example/status/config/site.json',
+    preload,
+  );
+  expect(output).toContain('"name": "Remote site"');
+  expect(output).not.toContain('Repository site');
+});
+
+it('stops the build when both remote attempts fail instead of generating repository defaults', async () => {
+  const preload = join(root, 'transport.mjs');
+  await writeFile(
+    preload,
+    'globalThis.fetch = async () => new Response("Unavailable", { status: 503 });',
+  );
+  await expect(
+    generate('https://raw.githubusercontent.com/example/status/config/site.json', preload),
+  ).rejects.toThrow(/proxy: HTTP 503; direct: HTTP 503/);
+  await expect(readFile(join(root, '.generated/public-config.ts'))).rejects.toThrow('ENOENT');
 });

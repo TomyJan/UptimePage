@@ -1,9 +1,10 @@
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { parseConfig, splitConfig } from '../config/schema.ts';
+import { splitConfig } from '../config/schema.ts';
 import { buildMetadata } from './build-metadata.ts';
+import { readConfig } from './config-source.ts';
 const execFileAsync = promisify(execFile);
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -14,16 +15,7 @@ function canonical(value: unknown): string {
       .join(',')}}`;
   return JSON.stringify(value);
 }
-async function readConfig(): Promise<string> {
-  if (process.env.UPTIMEPAGE_CONFIG) return readFile(process.env.UPTIMEPAGE_CONFIG, 'utf8');
-  try {
-    return await readFile('config/site.json', 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-    return readFile('config/default.json', 'utf8');
-  }
-}
-const config = parseConfig(JSON.parse(await readConfig()));
+const config = await readConfig();
 const version = createHash('sha256').update(canonical(config)).digest('hex');
 let commit = process.env.UPTIMEPAGE_COMMIT?.trim() ?? '';
 if (!commit) {
