@@ -1,4 +1,5 @@
 import { SourceRequestError } from './sources/http.ts';
+import { createHash } from 'node:crypto';
 import type { SiteConfig } from '../../config/schema.ts';
 
 export type ServerConfig = {
@@ -50,4 +51,10 @@ export function requireSecret(
       reason: 'configuration',
     });
   return value;
+}
+
+/** Cache identity changes with the credential, without storing the credential in URLs. */
+export function credentialCacheVersion(version: string, scope: string, credential: string) {
+  const digest = createHash('sha256').update(credential).digest('hex');
+  return `${version}-${scope}-${digest}`;
 }

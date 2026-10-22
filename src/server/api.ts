@@ -20,7 +20,7 @@ import { fetchPeekapingHistory } from './sources/peekaping.ts';
 import { loadPeekapingMembership, type PeekapingMembership } from './peekaping-membership.ts';
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizeUptimeRobotMonitor } from './sources/normalize.ts';
-import { requireSecret } from './config.ts';
+import { credentialCacheVersion, requireSecret } from './config.ts';
 import { RequestTiming } from './timing.ts';
 import { fetchPeekapingCertificate, parseUptimeRobotCertificate } from './certificates.ts';
 
@@ -175,7 +175,13 @@ function stale(snapshot: GroupSnapshot): GroupSnapshot {
 export async function handleApi(request: Request, runtime: ApiRuntime): Promise<Response> {
   try {
     return await handleRequest(request, runtime);
-  } catch {
+  } catch (error) {
+    if (error instanceof SourceRequestError)
+      return errorResponse(
+        error.status === 429 ? 'rate-limited' : 'unavailable',
+        error.retryAt,
+        error.diagnostic,
+      );
     return errorResponse('unavailable', null, { reason: 'internal', stage: 'runtime' });
   }
 }
@@ -200,7 +206,12 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const now = runtime.now ?? new Date();
   // Start storage reads before membership I/O. Records carry the membership
   // generation internally and are never used until authorization is confirmed.
-  const cacheVersion = `${runtime.config.configVersion}-home-v4`;
+  const sourceCredential = requireSecret(runtime.environment, group.source.apiKeyEnv);
+  const cacheVersion = credentialCacheVersion(
+    runtime.config.configVersion,
+    'home-v4',
+    sourceCredential,
+  );
   const detailKey = new Request(
     `${key.url}/monitors/${encodeURIComponent(parts[3] ?? '')}/ranges/${range}`,
   );
@@ -208,7 +219,6 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const detailRead = isDetail
     ? readCache(runtime.cache, detailKey, cacheVersion).catch(() => null)
     : Promise.resolve(null);
-  const sourceCredential = runtime.environment[group.source.apiKeyEnv];
   let membership: PeekapingMembership | undefined;
   try {
     if (group.source.type === 'peekaping')

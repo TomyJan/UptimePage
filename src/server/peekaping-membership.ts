@@ -1,7 +1,7 @@
 import { mapConcurrent } from './concurrency.ts';
 import { z } from 'zod';
 import { readCache, writeCache, type ResponseCache } from './cache.ts';
-import { requireSecret, type ServerConfig } from './config.ts';
+import { credentialCacheVersion, requireSecret, type ServerConfig } from './config.ts';
 import { fetchPeekapingMonitors, peekapingData } from './sources/peekaping.ts';
 import { SourceRequestError, type JsonFetcher } from './sources/http.ts';
 import type { GroupSnapshot } from '../shared/contracts.ts';
@@ -30,12 +30,12 @@ export async function loadPeekapingMembership(
   if (group.source.type !== 'peekaping') throw new Error('Invalid membership source');
   const baseUrl = group.source.baseUrl;
   const key = requireSecret(environment, group.source.apiKeyEnv);
+  const version = credentialCacheVersion(config.configVersion, 'membership-v2', key);
   const results = await mapConcurrent(group.subgroups, 4, async (subgroup) => {
     let failure: PeekapingMembership['errors'][number] | undefined;
     const request = new Request(
       `${origin}/membership/${encodeURIComponent(group.id)}/${encodeURIComponent(subgroup.id)}`,
     );
-    const version = `${config.configVersion}-membership-v2`;
     let entry: z.infer<typeof entrySchema> | null = null;
     try {
       const cached = await readCache(cache, request, version);
