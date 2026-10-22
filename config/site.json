@@ -1,46 +1,105 @@
 {
-  "cache": { "kvBinding": "UPTIMEPAGE_KV" },
+  "cache": {
+    "kvBinding": "UPTIMEPAGE_KV"
+  },
   "site": {
     "name": "TomyJan 服务状态",
+    "logo": "https://cdn.tomys.top/common/img/favicon_192.png",
     "nav": [
-      { "label": { "en": "Home", "zh-CN": "首页" }, "href": "https://vov.moe", "newTab": true },
       {
-        "label": { "en": "Blog", "zh-CN": "博客" },
+        "label": {
+          "en": "Home",
+          "zh-CN": "首页"
+        },
+        "href": "https://vov.moe",
+        "newTab": true
+      },
+      {
+        "label": {
+          "en": "Blog",
+          "zh-CN": "博客"
+        },
         "href": "https://blog.tomys.top",
         "newTab": true
       }
     ],
     "footer": "",
     "refreshIntervalSeconds": 60,
-    "pinAbnormal": true
+    "pinAbnormal": true,
+    "umami": {
+      "scriptUrl": "https://umami.amoe.cc/script.js",
+      "websiteId": "b2791028-0435-4add-bdfa-244ba1e93902"
+    }
   },
   "groups": [
     {
       "id": "peekaping",
-      "name": { "en": "Self-hosted Monitoring", "zh-CN": "自建监控" },
+      "name": {
+        "en": "Self-hosted Monitoring",
+        "zh-CN": "自建监控"
+      },
+      "logo": "https://cdn.tomys.top/common/img/favicon_192.png",
       "source": {
         "type": "peekaping",
         "baseUrl": "https://monitor.amoe.cc",
         "apiKeyEnv": "PEEKAPING_API_KEY"
       },
       "subgroups": [
-        { "id": "default", "name": { "en": "Websites", "zh-CN": "网站" }, "slug": "default" },
-        { "id": "moeai", "name": { "en": "AI Service", "zh-CN": "AI 服务" }, "slug": "moeai" },
         {
-          "id": "monitor",
-          "name": { "en": "Service Heartbeat", "zh-CN": "服务心跳" },
-          "slug": "monitor"
+          "id": "service-external",
+          "name": {
+            "en": "External Service",
+            "zh-CN": "公开服务"
+          },
+          "logo": null,
+          "slug": "service-external"
+        },
+        {
+          "id": "service-internal",
+          "name": {
+            "en": "Internal Service",
+            "zh-CN": "内部服务"
+          },
+          "logo": null,
+          "slug": "service-internal"
+        },
+        {
+          "id": "heartbeat",
+          "name": {
+            "en": "Service Heartbeat",
+            "zh-CN": "服务心跳"
+          },
+          "logo": null,
+          "slug": "heartbeat"
         }
-      ]
+      ],
+      "monitors": {}
     },
     {
       "id": "uptimerobot",
-      "name": { "en": "Uptimerobot Monitoring", "zh-CN": "Uptimerobot 监控" },
-      "source": { "type": "uptimerobot", "apiKeyEnv": "UPTIMEROBOT_API_KEY" },
+      "name": {
+        "en": "Uptimerobot Monitoring",
+        "zh-CN": "Uptimerobot 监控"
+      },
+      "logo": "https://uptimerobot.com/apple-touch-icon.png",
+      "source": {
+        "type": "uptimerobot",
+        "apiKeyEnv": "UPTIMEROBOT_API_KEY"
+      },
       "subgroups": [
-        { "id": "default", "name": { "en": "Default", "zh-CN": "默认" }, "monitorIds": ["*"] },
-        { "id": "cloud", "name": { "en": "Cloud", "zh-CN": "云服务" }, "monitorIds": ["example-2"] }
-      ]
+        {
+          "id": "default",
+          "name": {
+            "en": "Default",
+            "zh-CN": "默认"
+          },
+          "logo": null,
+          "monitorIds": [
+            "*"
+          ]
+        }
+      ],
+      "monitors": {}
     }
   ]
 }
