@@ -180,11 +180,11 @@ it('refreshes old cached Peekaping home and detail responses that lack target UR
   for (const request of [home, detail])
     expect((await handleApi(request, runtime)).status).toBe(200);
   for (const [key, response] of [...entries]) {
-    if (!key.includes('-home-v5-')) continue;
+    if (!key.includes('-home-v6-')) continue;
     const data = await response.json();
     for (const monitor of data.monitors ?? (data.monitor ? [data.monitor] : [])) delete monitor.url;
     entries.delete(key);
-    entries.set(key.replace('-home-v5-', '-home-v4-'), Response.json(data));
+    entries.set(key.replace('-home-v6-', '-home-v4-'), Response.json(data));
   }
   expect([...entries.keys()].some((key) => key.includes('-home-v4-'))).toBe(true);
   calls.length = 0;

@@ -24,6 +24,7 @@ import { normalizeUptimeRobotMonitor } from './sources/normalize.ts';
 import { credentialCacheVersion, requireSecret } from './config.ts';
 import { RequestTiming } from './timing.ts';
 import { fetchPeekapingCertificate, parseUptimeRobotCertificate } from './certificates.ts';
+import { handleIcon } from './icon-api.ts';
 
 export type ApiRuntime = {
   config: ServerConfig;
@@ -175,6 +176,8 @@ function stale(snapshot: GroupSnapshot): GroupSnapshot {
 
 export async function handleApi(request: Request, runtime: ApiRuntime): Promise<Response> {
   try {
+    if (new URL(request.url).pathname.startsWith('/api/v1/icons/'))
+      return await handleIcon(request, runtime);
     return await handleRequest(request, runtime);
   } catch (error) {
     if (error instanceof SourceRequestError)
@@ -218,7 +221,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const sourceCredential = requireSecret(runtime.environment, group.source.apiKeyEnv);
   const cacheVersion = credentialCacheVersion(
     runtime.config.configVersion,
-    'home-v5',
+    'home-v6',
     sourceCredential,
   );
   const detailKey = new Request(
