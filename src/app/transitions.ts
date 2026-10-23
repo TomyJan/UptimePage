@@ -1,5 +1,5 @@
 import { flushSync } from 'react-dom';
-let active: ViewTransition | null = null;
+let active: Pick<ViewTransition, 'skipTransition'> | null = null;
 export function transition(kind: 'page-content' | 'monitor-list', update: () => void) {
   const el = document.querySelector<HTMLElement>(
     kind === 'page-content' ? '#main' : '#monitor-content',
