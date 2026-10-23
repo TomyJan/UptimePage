@@ -22,7 +22,7 @@ const cacheConfig = z
   .strict()
   .default({});
 const opaqueId = z.string().min(1);
-const common = { id, name: localizedTextSchema, logo };
+const common = { id, name: localizedTextSchema, logo, showLinks: z.boolean().optional() };
 const selector = z
   .object({
     ...common,
@@ -73,6 +73,7 @@ const schema = z
         footer: footerText,
         refreshIntervalSeconds: z.number().int().nonnegative().default(60),
         pinAbnormal: z.boolean().default(false),
+        showLinks: z.boolean().default(false),
         umami: z
           .object({
             scriptUrl: z.string().refine((value) => {
@@ -183,9 +184,22 @@ export function splitConfig(
         id: group.id,
         name: group.name,
         logo: group.logo,
-        subgroups: group.subgroups.map((sub) => ({ id: sub.id, name: sub.name, logo: sub.logo })),
+        showLinks: group.showLinks ?? config.site.showLinks,
+        subgroups: group.subgroups.map((sub) => ({
+          id: sub.id,
+          name: sub.name,
+          logo: sub.logo,
+          showLinks: sub.showLinks ?? group.showLinks ?? config.site.showLinks,
+        })),
       })),
     },
-    serverConfig: { configVersion, cache: config.cache, groups: config.groups },
+    serverConfig: {
+      configVersion,
+      cache: config.cache,
+      groups: config.groups.map((group) => ({
+        ...group,
+        showLinks: group.showLinks ?? config.site.showLinks,
+      })),
+    },
   };
 }

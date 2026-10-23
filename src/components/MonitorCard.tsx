@@ -5,6 +5,7 @@ import { useLocation } from 'react-router';
 import { ChevronRight } from 'lucide-react';
 import type { MonitorSummary } from '../shared/contracts.ts';
 import { Logo } from './Logo.tsx';
+import { MonitorLink } from './MonitorLink.tsx';
 import { StatusBadge } from './StatusBadge.tsx';
 import { localize } from '../features/preferences/locale.ts';
 import { usePreferences } from '../features/preferences/store.ts';
@@ -16,11 +17,13 @@ export function MonitorCard({
   until,
   refreshing = false,
   initialHeight,
+  subgroup = 'all',
 }: {
   monitor?: MonitorSummary;
   until: string;
   refreshing?: boolean;
   initialHeight?: number;
+  subgroup?: string;
 }) {
   const { locale } = usePreferences(),
     t = useCopy(),
@@ -58,20 +61,25 @@ export function MonitorCard({
             </>
           ) : (
             <>
-              <TransitionLink
-                className="monitor-identity card-link"
-                to={`/services/${encodeURIComponent(m.groupId)}/${encodeURIComponent(m.id)}`}
-                state={{ returnTo: location.pathname + location.search }}
-                aria-label={name}
-              >
+              <div className="monitor-identity">
                 <Logo src={m.logo} name={name} className="service-logo" />
                 <div className="identity-text">
-                  <div className="monitor-name">{name}</div>
+                  <div className="monitor-name-row">
+                    <TransitionLink
+                      className="monitor-name card-link"
+                      to={`/services/${encodeURIComponent(m.groupId)}/${encodeURIComponent(m.id)}${subgroup === 'all' ? '' : `?s=${encodeURIComponent(subgroup)}`}`}
+                      state={{ returnTo: location.pathname + location.search }}
+                      aria-label={name}
+                    >
+                      {name}
+                    </TransitionLink>
+                    <MonitorLink monitor={m} name={name} subgroup={subgroup} />
+                  </div>
                   {m.description && (
                     <div className="monitor-description">{localize(m.description, locale)}</div>
                   )}
                 </div>
-              </TransitionLink>
+              </div>
               <StatusBadge state={m.state} freshness={m.freshness} />
               <div className="history">
                 <HistoryBars

@@ -2,6 +2,7 @@ import {
   Field,
   ListField,
   LocalizedField,
+  LinkPolicy,
   Reorder,
   move,
   uniqueId,
@@ -72,6 +73,17 @@ export function GroupFields({
           })
         }
       />
+      <LinkPolicy
+        t={t}
+        value={group.showLinks}
+        parentValue={config.site.showLinks}
+        onChange={(value) =>
+          change((c) => {
+            if (value === undefined) delete c.groups[index].showLinks;
+            else c.groups[index].showLinks = value;
+          })
+        }
+      />
       <div className="ce-section">
         <strong>{t('source')}</strong>
       </div>
@@ -97,6 +109,7 @@ export function GroupFields({
                   id: s.id,
                   name: s.name,
                   logo: s.logo,
+                  ...(s.showLinks === undefined ? {} : { showLinks: s.showLinks }),
                   ...(type === 'peekaping' ? { slug: s.id } : { monitorIds: ['*'] }),
                 }));
               });
@@ -195,6 +208,17 @@ export function GroupFields({
             onChange={(logo) =>
               change((c) => {
                 c.groups[index].subgroups[i].logo = logo || null;
+              })
+            }
+          />
+          <LinkPolicy
+            t={t}
+            value={sub.showLinks}
+            parentValue={group.showLinks ?? config.site.showLinks}
+            onChange={(value) =>
+              change((c) => {
+                if (value === undefined) delete c.groups[index].subgroups[i].showLinks;
+                else c.groups[index].subgroups[i].showLinks = value;
               })
             }
           />

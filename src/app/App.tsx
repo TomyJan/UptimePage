@@ -17,6 +17,7 @@ import { useCopy } from '../features/preferences/copy.ts';
 import { usePreferences } from '../features/preferences/store.ts';
 import { localize } from '../features/preferences/locale.ts';
 import { Footer } from '../components/Footer.tsx';
+import { ResourceBoundary, ResourceNotice } from './ResourceRecovery.tsx';
 export function Unavailable() {
   const t = useCopy();
   return (
@@ -28,7 +29,13 @@ export function Unavailable() {
     </>
   );
 }
-export function App({ children }: { children?: ReactNode }) {
+export function App({
+  children,
+  editorUnavailable = false,
+}: {
+  children?: ReactNode;
+  editorUnavailable?: boolean;
+}) {
   const publicConfig = usePublicConfig();
   const { preferences, locale } = usePreferences(),
     t = useCopy(),
@@ -74,18 +81,21 @@ export function App({ children }: { children?: ReactNode }) {
         </div>
       </header>
       <main id="main" className="shell" tabIndex={-1}>
-        <Routes>
-          <Route path="/" element={<StatusPage />} />
-          <Route
-            path="/services/:groupId/:monitorId"
-            element={
-              <Suspense fallback={<MonitorLoading />}>
-                <MonitorPage />
-              </Suspense>
-            }
-          />
-          <Route path="*" element={<Unavailable />} />
-        </Routes>
+        <ResourceNotice />
+        <ResourceBoundary editorUnavailable={editorUnavailable}>
+          <Routes>
+            <Route path="/" element={<StatusPage />} />
+            <Route
+              path="/services/:groupId/:monitorId"
+              element={
+                <Suspense fallback={<MonitorLoading />}>
+                  <MonitorPage />
+                </Suspense>
+              }
+            />
+            <Route path="*" element={<Unavailable />} />
+          </Routes>
+        </ResourceBoundary>
       </main>
       <footer className="site-footer">
         <Footer

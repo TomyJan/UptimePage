@@ -546,6 +546,49 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.monitor-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.monitor-visit {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--muted);
+  vertical-align: middle;
+  transition:
+    color 220ms,
+    background-color 220ms,
+    transform 280ms var(--ease);
+}
+.monitor-visit:hover,
+.monitor-visit:focus-visible {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+.monitor-visit svg {
+  transition: transform 280ms var(--ease);
+}
+.monitor-visit:hover svg {
+  transform: translate(1px, -1px);
+}
+.monitor-visit:active {
+  transform: scale(0.94);
+}
+.monitor-link-host {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .monitor-description {
   font-size: 10px;
   color: var(--muted);
@@ -676,6 +719,35 @@ input {
   color: var(--muted);
   font-size: 12px;
   background: var(--surface-soft);
+}
+.resource-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.resource-notice-icon {
+  color: var(--accent);
+  display: inline-flex;
+}
+.resource-notice > div {
+  flex: 1;
+  min-width: min(200px, 100%);
+}
+.resource-notice h2 {
+  margin: 0;
+  color: var(--ink);
+}
+.resource-notice p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.resource-notice .retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
 }
 .site-footer {
   max-width: 1120px;
@@ -947,8 +1019,26 @@ input {
   }
 }
 .detail-name h1 {
-  display: inline;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   vertical-align: middle;
+}
+.detail-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail-name .monitor-visit {
+  width: 32px;
+  height: 32px;
+}
+@media (pointer: coarse) {
+  .monitor-visit,
+  .detail-name .monitor-visit {
+    width: 44px;
+    height: 44px;
+  }
 }
 .detail-name > :is(.state, .skeleton-badge) {
   margin-inline-start: 10px;
@@ -2404,6 +2494,36 @@ button.nav-links-mobile {
 .logo,
 .brand-mark {
   object-fit: contain;
+}
+.service-logo,
+.logo {
+  position: relative;
+  overflow: hidden;
+}
+.logo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 320ms var(--ease);
+}
+.logo-initials {
+  transition: opacity 320ms var(--ease);
+}
+.logo-image[data-loaded='true'] {
+  opacity: 1;
+}
+.logo-image[data-loaded='true'] + .logo-initials {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-image,
+  .logo-initials {
+    transition: none;
+  }
 }
 .retry {
   margin-top: 16px;

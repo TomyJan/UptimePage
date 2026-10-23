@@ -18,6 +18,8 @@ import { loadPeekapingMembership, type PeekapingMembership } from './peekaping-m
 import { fetchUptimeRobotMonitors } from './sources/uptimerobot.ts';
 import { normalizePeekapingMonitor, normalizeUptimeRobotMonitor } from './sources/normalize.ts';
 import { createTaskLimiter } from './concurrency.ts';
+import { withMonitorLink } from '../shared/monitor-links.ts';
+import { createIconUrl } from './icon-token.ts';
 
 export class PublicGroupNotFoundError extends Error {
   constructor() {
@@ -277,7 +279,16 @@ export async function loadGroupSnapshot(
     fetchedAt,
     configVersion: config.configVersion,
     freshness: subgroupErrors.length === 0 ? 'fresh' : monitors.size > 0 ? 'stale' : 'unavailable',
-    monitors: [...monitors.values()],
+    monitors: [...monitors.values()].map((monitor) =>
+      withMonitorLink(
+        {
+          ...monitor,
+          logo:
+            monitor.logo ?? createIconUrl(monitor.url, group.id, key, config.configVersion, now),
+        },
+        group,
+      ),
+    ),
     subgroups: subgroupValues,
     subgroupErrors,
   };

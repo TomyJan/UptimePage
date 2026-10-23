@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeMonitorUrl } from './monitor-links.ts';
 
 export const localeSchema = z.enum(['zh-CN', 'en']);
 export const localizedTextSchema = z.union([
@@ -59,6 +60,13 @@ export const monitorSummarySchema = z.object({
   name: localizedTextSchema,
   logo: z.string().nullable(),
   description: localizedTextSchema.nullable(),
+  url: z
+    .string()
+    .refine(
+      (value) => normalizeMonitorUrl(value) !== undefined,
+      'Expected an HTTP(S) URL without credentials',
+    )
+    .optional(),
   state: monitorStateSchema,
   freshness: freshnessSchema,
   observedAt: utc.nullable(),

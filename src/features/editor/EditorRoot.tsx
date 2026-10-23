@@ -12,6 +12,7 @@ import { createDraft, type Draft } from './draft.ts';
 import { createPreviewClient, previewConfig } from './mock.ts';
 import { EditorWorkspace } from './EditorWorkspace.tsx';
 import './editor.css';
+import { resourceRecovery } from '../../app/resource-runtime.ts';
 
 function runtime(config: SiteConfig, revision: number, cache: QueryClient) {
   const pub = previewConfig(config, `editor-preview-${revision}`);
@@ -69,6 +70,8 @@ export function EditorRoot({ productionClient }: { productionClient: ApiClient }
       };
     }
     history.replaceState(state, '', url.pathname + url.search + url.hash);
+    delete document.body.dataset.configEditor;
+    resourceRecovery.refreshProtection();
     void cache.cancelQueries();
     cache.clear();
     setActive(false);

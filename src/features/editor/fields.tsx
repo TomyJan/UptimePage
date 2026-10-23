@@ -163,6 +163,46 @@ export function Toggle({
     </div>
   );
 }
+export function LinkPolicy({
+  value,
+  parentValue,
+  onChange,
+  t,
+}: {
+  value: boolean | undefined;
+  parentValue: boolean;
+  onChange: (value: boolean | undefined) => void;
+  t: EditorCopy;
+}) {
+  const id = useId();
+  return (
+    <div className="ce-link-policy">
+      <div className="ce-link-policy-heading">
+        <span id={id}>{t('showLinks')}</span>
+        <small>
+          {value === undefined
+            ? `${t('inherited')}: ${t(parentValue ? 'shown' : 'hidden')}`
+            : t(value ? 'shown' : 'hidden')}
+        </small>
+      </div>
+      <div className="ce-link-options" role="group" aria-labelledby={id}>
+        {(['inherit', 'show', 'hide'] as const).map((key) => {
+          const next = key === 'inherit' ? undefined : key === 'show';
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={value === next}
+              onClick={() => onChange(next)}
+            >
+              {t(key)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 export function Reorder({
   index,
   count,

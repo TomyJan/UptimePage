@@ -46,6 +46,15 @@ export function SiteFields({ config, change, language, t }: FormProps) {
         />
       </div>
       <p className="ce-hint">{t('manualHint')}</p>
+      <Toggle
+        label={t('showLinks')}
+        value={site.showLinks}
+        onChange={(value) =>
+          change((c) => {
+            c.site.showLinks = value;
+          })
+        }
+      />
       <div className="ce-section">
         <strong>{t('nav')}</strong>
         <button
