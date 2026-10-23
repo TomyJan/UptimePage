@@ -10,6 +10,12 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 
 配置只在构建时读取，修改托管文件后需重新部署。使用 GitHub 配置提交 hash 的直链可以固定版本。`*.local.json` 被 Git 忽略，适合本地预览；构建脚本不自动加载 `.env`。`pnpm run generate` 会读取并校验配置（直链需要联网），但不查询监控来源。字段以 [config/schema.ts](../config/schema.ts) 为准，未知字段会被拒绝。
 
+## 监控图标
+
+监控默认自动获取网站图标，无需配置；`groups[].monitors[id].logo` 手动覆盖优先。站点、分组和子组的 Logo 仍独立配置。
+
+浏览器先显示名称文字占位，图片成功后淡入，加载失败保留文字。自动图标由 EO 服务端获取并转发，与 `showLinks` 无关，不会在公开图标地址中包含监控域名或 URL。获取顺序、缓存与限制见[数据与接口](data-api.md#监控图标)。
+
 ## 可视化编辑器
 
 [打开在线编辑器](https://status.tomys.top/?configeditor=on)。支持完整表单、直接编辑 JSON、复制 / 粘贴、导入 / 导出；JSON 工具位于 JSON 卡片中，文件导入上限 4 MB。已有配置需自行导入，编辑器默认从示例开始。
@@ -54,9 +60,9 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 
 `site.showLinks` 设置全局默认值，`groups[].showLinks` 和 `groups[].subgroups[].showLinks` 可填 `true` / `false`，省略则继承上一级；子分组优先。例如仅公开一个子组的链接，在该子组配置 `"showLinks": true` 即可。编辑器中对应“显示监控链接”，分组和子组可选“继承 / 显示 / 隐藏”。
 
-链接来自 Peekaping 监控项 `config` JSON 字符串中的 `url`，或 UptimeRobot 监控项的 `url`。只接受无凭证的 HTTP(S) 地址；未提供或不合法时不显示图标。首页与详情的图标均在名称旁，新标签页打开。“全部”和直接进入的详情，只要任一所属子组允许便显示；从具体子组进入详情会保留该子组的设置。
+链接来自 Peekaping 监控项 `config` JSON 字符串中的 `url`，或 UptimeRobot 监控项的 `url`。只接受无凭证的 HTTP(S) 地址；未提供或不合法时不显示跳转按钮。首页与详情的按钮均在名称旁，新标签页打开。“全部”和直接进入的详情，只要任一所属子组允许便显示；从具体子组进入详情会保留该子组的设置。
 
-完全关闭的监控不会通过 API 返回链接。若同一监控已在其他子组允许展示，链接本身就是公开数据；子组的隐藏选项只控制该视图是否显示图标。
+完全关闭的监控不会通过 API 返回链接。若同一监控已在其他子组允许展示，链接本身就是公开数据；子组的隐藏选项只控制该视图是否显示跳转按钮，不影响自动图标。
 
 ### Umami
 

@@ -9,7 +9,7 @@ UptimePage is a modern status page for EdgeOne Makers, aggregating multiple moni
 [在线状态页](https://status.tomys.top/) · [可视化配置编辑器](https://status.tomys.top/?configeditor=on)
 
 - 多来源、两级分组、搜索与独立监控详情。
-- 独立名称 / Logo、显示覆盖、自定义导航及按全局 / 分组 / 子组控制的监控网站链接。
+- 独立名称 / Logo、自动获取网站图标、自定义导航及按全局 / 分组 / 子组控制的监控网站链接。
 - 24 小时 / 7 天 / 30 天历史、响应曲线、可用率、事件及来源提供的证书信息。
 - 简中 / 英文、时区、深浅色、自动刷新；实例缓存、节点缓存和可选 KV。
 - 可选编译的配置编辑器，表单 / JSON 双向编辑，实时模拟预览与导入导出。

@@ -300,8 +300,9 @@ test('corrected monitor and subgroup logos recover after a failed image load', a
   await json.fill(JSON.stringify(config));
   const broken = page.locator('img[src="/missing-logo.svg"]');
   await expect(broken).toHaveCount(2);
-  await expect(broken.first()).toHaveCSS('visibility', 'hidden');
-  await expect(broken.last()).toHaveCSS('visibility', 'hidden');
+  await expect(broken.first()).toHaveCSS('opacity', '0');
+  await expect(broken.last()).toHaveCSS('opacity', '0');
+  await expect(broken.first().locator('..').locator('.logo-initials')).toHaveCSS('opacity', '1');
   config.groups[0].monitors['web-1'].logo = '/valid-logo.svg';
   config.groups[0].subgroups[0].logo = '/valid-logo.svg';
   await json.fill(JSON.stringify(config));
@@ -309,7 +310,8 @@ test('corrected monitor and subgroup logos recover after a failed image load', a
   await expect(repaired).toHaveCount(2);
   for (const image of await repaired.all()) {
     await expect.poll(() => image.evaluate((node: HTMLImageElement) => node.naturalWidth)).toBe(20);
-    await expect(image).toHaveCSS('visibility', 'visible');
+    await expect(image).toHaveCSS('opacity', '1');
+    await expect(image.locator('..').locator('.logo-initials')).toHaveCSS('opacity', '0');
   }
 });
 

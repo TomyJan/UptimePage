@@ -2495,6 +2495,36 @@ button.nav-links-mobile {
 .brand-mark {
   object-fit: contain;
 }
+.service-logo,
+.logo {
+  position: relative;
+  overflow: hidden;
+}
+.logo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 320ms var(--ease);
+}
+.logo-initials {
+  transition: opacity 320ms var(--ease);
+}
+.logo-image[data-loaded='true'] {
+  opacity: 1;
+}
+.logo-image[data-loaded='true'] + .logo-initials {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo-image,
+  .logo-initials {
+    transition: none;
+  }
+}
 .retry {
   margin-top: 16px;
   color: var(--accent);

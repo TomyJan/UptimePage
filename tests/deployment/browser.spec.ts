@@ -23,7 +23,8 @@ for (const group of config.groups) {
     const isGroup = (url: string) => new URL(url).pathname === path;
     let initialRequests = 0;
     page.on('request', (request) => {
-      if (new URL(request.url()).pathname.startsWith('/api/')) initialRequests++;
+      // Icons load independently; status and history must still use one group request.
+      if (new URL(request.url()).pathname.startsWith('/api/v1/groups/')) initialRequests++;
     });
     const initialResponse = page.waitForResponse((response) => isGroup(response.url()));
     await page.goto(`/?g=${encodeURIComponent(group.id)}&s=all`);
