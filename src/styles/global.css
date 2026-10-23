@@ -720,6 +720,35 @@ input {
   font-size: 12px;
   background: var(--surface-soft);
 }
+.resource-notice {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.resource-notice-icon {
+  color: var(--accent);
+  display: inline-flex;
+}
+.resource-notice > div {
+  flex: 1;
+  min-width: min(200px, 100%);
+}
+.resource-notice h2 {
+  margin: 0;
+  color: var(--ink);
+}
+.resource-notice p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.resource-notice .retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+}
 .site-footer {
   max-width: 1120px;
   margin: 0 auto;

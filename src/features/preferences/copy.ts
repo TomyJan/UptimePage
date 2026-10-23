@@ -1,5 +1,12 @@
 import { usePreferences } from './store.ts';
 const en = {
+  resourceFailed: 'Page resources could not be loaded',
+  resourceChecking: 'Checking for an update…',
+  resourceReloading: 'Loading the new version…',
+  resourceRetry: 'Reload the page to try again.',
+  resourceOffline: 'You are offline. Reconnect before reloading.',
+  resourceEditor: 'Your draft is still here. Export it before reloading the page.',
+  reloadPage: 'Reload page',
   errorConfiguration: 'Source credential is missing. Check server environment variables.',
   errorUpstream:
     'Request rejected by the service. Check credentials, permissions or service availability.',
@@ -99,6 +106,13 @@ const en = {
   focusHistory: 'Use arrow keys to explore history',
 };
 const zh: typeof en = {
+  resourceFailed: '页面资源加载失败',
+  resourceChecking: '正在检查更新…',
+  resourceReloading: '正在加载新版本…',
+  resourceRetry: '请重新加载页面。',
+  resourceOffline: '网络已断开，请恢复连接后重新加载。',
+  resourceEditor: '草稿仍保留，请先导出配置，再刷新页面。',
+  reloadPage: '重新加载',
   loading: '加载中',
   errorConfiguration: '来源凭证未配置，请检查服务端环境变量。',
   errorUpstream: '服务拒绝了请求，请检查凭证、权限或服务是否可用。',
