@@ -52,7 +52,8 @@
             "zh-CN": "公开服务"
           },
           "logo": null,
-          "slug": "service-external"
+          "slug": "service-external",
+          "showLinks": true
         },
         {
           "id": "service-internal",
