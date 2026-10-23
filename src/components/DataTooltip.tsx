@@ -12,10 +12,12 @@ export function DataTooltip({
   children,
   content,
   anchorRef,
+  toggleOnClick = true,
 }: {
   children: ReactElement;
   content: ReactNode;
   anchorRef?: RefObject<HTMLElement | null>;
+  toggleOnClick?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -50,6 +52,7 @@ export function DataTooltip({
           pointerOpen.current = open;
         }}
         onClick={(event) => {
+          if (!toggleOnClick) return;
           event.preventDefault();
           setOpen((v) => !(pointerOpen.current ?? v));
           pointerOpen.current = null;

@@ -9,6 +9,7 @@ import type {
 } from '../../shared/contracts.ts';
 import { ApiClientError } from '../../data/client.ts';
 import { rangeMilliseconds } from '../../shared/ranges.ts';
+import { monitorLinkVisible } from '../../shared/monitor-links.ts';
 
 export const editorMarker = 'UPTIMEPAGE_CONFIG_EDITOR_ONLY';
 export function previewConfig(config: SiteConfig, version: string): PublicConfig {
@@ -51,10 +52,14 @@ export function createPreviewClient(
       (id, i) => {
         const override = group.monitors[id];
         const state = i % 6 === 1 ? 'down' : i % 6 === 5 ? 'maintenance' : 'operational';
+        const subgroupIds = subgroups.filter((s) => s.monitorIds.includes(id)).map((s) => s.id);
         return {
           id,
           groupId: group.id,
-          subgroupIds: subgroups.filter((s) => s.monitorIds.includes(id)).map((s) => s.id),
+          subgroupIds,
+          ...(monitorLinkVisible(group, subgroupIds, 'all', config.site.showLinks)
+            ? { url: `https://example.com/#monitor-${encodeURIComponent(id)}` }
+            : {}),
           name: override?.name ?? { en: `Service ${i + 1}`, 'zh-CN': `服务 ${i + 1}` },
           description: override?.description ?? null,
           logo: override?.logo ?? null,

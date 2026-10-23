@@ -546,6 +546,49 @@ input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.monitor-name-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.monitor-visit {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--muted);
+  vertical-align: middle;
+  transition:
+    color 220ms,
+    background-color 220ms,
+    transform 280ms var(--ease);
+}
+.monitor-visit:hover,
+.monitor-visit:focus-visible {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+.monitor-visit svg {
+  transition: transform 280ms var(--ease);
+}
+.monitor-visit:hover svg {
+  transform: translate(1px, -1px);
+}
+.monitor-visit:active {
+  transform: scale(0.94);
+}
+.monitor-link-host {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
 .monitor-description {
   font-size: 10px;
   color: var(--muted);
@@ -947,8 +990,26 @@ input {
   }
 }
 .detail-name h1 {
-  display: inline;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   vertical-align: middle;
+}
+.detail-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.detail-name .monitor-visit {
+  width: 32px;
+  height: 32px;
+}
+@media (pointer: coarse) {
+  .monitor-visit,
+  .detail-name .monitor-visit {
+    width: 44px;
+    height: 44px;
+  }
 }
 .detail-name > :is(.state, .skeleton-badge) {
   margin-inline-start: 10px;

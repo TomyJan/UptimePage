@@ -22,6 +22,7 @@ export function encodeGroupSnapshot(snapshot: GroupSnapshot): CompactGroup {
       freshness: m.freshness,
       ...(m.logo ? { logo: m.logo } : {}),
       ...(m.description ? { description: m.description } : {}),
+      ...(m.url ? { url: m.url } : {}),
       observedAt: m.observedAt,
       responseMs: m.responseMs,
       sampleIntervalSeconds: m.sampleIntervalSeconds,

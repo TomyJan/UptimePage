@@ -474,6 +474,49 @@ body[data-config-editor='on'] .back-top {
   margin: 9px 0;
   font-size: 11px;
 }
+.ce-link-policy {
+  margin: 0 0 16px;
+  min-width: 0;
+}
+.ce-link-policy-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.ce-link-policy-heading small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.ce-link-options {
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  border-radius: 9px;
+  background: var(--hover);
+}
+.ce-link-options button {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  border-radius: 7px;
+  font-size: 11px;
+  color: var(--muted);
+  transition:
+    color 260ms,
+    background-color 260ms,
+    box-shadow 260ms;
+}
+.ce-link-options button[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.ce-link-options button:hover {
+  color: var(--accent);
+}
 .ce-toggle {
   width: 31px;
   height: 18px;

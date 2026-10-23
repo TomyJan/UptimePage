@@ -8,12 +8,14 @@ export function MonitorList({
   searching,
   loading = false,
   refreshing = false,
+  subgroup = 'all',
 }: {
   monitors: MonitorSummary[];
   until: string;
   searching: boolean;
   loading?: boolean;
   refreshing?: boolean;
+  subgroup?: string;
 }) {
   const t = useCopy();
   const list = useRef<HTMLDivElement>(null);
@@ -66,6 +68,7 @@ export function MonitorList({
             <MonitorCard
               key={m.id}
               monitor={m}
+              subgroup={subgroup}
               until={until}
               refreshing={refreshing}
               initialHeight={

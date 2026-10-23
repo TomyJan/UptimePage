@@ -119,6 +119,7 @@ export function StatusPage() {
             <MonitorList
               key={id}
               monitors={monitors}
+              subgroup={sub}
               until={snapshot?.fetchedAt ?? ''}
               searching={Boolean(search.trim())}
               loading={!snapshot}

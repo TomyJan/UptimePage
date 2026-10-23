@@ -12,6 +12,7 @@ import { useMonitorQuery } from '../../data/hooks.ts';
 
 import { ApiClientError } from '../../data/client.ts';
 import { Logo } from '../../components/Logo.tsx';
+import { MonitorLink } from '../../components/MonitorLink.tsx';
 import { StatusBadge } from '../../components/StatusBadge.tsx';
 import { localize } from '../preferences/locale.ts';
 import { usePreferences } from '../preferences/store.ts';
@@ -38,10 +39,19 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
   useEffect(() => {
     if (q.data && !q.isPlaceholderData) setKnown(q.data);
   }, [q.data, q.isPlaceholderData]);
+  const group = publicConfig.groups.find((g) => g.id === groupId);
+  const requestedSubgroup = new URLSearchParams(location.search).get('s');
+  const fallback = new URLSearchParams({ g: groupId });
+  if (requestedSubgroup && group?.subgroups.some((s) => s.id === requestedSubgroup))
+    fallback.set('s', requestedSubgroup);
   const returnTo =
     typeof location.state?.returnTo === 'string' && location.state.returnTo.startsWith('/?')
       ? location.state.returnTo
-      : `/?g=${encodeURIComponent(groupId)}`;
+      : `/?${fallback}`;
+  const contextSubgroup = requestedSubgroup ?? new URLSearchParams(returnTo.split('?')[1]).get('s');
+  const subgroup = group?.subgroups.some((s) => s.id === contextSubgroup)
+    ? contextSubgroup!
+    : 'all';
   const back = (
     <TransitionLink className="back" to={returnTo}>
       <ArrowLeft size={14} />
@@ -121,7 +131,10 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
                 <Logo src={d.monitor.logo} name={name} className="service-logo" />
                 <div>
                   <div className="detail-name">
-                    <h1>{name}</h1>
+                    <h1>
+                      <span className="detail-label">{name}</span>
+                      <MonitorLink monitor={d.monitor} name={name} subgroup={subgroup} />
+                    </h1>
                     <StatusBadge state={d.monitor.state} freshness={d.monitor.freshness} />
                   </div>
                   {d.monitor.description && <p>{localize(d.monitor.description, locale)}</p>}

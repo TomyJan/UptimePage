@@ -30,6 +30,7 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 | `footer`                 | 页脚右侧内容，默认空；支持 `[文字](https://example.com)` 链接，其余按纯文本显示 |
 | `refreshIntervalSeconds` | 非负整数，默认 `60`；`0` 为仅手动刷新                                           |
 | `pinAbnormal`            | 是否默认将异常条目置顶，默认 `false`                                            |
+| `showLinks`              | 是否展示监控网站链接，默认 `false`，分组与子分组可覆盖                          |
 | `umami`                  | 可选 Umami 统计配置，默认 `null`，见下文                                        |
 
 名称、导航文字、页脚和监控描述支持字符串或双语对象，例如 `{"en":"Services","zh-CN":"服务"}`；双语对象必须有英文。Logo 和导航地址支持 `/logo.svg` 这样的站内路径或 HTTPS URL，本地资源放在 `public/`；站内路径相对于状态页站点，不是配置文件地址。
@@ -46,6 +47,14 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 以上是 `site` 的局部示例。页脚左侧固定为 `Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；hash 构建时从 Git 注入，也可用 `UPTIMEPAGE_COMMIT` 指定。未指定且无法从 Git 读取时显示 `dev`。
 
 自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
+
+### 监控链接
+
+`site.showLinks` 设置全局默认值，`groups[].showLinks` 和 `groups[].subgroups[].showLinks` 可填 `true` / `false`，省略则继承上一级；子分组优先。例如仅公开一个子组的链接，在该子组配置 `"showLinks": true` 即可。编辑器中对应“显示监控链接”，分组和子组可选“继承 / 显示 / 隐藏”。
+
+链接来自上游监控项的 `url`，只接受无凭证的 HTTP(S) 地址；未提供或不合法时不显示图标。首页与详情的图标均在名称旁，新标签页打开。“全部”和直接进入的详情，只要任一所属子组允许便显示；从具体子组进入详情会保留该子组的设置。
+
+完全关闭的监控不会通过 API 返回链接。若同一监控已在其他子组允许展示，链接本身就是公开数据；子组的隐藏选项只控制该视图是否显示图标。
 
 访客语言、时区、外观和刷新偏好保存在浏览器，手动选择优先。自动语言不支持时回退英文，时区获取失败时回退 UTC，外观跟随系统。
 
@@ -131,7 +140,7 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 
 `apiKeyEnv` 只填写环境变量名，格式为大写字母 / 下划线开头，后续可含数字，例如 `PEEKAPING_API_KEY`。实际值在 EO 函数环境变量中设置；多个连接可引用不同变量名。不要把密钥值写入 JSON 或 `VITE_*`。
 
-网站设置和分组名称 / Logo 进入静态产物；来源地址、选择规则和密钥变量名只用于函数。浏览器接口只返回公开展示字段，不透传上游目标地址和私有配置。公开托管的配置文件本身仍然公开，不能在其中填写密钥值。
+网站设置和分组名称 / Logo 进入静态产物；来源地址、选择规则和密钥变量名只用于函数。浏览器接口只返回公开展示字段；监控目标链接默认不返回，仅在 `showLinks` 允许时公开。公开托管的配置文件本身仍然公开，不能在其中填写密钥值。
 
 ## 可选 KV
 

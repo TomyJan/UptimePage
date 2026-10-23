@@ -5,6 +5,7 @@
     "footer": "",
     "refreshIntervalSeconds": 60,
     "pinAbnormal": false,
+    "showLinks": false,
     "umami": null
   },
   "groups": [

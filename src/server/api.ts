@@ -1,4 +1,5 @@
 import { encodeGroupSnapshot } from './home.ts';
+import { withMonitorLink } from '../shared/monitor-links.ts';
 import {
   apiErrorCodeSchema,
   rangeSchema,
@@ -198,6 +199,14 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const range = parsedRange.success ? parsedRange.data : '24h';
   const group = findServerGroup(runtime.config, parts[1]);
   if (!group) return errorResponse('not-found');
+  const publicSnapshot = (snapshot: GroupSnapshot) => ({
+    ...snapshot,
+    monitors: snapshot.monitors.map((m) => withMonitorLink(m, group)),
+  });
+  const publicDetail = (detail: MonitorDetail) => ({
+    ...detail,
+    monitor: withMonitorLink(detail.monitor, group),
+  });
   const ids = configuredMonitorIds(group);
   if (isDetail && ids && !ids.has(parts[3])) return errorResponse('not-found');
   // All detail requests reuse this one cache key; query noise cannot amplify
@@ -400,12 +409,12 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         );
       }
     }
-    if (!isDetail) return json(encodeGroupSnapshot(snapshot));
+    if (!isDetail) return json(encodeGroupSnapshot(publicSnapshot(snapshot)));
     const member = snapshot.monitors.find((m) => m.id === parts[3]);
     if (!member) return errorResponse('not-found');
     // A detail cache cannot bypass current public membership.
     if (cachedDetail && now.getTime() - Date.parse(cachedDetail.fetchedAt) < freshMs)
-      return json(cachedDetail);
+      return json(publicDetail(cachedDetail));
     if (group.source.type === 'uptimerobot') {
       const detail = await timed('detail', () =>
         coalesce<MonitorDetail | null>(detailKey.url, async () => {
@@ -481,14 +490,17 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
               latest = check;
             }
           }
-          const monitor = {
-            ...normalized,
-            observedAt: latest.observedAt,
-            responseMs: normalized.state === 'operational' ? latest.responseMs : null,
-            name: member.name,
-            logo: member.logo,
-            description: member.description,
-          };
+          const monitor = withMonitorLink(
+            {
+              ...normalized,
+              observedAt: latest.observedAt,
+              responseMs: normalized.state === 'operational' ? latest.responseMs : null,
+              name: member.name,
+              logo: member.logo,
+              description: member.description,
+            },
+            group,
+          );
           const detail = detailFromSnapshot(
             { ...snapshot, fetchedAt: now.toISOString(), monitors: [monitor] },
             member.id,
@@ -515,7 +527,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
           return detail;
         }),
       );
-      return detail ? json(detail) : errorResponse('not-found');
+      return detail ? json(publicDetail(detail)) : errorResponse('not-found');
     }
     const detail = await timed('detail', () =>
       coalesce(detailKey.url, async () => {
@@ -562,14 +574,14 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         return detail;
       }),
     );
-    return json(detail);
+    return json(publicDetail(detail));
   } catch (error) {
     // An unavailable Peekaping status page cannot confirm current membership.
     // Fail closed for details instead of serving potentially revoked data.
     if (isDetail && group.source.type === 'uptimerobot' && cachedDetail)
       return json({
         ...cachedDetail,
-        monitor: { ...cachedDetail.monitor, freshness: 'stale' },
+        monitor: withMonitorLink({ ...cachedDetail.monitor, freshness: 'stale' }, group),
         retryAt: error instanceof SourceRequestError ? error.retryAt : null,
         diagnostic: error instanceof SourceRequestError ? error.diagnostic : { reason: 'internal' },
       });
@@ -584,7 +596,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
             : 'unavailable',
         ...(error instanceof SourceRequestError && error.retryAt ? { retryAt: error.retryAt } : {}),
       }));
-      return json(encodeGroupSnapshot(fallback));
+      return json(encodeGroupSnapshot(publicSnapshot(fallback)));
     }
     if (error instanceof SourceRequestError)
       return errorResponse(

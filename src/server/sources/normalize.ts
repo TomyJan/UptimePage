@@ -1,4 +1,5 @@
 import { rangeMilliseconds } from '../../shared/ranges.ts';
+import { normalizeMonitorUrl } from '../../shared/monitor-links.ts';
 import type { Range } from '../../shared/contracts.ts';
 import type { HistoryBucket, MonitorState, MonitorSummary } from '../../shared/contracts.ts';
 
@@ -128,6 +129,7 @@ export function normalizePeekapingMonitor(
     name,
     logo: null,
     description: null,
+    ...(normalizeMonitorUrl(item.url) ? { url: normalizeMonitorUrl(item.url) } : {}),
     state: item.active === false ? 'paused' : peekapingState(item.status ?? latest?.status),
     freshness: 'fresh',
     observedAt:
@@ -298,6 +300,7 @@ export function normalizeUptimeRobotMonitor(
     name,
     logo: null,
     description: null,
+    ...(normalizeMonitorUrl(item.url) ? { url: normalizeMonitorUrl(item.url) } : {}),
     state: uptimeRobotState(item.status),
     freshness: 'fresh',
     observedAt: latest?.at ?? null,

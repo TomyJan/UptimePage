@@ -27,6 +27,7 @@ const homeMonitorSchema = monitorSummarySchema
   .extend({
     logo: monitorSummarySchema.shape.logo.optional(),
     description: monitorSummarySchema.shape.description.optional(),
+    url: monitorSummarySchema.shape.url,
     uptime24h: z.number().min(0).max(100).nullable(),
     history: z.array(cellSchema).min(1).max(48),
   });
