@@ -48,6 +48,8 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 
 自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
 
+访客语言、时区、外观和刷新偏好保存在浏览器，手动选择优先。自动语言不支持时回退英文，时区获取失败时回退 UTC，外观跟随系统。
+
 ### 监控链接
 
 `site.showLinks` 设置全局默认值，`groups[].showLinks` 和 `groups[].subgroups[].showLinks` 可填 `true` / `false`，省略则继承上一级；子分组优先。例如仅公开一个子组的链接，在该子组配置 `"showLinks": true` 即可。编辑器中对应“显示监控链接”，分组和子组可选“继承 / 显示 / 隐藏”。
@@ -55,8 +57,6 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 链接来自 Peekaping 监控项 `config` JSON 字符串中的 `url`，或 UptimeRobot 监控项的 `url`。只接受无凭证的 HTTP(S) 地址；未提供或不合法时不显示图标。首页与详情的图标均在名称旁，新标签页打开。“全部”和直接进入的详情，只要任一所属子组允许便显示；从具体子组进入详情会保留该子组的设置。
 
 完全关闭的监控不会通过 API 返回链接。若同一监控已在其他子组允许展示，链接本身就是公开数据；子组的隐藏选项只控制该视图是否显示图标。
-
-访客语言、时区、外观和刷新偏好保存在浏览器，手动选择优先。自动语言不支持时回退英文，时区获取失败时回退 UTC，外观跟随系统。
 
 ### Umami
 
@@ -77,7 +77,7 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 
 ## 分组 `groups`
 
-至少配置一个大分组。每组必填 `id`、`name`、`source`、`subgroups`，可选 `logo`、`monitors`；子组有独立的 `id`、`name`、`logo` 和来源选择规则，Logo 不继承。
+至少配置一个大分组。每组必填 `id`、`name`、`source`、`subgroups`，可选 `logo`、`showLinks`、`monitors`；子组有独立的 `id`、`name`、`logo`、`showLinks` 和来源选择规则，Logo 不继承，链接显示按层级继承。
 
 - 大分组 ID 全站唯一，子组 ID 在组内唯一；格式为小写字母 / 数字组成的段，以单个连字符分隔。子组不能使用保留 ID `all`。
 - 每组绑定一个来源连接，允许多个同类型来源；未被任何子组选中的监控不公开。相同监控可属于多个子组，跨大分组独立处理。
