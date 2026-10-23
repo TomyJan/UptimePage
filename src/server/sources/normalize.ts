@@ -100,6 +100,21 @@ function heartbeatHistory(raw: unknown, fetchedAt: string): HistoryBucket[] {
     .sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
 }
 
+function peekapingMonitorUrl(item: Record<string, unknown>): string | undefined {
+  if (typeof item.config === 'string') {
+    try {
+      const config: unknown = JSON.parse(item.config);
+      if (config && typeof config === 'object' && !Array.isArray(config)) {
+        const url = normalizeMonitorUrl((config as Record<string, unknown>).url);
+        if (url) return url;
+      }
+    } catch {
+      // Optional target metadata must not break status data.
+    }
+  }
+  return normalizeMonitorUrl(item.url);
+}
+
 export function normalizePeekapingMonitor(
   raw: unknown,
   groupId: string,
@@ -122,6 +137,7 @@ export function normalizePeekapingMonitor(
     heartbeats[0] && typeof heartbeats[0] === 'object'
       ? (heartbeats[0] as Record<string, unknown>)
       : null;
+  const url = peekapingMonitorUrl(item);
   return {
     id,
     groupId,
@@ -129,7 +145,7 @@ export function normalizePeekapingMonitor(
     name,
     logo: null,
     description: null,
-    ...(normalizeMonitorUrl(item.url) ? { url: normalizeMonitorUrl(item.url) } : {}),
+    ...(url ? { url } : {}),
     state: item.active === false ? 'paused' : peekapingState(item.status ?? latest?.status),
     freshness: 'fresh',
     observedAt:

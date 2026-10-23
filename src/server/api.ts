@@ -218,7 +218,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   const sourceCredential = requireSecret(runtime.environment, group.source.apiKeyEnv);
   const cacheVersion = credentialCacheVersion(
     runtime.config.configVersion,
-    'home-v4',
+    'home-v5',
     sourceCredential,
   );
   const detailKey = new Request(

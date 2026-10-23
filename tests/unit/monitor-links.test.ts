@@ -62,11 +62,30 @@ function upstream(calls: string[] = []): typeof fetch {
     const target = String(url);
     calls.push(target);
     if (target.includes('/status-pages/'))
-      return Response.json({ data: target.includes('/slug/api/') ? [records[0]] : records });
+      return Response.json({
+        data: (target.includes('/slug/api/') ? [records[0]] : records).map(({ id, name }) => ({
+          id,
+          name,
+          type: 'http-keyword',
+          active: true,
+        })),
+      });
     if (target.includes('/stats/points'))
       return Response.json({ data: { points: [], uptime: null } });
     if (target.includes('/heartbeats')) return Response.json({ data: [] });
     if (target.includes('/tls')) return Response.json({ data: null });
+    if (target.includes('/monitors/batch?'))
+      return Response.json({
+        data: records.map(({ url, friendly_name: _, logs: __, ...monitor }) => ({
+          ...monitor,
+          type: 'http-keyword',
+          config: JSON.stringify({
+            url,
+            headers: '{"Authorization":"PRIVATE_UPSTREAM_CREDENTIAL"}',
+          }),
+          push_token: 'PRIVATE_PUSH_TOKEN',
+        })),
+      });
     return Response.json({ data: records, monitors: records, pagination: { total: 2 } });
   };
 }
@@ -81,6 +100,102 @@ it('defaults link display off and resolves the global fallback for both build ou
     showLinks: true,
     subgroups: [{ showLinks: true }, { showLinks: true }],
   });
+});
+
+it.each(['http', 'http-keyword', 'http-json-query'])(
+  'reads the target from the authenticated Peekaping %s config string without exposing other settings',
+  (type) => {
+    const monitor = normalizePeekapingMonitor(
+      {
+        id: 'real',
+        name: 'Actual API structure',
+        type,
+        active: true,
+        status: 1,
+        config: JSON.stringify({
+          url: 'https://example.test/health',
+          headers: '{"Authorization":"PRIVATE_KEY"}',
+          body: 'PRIVATE_BODY',
+        }),
+        push_token: 'PRIVATE_PUSH_TOKEN',
+      },
+      'core',
+      ['web'],
+      now.toISOString(),
+    );
+    expect(monitor).toMatchObject({ url: 'https://example.test/health' });
+    expect(JSON.stringify(monitor)).not.toMatch(/PRIVATE|config|headers|push_token/);
+  },
+);
+
+it.each([
+  '{invalid',
+  'null',
+  '[]',
+  'true',
+  '{"url":"javascript:alert(1)"}',
+  '{"url":"https://user:secret@example.test"}',
+])('keeps a Peekaping monitor usable when optional link configuration is invalid: %s', (config) => {
+  const monitor = normalizePeekapingMonitor(
+    { id: 'real', name: 'API', status: 1, config },
+    'core',
+    ['web'],
+    now.toISOString(),
+  );
+  expect(monitor).toMatchObject({ id: 'real', state: 'operational' });
+  expect(monitor).not.toHaveProperty('url');
+});
+
+it('prefers the current Peekaping config URL over the legacy top-level field', () => {
+  expect(
+    normalizePeekapingMonitor(
+      { ...records[0], config: JSON.stringify({ url: 'https://current.example.test/' }) },
+      'core',
+      ['web'],
+      now.toISOString(),
+    ),
+  ).toMatchObject({ url: 'https://current.example.test/' });
+});
+
+it('refreshes old cached Peekaping home and detail responses that lack target URLs', async () => {
+  const entries = new Map<string, Response>();
+  const cache = {
+    async match(request: RequestInfo | URL) {
+      return entries.get(new Request(request).url)?.clone();
+    },
+    async put(request: RequestInfo | URL, response: Response) {
+      entries.set(new Request(request).url, response.clone());
+    },
+  };
+  const calls: string[] = [];
+  const runtime = {
+    config: splitConfig(parseConfig(input('peekaping', true)), 'migration').serverConfig,
+    now,
+    environment: { KEY: 'secret' },
+    fetcher: upstream(calls),
+    cache,
+  };
+  const home = new Request('https://migration.test/api/v1/groups/core');
+  const detail = new Request(`${home.url}/monitors/1`);
+  for (const request of [home, detail])
+    expect((await handleApi(request, runtime)).status).toBe(200);
+  for (const [key, response] of [...entries]) {
+    if (!key.includes('-home-v5-')) continue;
+    const data = await response.json();
+    for (const monitor of data.monitors ?? (data.monitor ? [data.monitor] : [])) delete monitor.url;
+    entries.delete(key);
+    entries.set(key.replace('-home-v5-', '-home-v4-'), Response.json(data));
+  }
+  expect([...entries.keys()].some((key) => key.includes('-home-v4-'))).toBe(true);
+  calls.length = 0;
+  for (const request of [detail, home]) {
+    const response = await handleApi(request, runtime);
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect((data.monitor ?? data.monitors[0]).url).toBe(records[0].url);
+  }
+  expect(calls.some((url) => url.includes('/monitors/batch?'))).toBe(true);
+  expect(calls.some((url) => url.includes('/status-pages/'))).toBe(false);
 });
 
 it.each(['peekaping', 'uptimerobot'] as const)(
