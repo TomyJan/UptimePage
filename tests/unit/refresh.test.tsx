@@ -2,6 +2,93 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { RefreshScheduler } from '../../src/features/refresh/scheduler.ts';
 import { ApiClientError } from '../../src/data/client.ts';
 afterEach(() => vi.useRealTimers());
+it('waits through timer chunks until a thirty-day refresh is actually due', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-21T00:00:00Z'));
+  let calls = 0;
+  const scheduler = new RefreshScheduler(async () => {
+    calls++;
+  }, 2592000);
+  scheduler.start();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(calls).toBe(0);
+  await vi.advanceTimersByTimeAsync(2147483646);
+  expect(calls).toBe(0);
+  await vi.advanceTimersByTimeAsync(444516352);
+  expect(calls).toBe(0);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(calls).toBe(1);
+  scheduler.stop();
+});
+
+it.each(['defer', 'error'])(
+  'honors a distant retry deadline learned from %s across multiple chunks',
+  async (source) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T00:00:00Z'));
+    let calls = 0;
+    const retry = Date.now() + 4294968294;
+    const scheduler = new RefreshScheduler(async () => {
+      calls++;
+      if (source === 'error' && calls === 1)
+        throw new ApiClientError('rate-limited', new Date(retry).toISOString());
+    }, 30);
+    scheduler.start();
+    if (source === 'error') await scheduler.run(true);
+    else scheduler.deferUntil(retry);
+    const before = calls;
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls).toBe(before);
+    await vi.advanceTimersByTimeAsync(2147483646);
+    expect(calls).toBe(before);
+    await vi.advanceTimersByTimeAsync(2147483647);
+    expect(calls).toBe(before);
+    await vi.advanceTimersByTimeAsync(999);
+    expect(calls).toBe(before);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls).toBe(before + 1);
+    scheduler.stop();
+  },
+);
+
+it.each(['stop', 'disable', 'shorter', 'manual', 'hidden'])(
+  'cancels or reconfigures a long timer after its first chunk: %s',
+  async (action) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T00:00:00Z'));
+    let calls = 0;
+    const scheduler = new RefreshScheduler(async () => {
+      calls++;
+    }, 2592000);
+    scheduler.start();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls).toBe(0);
+    await vi.advanceTimersByTimeAsync(2147483646);
+    expect(calls).toBe(0);
+    if (action === 'stop') scheduler.stop();
+    if (action === 'disable') scheduler.setInterval(0);
+    if (action === 'shorter') scheduler.setInterval(2);
+    if (action === 'manual') await scheduler.run(true);
+    if (action === 'hidden') scheduler.setHidden(true);
+    if (action === 'shorter') {
+      await vi.advanceTimersByTimeAsync(1999);
+      expect(calls).toBe(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(calls).toBe(1);
+      scheduler.stop();
+    } else {
+      await vi.advanceTimersByTimeAsync(444516353);
+      expect(calls).toBe(action === 'manual' ? 1 : 0);
+      if (action === 'hidden') {
+        scheduler.setHidden(false);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(calls).toBe(1);
+      }
+      scheduler.stop();
+    }
+  },
+);
+
 it.each(['before', 'during'])(
   'keeps a future retry deadline learned %s a successful refresh',
   async (when) => {

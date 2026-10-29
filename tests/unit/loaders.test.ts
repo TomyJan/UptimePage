@@ -25,6 +25,117 @@ it('validates and caches preview snapshots against the supplied configuration ve
   expect(result.configVersion).toBe('preview-version');
 });
 import type { ApiClient, GroupSnapshot } from '../../src/shared/contracts.ts';
+it('updates an incomplete snapshot with newer partial states and recovered members', async () => {
+  const cache = new QueryClient();
+  const key = groupKey(publicConfig.configVersion, 'core');
+  const initial = groupFixture('core', 1);
+  initial.freshness = 'stale';
+  initial.subgroupErrors = [{ subgroupId: 'api', code: 'unavailable' }];
+  cache.setQueryData(key, initial);
+  const next = groupFixture('core', 2, Date.parse(initial.fetchedAt) + 60000);
+  next.freshness = 'stale';
+  next.monitors[0].state = 'down';
+  next.subgroupErrors = [
+    { subgroupId: 'infra', code: 'rate-limited', retryAt: '2026-10-21T12:10:00Z' },
+  ];
+  const client = { getGroup: async () => next } as unknown as ApiClient;
+  const result = await cache.fetchQuery({
+    queryKey: key,
+    queryFn: ({ signal }) => loadGroup(cache, client, 'core', signal),
+  });
+  expect(result.monitors.map((m) => [m.id, m.state])).toEqual([
+    ['m1', 'down'],
+    ['m2', 'down'],
+  ]);
+  expect(result.freshness).toBe('stale');
+  expect(result.subgroupErrors).toEqual(next.subgroupErrors);
+  expect(cache.getQueryData<GroupSnapshot>(key)?.fetchedAt).toBe('2026-10-21T12:01:00.000Z');
+  cache.clear();
+});
+
+it('does not replace newer partial observations with an older partial response', async () => {
+  const cache = new QueryClient();
+  const initial = { ...groupFixture('core', 2), freshness: 'stale' as const };
+  cache.setQueryData(groupKey(publicConfig.configVersion, 'core'), initial);
+  const older = {
+    ...groupFixture('core', 1),
+    freshness: 'stale' as const,
+    fetchedAt: '2026-10-21T11:59:00Z',
+  };
+  await expect(
+    loadGroup(
+      cache,
+      { getGroup: async () => older } as unknown as ApiClient,
+      'core',
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({ code: 'unavailable' });
+  expect(cache.getQueryData(groupKey(publicConfig.configVersion, 'core'))).toEqual(initial);
+  cache.clear();
+});
+
+it('keeps a complete snapshot and its timestamp with partial retry feedback', async () => {
+  const cache = new QueryClient();
+  const key = groupKey(publicConfig.configVersion, 'core');
+  const initial = groupFixture('core', 2);
+  cache.setQueryData(key, initial);
+  const next = {
+    ...groupFixture('core', 1),
+    freshness: 'stale' as const,
+    fetchedAt: '2026-10-21T12:01:00Z',
+    subgroupErrors: [
+      {
+        subgroupId: 'api',
+        code: 'rate-limited' as const,
+        retryAt: '2026-10-21T12:10:00Z',
+        diagnostic: { reason: 'upstream-http' as const, status: 429 },
+      },
+    ],
+  };
+  await expect(
+    loadGroup(
+      cache,
+      { getGroup: async () => next } as unknown as ApiClient,
+      'core',
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({
+    code: 'rate-limited',
+    retryAt: '2026-10-21T12:10:00Z',
+    diagnostic: { status: 429 },
+  });
+  expect(cache.getQueryData(key)).toEqual(initial);
+  cache.clear();
+});
+
+it('clears revoked details while accepting progress after an incomplete snapshot', async () => {
+  const cache = new QueryClient();
+  const v = publicConfig.configVersion;
+  const initial = { ...groupFixture('core', 2), freshness: 'stale' as const };
+  cache.setQueryData(groupKey(v, 'core'), initial);
+  cache.setQueryData(monitorKey(v, 'core', 'm1', '24h'), detailFixture('core', 'm1', '24h'));
+  const next = {
+    ...initial,
+    fetchedAt: '2026-10-21T12:01:00Z',
+    revokedMonitorIds: ['m1'],
+    monitors: initial.monitors.slice(1),
+    subgroups: initial.subgroups.map((s) => ({
+      ...s,
+      monitorIds: s.monitorIds.filter((id) => id !== 'm1'),
+    })),
+  };
+  const result = await loadGroup(
+    cache,
+    { getGroup: async () => next } as unknown as ApiClient,
+    'core',
+    new AbortController().signal,
+  );
+  expect(result.monitors.map((m) => m.id)).toEqual(['m2']);
+  expect(result.subgroups.flatMap((s) => s.monitorIds)).not.toContain('m1');
+  expect(cache.getQueryData(monitorKey(v, 'core', 'm1', '24h'))).toBeUndefined();
+  cache.clear();
+});
+
 it('revokes cached details for every range only within the denied group', async () => {
   const cache = new QueryClient(),
     v = publicConfig.configVersion;

@@ -94,12 +94,67 @@ export async function fetchPeekapingHistory(
         ),
       requestSignal,
     );
-  const [raw, latest, events] = await Promise.all([
+  const current = request('heartbeats?limit=1&page=0')
+    .then(peekapingData)
+    .then((latest) => {
+      if (!Array.isArray(latest)) throw new SourceRequestError('Invalid Peekaping heartbeat');
+      const hb =
+        latest[0] && typeof latest[0] === 'object' ? (latest[0] as Record<string, unknown>) : null;
+      const observed = hb
+        ? Math.max(
+            ...[hb.time, hb.end_time].flatMap((value) =>
+              typeof value === 'string' && Number.isFinite(Date.parse(value))
+                ? [Date.parse(value)]
+                : [],
+            ),
+          )
+        : NaN;
+      const valid =
+        Number.isFinite(observed) &&
+        observed <= end &&
+        typeof hb?.status === 'number' &&
+        [0, 1, 2, 3].includes(hb.status);
+      const state: MonitorSummary['state'] =
+        monitor.state === 'paused' || purpose === 'home'
+          ? monitor.state
+          : !valid
+            ? 'unknown'
+            : hb!.status === 0
+              ? 'down'
+              : hb!.status === 1
+                ? 'operational'
+                : hb!.status === 2
+                  ? 'pending'
+                  : 'maintenance';
+      return {
+        state,
+        observedAt: valid ? new Date(observed).toISOString() : null,
+        responseMs:
+          valid &&
+          state === 'operational' &&
+          hb?.status === 1 &&
+          typeof hb.ping === 'number' &&
+          Number.isFinite(hb.ping) &&
+          hb.ping >= 0
+            ? hb.ping
+            : null,
+      };
+    });
+  const [raw, observation, events] = await Promise.all([
     request(`stats/points?${query}`).then(peekapingData),
-    request('heartbeats?limit=1&page=0').then(peekapingData),
+    current,
     purpose === 'home'
       ? Promise.resolve([])
-      : fetchPeekapingEvents(baseUrl, monitor, apiKey, until, fetcher, range, requestSignal),
+      : fetchPeekapingEvents(
+          baseUrl,
+          monitor,
+          apiKey,
+          until,
+          fetcher,
+          range,
+          current,
+          requestSignal,
+        ),
   ]).catch((error) => {
     controller.abort();
     throw error;
@@ -149,28 +204,14 @@ export async function fetchPeekapingHistory(
     })
     .filter((p) => Date.parse(p.until) > Date.parse(p.from))
     .sort((a, b) => Date.parse(a.from) - Date.parse(b.from));
-  if (!Array.isArray(latest)) throw new SourceRequestError('Invalid Peekaping heartbeat');
-  const hb =
-    latest[0] && typeof latest[0] === 'object' ? (latest[0] as Record<string, unknown>) : null;
-  const observed = hb
-    ? Math.max(
-        ...[hb.time, hb.end_time].flatMap((value) =>
-          typeof value === 'string' && Number.isFinite(Date.parse(value))
-            ? [Date.parse(value)]
-            : [],
-        ),
-      )
-    : NaN;
   const uptime = number(stats.uptime);
   return {
     monitor: {
       ...monitor,
+      ...observation,
       freshness: 'fresh' as const,
       history,
       sampleIntervalSeconds: interval / 1000,
-      observedAt:
-        Number.isFinite(observed) && observed <= end ? new Date(observed).toISOString() : null,
-      responseMs: monitor.state === 'operational' && hb?.status === 1 ? number(hb.ping) : null,
       uptime24h: {
         value: uptime !== null && uptime <= 100 ? uptime : null,
         from: new Date(start).toISOString(),
@@ -190,6 +231,7 @@ async function fetchPeekapingEvents(
   until: Date,
   fetcher: JsonFetcher,
   range: Range,
+  current: Promise<Pick<MonitorSummary, 'state'>>,
   signal?: AbortSignal,
 ): Promise<MonitorDetail['events']> {
   const start = until.getTime() - rangeMilliseconds(range),
@@ -235,13 +277,14 @@ async function fetchPeekapingEvents(
     previousOldest = oldest;
   }
   changes.sort((a, b) => a.at - b.at);
+  const currentState = (await current).state;
   const events: MonitorDetail['events'] = [];
   for (let i = 0; i < changes.length; i++) {
     const change = changes[i];
     const state = change.status === 0 ? 'down' : change.status === 3 ? 'maintenance' : null;
     if (!state) continue;
     const next = changes[i + 1];
-    const ongoing = !next && monitor.state === state;
+    const ongoing = !next && currentState === state;
     if (!next && !ongoing) continue;
     const finish = next?.at ?? end;
     if (finish <= start || finish <= change.at) continue;

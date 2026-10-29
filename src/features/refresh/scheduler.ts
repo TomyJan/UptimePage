@@ -51,7 +51,14 @@ export class RefreshScheduler {
     if (!preserve || !this.deadline)
       this.deadline = Math.max(Date.now() + this.seconds * 1000, this.retryAt);
     if (!this.hidden)
-      this.timer = setTimeout(() => void this.run(false), Math.max(0, this.deadline - Date.now()));
+      this.timer = setTimeout(
+        () => {
+          // Long browser/Node delays overflow; each chunk retains the absolute deadline.
+          if (Date.now() < this.deadline) this.schedule(true);
+          else void this.run(false);
+        },
+        Math.min(2147483647, Math.max(0, this.deadline - Date.now())),
+      );
   }
   run(_manual: boolean): Promise<RefreshResult> {
     if (this.flight) return this.flight;

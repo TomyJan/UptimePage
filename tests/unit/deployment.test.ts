@@ -1,4 +1,5 @@
 import { createServer, type Server } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { afterEach, expect, it } from 'vitest';
 import { verifyDeployment } from '../../scripts/deployment-checks.ts';
 import { handleApi } from '../../src/server/api.ts';
@@ -25,6 +26,9 @@ type Mode =
   | 'public-cache'
   | 'legacy-home'
   | 'broken-long-range'
+  | 'external-script'
+  | 'external-preload'
+  | 'credential-asset'
   | 'broken-cache-bridge';
 async function serve(mode: Mode = 'ok') {
   const server = createServer(async (req, res) => {
@@ -79,13 +83,26 @@ async function serve(mode: Mode = 'ok') {
         headers: { 'content-type': 'text/javascript' },
       });
     } else {
-      response = new Response(
-        '<!doctype html><div id="root"></div><script type="module" src="/assets/app.js"></script><link rel="stylesheet" href="/assets/style.css"><link rel="modulepreload" href="/assets/validation.js">',
-        {
-          status: mode === 'broken-deep-link' && url.pathname.startsWith('/services/') ? 404 : 200,
-          headers: { 'content-type': 'text/html' },
-        },
-      );
+      const appScript =
+        mode === 'external-script'
+          ? 'https://cdn.example.com/app.js'
+          : mode === 'credential-asset'
+            ? `${origin.replace('://', '://user:secret@')}/assets/app.js`
+            : '/assets/app.js';
+      const preload =
+        mode === 'external-preload'
+          ? 'https://cdn.example.com/validation.js'
+          : '/assets/validation.js';
+      const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8')
+        .replace('/src/main.tsx', appScript)
+        .replace(
+          '</head>',
+          `<link rel="stylesheet" href="/assets/style.css"><link rel="modulepreload" href="${preload}"></head>`,
+        );
+      response = new Response(html, {
+        status: mode === 'broken-deep-link' && url.pathname.startsWith('/services/') ? 404 : 200,
+        headers: { 'content-type': 'text/html' },
+      });
     }
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(await response.text());
@@ -95,7 +112,7 @@ async function serve(mode: Mode = 'ok') {
   return `http://127.0.0.1:${(server.address() as { port: number }).port}`;
 }
 
-it('checks the real API over HTTP, errors, deep routes and JavaScript assets', async () => {
+it('checks actual app HTML with its optional external font, API, deep routes and app assets', async () => {
   const report = await verifyDeployment(await serve(), publicConfig);
   expect(report.checks).toEqual(
     expect.arrayContaining([
@@ -126,6 +143,9 @@ it.each([
   ['legacy-home', /home-v1/i],
   ['broken-long-range', /7d.*identity|7d.*range/i],
   ['broken-cache-bridge', /JSON|545/],
+  ['external-script', /same-origin/],
+  ['external-preload', /same-origin/],
+  ['credential-asset', /same-origin/],
 ] as const)('fails deployment validation for %s', async (mode, reason) => {
   await expect(verifyDeployment(await serve(mode), publicConfig)).rejects.toThrow(reason);
 });
