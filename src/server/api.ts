@@ -30,7 +30,10 @@ export type ApiRuntime = {
   config: ServerConfig;
   environment: Record<string, string | undefined>;
   fetcher?: JsonFetcher;
+  /** Request/cache timestamp and fixed history window; defaults to clock() at entry. */
   now?: Date;
+  /** Live read clock in milliseconds; defaults to Date.now even when now is fixed. */
+  clock?: () => number;
   cache?: ResponseCache;
   membershipCache?: ResponseCache;
   /** Shared only by requests handled by the same server instance. */
@@ -215,7 +218,8 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
   // All detail requests reuse this one cache key; query noise cannot amplify
   // upstream requests and old per-monitor entries cannot bypass membership.
   const key = new Request(`${url.origin}/api/v1/groups/${encodeURIComponent(group.id)}`);
-  const now = runtime.now ?? new Date();
+  const clock = runtime.clock ?? Date.now;
+  const now = runtime.now ?? new Date(clock());
   // Start storage reads before membership I/O. Records carry the membership
   // generation internally and are never used until authorization is confirmed.
   const sourceCredential = requireSecret(runtime.environment, group.source.apiKeyEnv);
@@ -377,6 +381,7 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
               now,
               membership,
               !isDetail,
+              clock,
             ),
           ),
         );
@@ -538,7 +543,18 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         const apiKey = requireSecret(runtime.environment, group.source.apiKeyEnv);
         const controller = new AbortController();
         const [result, certificate] = await Promise.all([
-          fetchPeekapingHistory(baseUrl, member, apiKey, now, runtime.fetcher, range),
+          fetchPeekapingHistory(
+            baseUrl,
+            member,
+            apiKey,
+            now,
+            runtime.fetcher,
+            range,
+            'detail',
+            undefined,
+            undefined,
+            clock,
+          ),
           fetchPeekapingCertificate(baseUrl, member.id, apiKey, runtime.fetcher, controller.signal),
         ]).catch((error) => {
           controller.abort();

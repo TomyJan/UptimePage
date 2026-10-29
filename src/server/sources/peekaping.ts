@@ -72,6 +72,7 @@ export async function fetchPeekapingHistory(
   purpose: 'home' | 'detail' = 'detail',
   schedule: TaskLimiter = (work) => work(),
   signal?: AbortSignal,
+  clock: () => number = Date.now,
 ) {
   const end = until.getTime(),
     start = end - rangeMilliseconds(range);
@@ -111,7 +112,7 @@ export async function fetchPeekapingHistory(
         : NaN;
       const valid =
         Number.isFinite(observed) &&
-        observed <= end &&
+        observed <= clock() &&
         typeof hb?.status === 'number' &&
         [0, 1, 2, 3].includes(hb.status);
       const state: MonitorSummary['state'] =
@@ -153,6 +154,7 @@ export async function fetchPeekapingHistory(
           fetcher,
           range,
           current,
+          clock,
           requestSignal,
         ),
   ]).catch((error) => {
@@ -232,10 +234,10 @@ async function fetchPeekapingEvents(
   fetcher: JsonFetcher,
   range: Range,
   current: Promise<Pick<MonitorSummary, 'state'>>,
+  clock: () => number,
   signal?: AbortSignal,
 ): Promise<MonitorDetail['events']> {
-  const start = until.getTime() - rangeMilliseconds(range),
-    end = until.getTime();
+  const start = until.getTime() - rangeMilliseconds(range);
   const changes: { id: string; at: number; status: number }[] = [];
   let previousOldest = Infinity;
   for (let page = 0; ; page++) {
@@ -252,6 +254,7 @@ async function fetchPeekapingEvents(
       ),
     );
     if (!Array.isArray(rows)) throw new SourceRequestError('Invalid Peekaping events');
+    const receivedAt = clock();
     let oldest = Infinity;
     for (const raw of rows) {
       if (!raw || typeof raw !== 'object') throw new SourceRequestError('Invalid Peekaping event');
@@ -264,7 +267,7 @@ async function fetchPeekapingEvents(
       )
         throw new SourceRequestError('Invalid Peekaping event');
       oldest = Math.min(oldest, at);
-      if (at <= end)
+      if (at <= receivedAt)
         changes.push({
           id: typeof row.id === 'string' ? row.id : `${monitor.id}-${at}`,
           at,
@@ -278,6 +281,7 @@ async function fetchPeekapingEvents(
   }
   changes.sort((a, b) => a.at - b.at);
   const currentState = (await current).state;
+  const end = clock();
   const events: MonitorDetail['events'] = [];
   for (let i = 0; i < changes.length; i++) {
     const change = changes[i];
@@ -287,7 +291,7 @@ async function fetchPeekapingEvents(
     const ongoing = !next && currentState === state;
     if (!next && !ongoing) continue;
     const finish = next?.at ?? end;
-    if (finish <= start || finish <= change.at) continue;
+    if (finish <= start || (!ongoing && finish <= change.at)) continue;
     events.push({
       id: change.id,
       from: new Date(Math.max(start, change.at)).toISOString(),

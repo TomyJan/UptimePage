@@ -139,6 +139,7 @@ it.each([
     {
       config: config(true),
       now,
+      clock: () => now.getTime(),
       environment: { KEY: 'secret' },
       fetcher: async (input, init) => {
         const url = new URL(String(input));
