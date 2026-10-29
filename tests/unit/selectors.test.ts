@@ -13,7 +13,15 @@ it('counts fresh successful subgroup results even when another status page fails
       String(url).includes('/stats/points')
         ? Response.json({ data: { points: [], uptime: null } })
         : String(url).includes('/heartbeats')
-          ? Response.json({ data: [] })
+          ? Response.json({
+              data: [
+                {
+                  status: String(url).includes('/up/') ? 1 : 0,
+                  time: '2026-10-21T11:59:00Z',
+                  ping: 1,
+                },
+              ],
+            })
           : String(url).includes('/one/') || String(url).includes('/batch?')
             ? Response.json({
                 data: [

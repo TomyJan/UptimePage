@@ -98,7 +98,12 @@ it('runs the actual entry without cache or KV and keeps secrets out of public re
   expect(response.headers.get('cache-control')).toBe('no-store');
   expect(response.headers.get('x-uptimepage-cache')).toContain('status-put:http-200');
   const text = await response.text();
-  expect(JSON.parse(text).monitors[0]).toMatchObject({ id: '1', state: 'operational' });
+  // The protected heartbeat endpoint is empty; membership/batch metadata cannot invent an observation.
+  expect(JSON.parse(text).monitors[0]).toMatchObject({
+    id: '1',
+    state: 'unknown',
+    observedAt: null,
+  });
   for (const privateValue of ['private-test-key', 'source.test', 'apiKeyEnv'])
     expect(text).not.toContain(privateValue);
   const denied = await cloudRequest({ request: request('/monitors/private-id'), env });

@@ -115,7 +115,7 @@ export async function fetchPeekapingHistory(
         typeof hb?.status === 'number' &&
         [0, 1, 2, 3].includes(hb.status);
       const state: MonitorSummary['state'] =
-        monitor.state === 'paused' || purpose === 'home'
+        monitor.state === 'paused'
           ? monitor.state
           : !valid
             ? 'unknown'
