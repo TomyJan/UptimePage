@@ -59,16 +59,14 @@ pnpm audit --prod --audit-level=high --registry=https://registry.npmjs.org
 
 浏览器只导入 `.generated/public-config.ts`；`.generated/server-config.ts` 仅用于函数。生成物、密钥、`.env`、`*.local.json` 不提交。部署配置由 `UPTIMEPAGE_CONFIG` 指定 HTTPS JSON 直链；本地也可指定文件路径。
 
-`pnpm run build` 通过类型检查命令生成一次配置，避免同次构建重复下载远程文件。读取顺序与代理回退见[配置文件](configuration.md#配置文件)。
+配置读取顺序与代理回退见[配置文件](configuration.md#配置文件)。
 
-新增异步内容应沿用 `MonitorCard` / `MonitorLayout` 及 `AnimatedHeight`，使加载与正常态保留同一布局容器，并遵循减少动画偏好。新增来源或调整缓存时同步[数据契约](data-api.md)，尤其是公开范围、时间口径和故障回退。
+## 维护约定
 
-加载、失败、数据缺失和恢复使用明确的 `contentKey`，由 `AnimatedHeight` 统一处理退场、入场和高度变化；普通数值刷新不重播。公开权限撤销时直接卸载旧内容，不等待退场。
-
-动态资源恢复位于 `src/app/resource-recovery.ts` 与 `resource-runtime.ts`；路由错误边界保留页面外壳，编辑器组件位于边界之外。恢复不重新请求监控来判断版本，不改写草稿或生产配置；行为与限制见[页面资源恢复](troubleshooting.md#页面资源恢复)。
-
-界面样式集中在 `src/styles/`，编辑器样式在 `src/features/editor/editor.css`。统一使用 MiSans；字体样式地址位于 `index.html`，异步加载，不阻塞页面。新增组件沿用现有颜色、字体与动效变量，兼容 320 px 窄屏、键盘操作和深浅色。
-
-监控状态与取数状态分别处理；请求失败不改写监控状态或成功更新时间。缺失数据使用 `null`，不能用零值、当前状态或模拟采样补齐；公开范围必须由服务端检查，详情缓存不能绕过授权。
+- 沿用 `MonitorCard` / `MonitorLayout` 与 `AnimatedHeight`：加载、失败、数据缺失和恢复保留同一布局，通过 `contentKey` 切换；普通数值刷新不重播动画，公开范围撤销则立即移除内容。
+- 复用 `src/styles/` 的颜色、字体与动效变量；编辑器样式位于 `src/features/editor/editor.css`。统一使用 MiSans，字体样式地址在 `index.html`，异步加载。兼容 320 px 窄屏、键盘操作、深浅色及减少动画偏好。
+- 监控状态与取数状态分开；请求失败不改写监控状态或成功更新时间。缺失值使用 `null`，不以零值、当前状态或模拟采样补齐。
+- 公开范围由服务端检查，详情缓存不能绕过授权。新增来源或调整缓存时同步[数据与接口](data-api.md)中的能力、时间口径和故障回退。
+- 动态资源恢复位于 `src/app/resource-recovery.ts` 与 `resource-runtime.ts`，行为见[页面资源恢复](troubleshooting.md#页面资源恢复)。配置编辑期间保留草稿，不自动重载。
 
 CI 在 `master` 推送、PR 和手动触发时执行格式、类型、单测、构建隔离、浏览器回归和依赖审计；失败产物保留 7 天。Dependabot 每日检查 pnpm 依赖、每周检查 Actions，React / React DOM 成组更新。配置见 `.github/`。

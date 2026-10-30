@@ -30,13 +30,13 @@ Makers 需从仓库构建并部署 `dist/`、`cloud-functions/`、`edge-function
 
 ## 环境变量
 
-| 变量                       | 作用域     | 用途                                                      |
-| -------------------------- | ---------- | --------------------------------------------------------- |
-| `PEEKAPING_API_KEY`        | 函数运行时 | Peekaping API Key，变量名可通过 `source.apiKeyEnv` 自定义 |
-| `UPTIMEROBOT_API_KEY`      | 函数运行时 | 能读取所选监控的 UptimeRobot API Key，同样可自定义变量名  |
-| `UPTIMEPAGE_CONFIG_EDITOR` | 构建       | 精确设为 `true` 才编译编辑器，默认不编译                  |
-| `UPTIMEPAGE_CONFIG`        | 构建       | 配置 JSON 的 HTTPS 直链；也支持本地文件路径               |
-| `UPTIMEPAGE_COMMIT`        | 构建       | 可选 Git 提交 hash；无法从 Git 获取提交信息时使用         |
+| 变量                       | 作用域     | 用途                                                             |
+| -------------------------- | ---------- | ---------------------------------------------------------------- |
+| `PEEKAPING_API_KEY`        | 函数运行时 | Peekaping API Key，变量名可通过 `source.apiKeyEnv` 自定义        |
+| `UPTIMEROBOT_API_KEY`      | 函数运行时 | 能读取所选监控的 UptimeRobot API Key，同样可自定义变量名         |
+| `UPTIMEPAGE_CONFIG_EDITOR` | 构建       | 精确设为 `true` 才编译编辑器，默认不编译                         |
+| `UPTIMEPAGE_CONFIG`        | 构建       | 配置 JSON 的 HTTPS 直链；也支持本地文件路径                      |
+| `UPTIMEPAGE_COMMIT`        | 构建       | 可选覆盖构建提交 hash；未设置时从 Git 读取，均不可用时显示 `dev` |
 
 只设置实际使用的来源密钥，确保相应生产 / 预览环境的云函数和边缘函数均可读取。密钥不写入 JSON，不使用 `VITE_` 前缀。更改配置或环境变量后重新部署。
 

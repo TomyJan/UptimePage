@@ -24,6 +24,8 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 
 编辑面板位于右下角，失去悬停和输入焦点后自动贴边，悬停、点击或键盘聚焦可展开，也可固定展开。表单与 JSON 共用草稿；导入、复制、粘贴和格式化工具在 JSON 面板中。
 
+切换大分组的来源类型会重置全部子组的选择规则和排序：切至 UptimeRobot 时默认选择 `["*"]` 所代表的全部监控，切至 Peekaping 时状态页别名设为各子组 ID。导出前核对公开范围。
+
 将导出的 `site.json` 上传到配置直链对应位置，重新部署状态页后生效。只想生成配置，可直接使用上述在线入口；要在自己的站点提供编辑器，在构建环境设置 `UPTIMEPAGE_CONFIG_EDITOR=true`，重新部署后访问 `/?configeditor=on`。默认不编译，移除变量或设为 `false` 后重新部署即可移除。编辑器与状态页一同部署，无后台写入、登录或主页入口。
 
 ## 网站 `site`
@@ -50,7 +52,7 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 }
 ```
 
-以上是 `site` 的局部示例。页脚左侧固定为 `隐私政策 | Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；hash 构建时从 Git 注入，也可用 `UPTIMEPAGE_COMMIT` 指定。未指定且无法从 Git 读取时显示 `dev`。
+以上是 `site` 的局部示例。页脚左侧固定为 `隐私政策 | Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；提交号优先使用 `UPTIMEPAGE_COMMIT`，否则从 Git 读取，均不可用时显示 `dev`。手动指定须为 7–64 位十六进制 hash，页面显示前 7 位。
 
 自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
 
