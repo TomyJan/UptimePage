@@ -1,4 +1,49 @@
 import { test, expect } from '@playwright/test';
+
+for (const mode of ['desktop', 'mobile', 'reduced motion'] as const) {
+  test(`navbar tracks scroll distance without completing at rest (${mode})`, async ({ page }) => {
+    if (mode === 'mobile') await page.setViewportSize({ width: 390, height: 844 });
+    if (mode === 'reduced motion') await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/?demoCount=50');
+    await expect(page.locator('.monitor')).toHaveCount(50);
+    const nav = page.locator('.site-nav');
+    const height = await nav.evaluate((el) => el.getBoundingClientRect().height);
+    const shift = () =>
+      nav.evaluate((el) => -new DOMMatrixReadOnly(getComputedStyle(el).transform).m42);
+    const scrollTo = async (y: number) => {
+      await page.evaluate(async (top) => {
+        window.scrollTo({ top, behavior: 'instant' });
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+      }, y);
+    };
+
+    await scrollTo(12);
+    await expect.poll(shift).toBeCloseTo(12, 0);
+    await page.waitForTimeout(650);
+    expect(await shift()).toBeCloseTo(12, 0);
+    await scrollTo(24);
+    await expect.poll(shift).toBeCloseTo(24, 0);
+    await scrollTo(600);
+    await expect.poll(shift).toBeCloseTo(height, 0);
+    await scrollTo(584);
+    await expect.poll(shift).toBeCloseTo(height - 16, 0);
+    await page.waitForTimeout(650);
+    expect(await shift()).toBeCloseTo(height - 16, 0);
+    await expect(page.getByRole('button', { name: 'Back to top' })).toBeVisible();
+    await scrollTo(592);
+    await expect.poll(shift).toBeCloseTo(height - 8, 0);
+    await expect(page.getByRole('button', { name: 'Back to top' })).toBeHidden();
+
+    await nav.locator('a').first().focus();
+    await expect.poll(shift).toBeCloseTo(0, 0);
+    await scrollTo(0);
+    await expect.poll(shift).toBeCloseTo(0, 0);
+    await expect(page.getByRole('button', { name: 'Back to top' })).toBeHidden();
+  });
+}
+
 test('scroll chrome follows direction and keeps back-to-top at rest', async ({ page }) => {
   await page.goto('/?demoCount=50');
   await expect(page.locator('.monitor')).toHaveCount(50);

@@ -6,29 +6,14 @@ export function useScrollChrome() {
   useEffect(() => {
     const el = nav.current!;
     let last = Math.max(0, scrollY),
-      direction = 0,
       shift = 0,
-      frame = 0,
-      settle: ReturnType<typeof setTimeout> | undefined,
-      animation: Animation | null = null;
-    const height = () => el.getBoundingClientRect().height;
-    function readShift() {
-      const transform = getComputedStyle(el).transform;
-      return transform === 'none' ? 0 : Math.max(0, -new DOMMatrixReadOnly(transform).m42);
-    }
+      frame = 0;
     function paint(value: number) {
-      shift = Math.max(0, Math.min(height(), value));
+      const height = el.getBoundingClientRect().height;
+      shift = Math.max(0, Math.min(height, value));
       el.style.transform = `translate3d(0,-${shift}px,0)`;
-      el.dataset.hidden = String(shift > height() * 0.8);
+      el.dataset.hidden = String(shift > height * 0.8);
       el.classList.toggle('is-scrolled', scrollY > 0);
-    }
-    function cancel() {
-      if (animation) {
-        const actual = readShift();
-        animation.cancel();
-        animation = null;
-        paint(actual);
-      }
     }
     function tick() {
       frame = 0;
@@ -38,10 +23,7 @@ export function useScrollChrome() {
         ),
         delta = y - last;
       last = y;
-      if (Math.abs(delta) < 0.5) return;
-      cancel();
-      clearTimeout(settle);
-      direction = delta > 0 ? 1 : -1;
+      if (delta === 0) return;
       if (y <= 1) {
         paint(0);
         setTopVisible(false);
@@ -51,27 +33,9 @@ export function useScrollChrome() {
         }
         return;
       }
+      // Scroll distance drives the position; stopping must not snap to either end.
       paint(shift + delta);
-      setTopVisible(direction < 0 && !returning.current);
-      settle = setTimeout(() => {
-        const target = direction > 0 ? height() : 0;
-        animation = el.animate(
-          [
-            { transform: `translate3d(0,-${shift}px,0)` },
-            { transform: `translate3d(0,-${target}px,0)` },
-          ],
-          {
-            duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 320,
-            easing: 'cubic-bezier(.22,.75,.25,1)',
-            fill: 'forwards',
-          },
-        );
-        animation.onfinish = () => {
-          paint(target);
-          animation?.cancel();
-          animation = null;
-        };
-      }, 140);
+      setTopVisible(delta < 0 && !returning.current);
     }
     const scroll = () => {
         if (!frame) frame = requestAnimationFrame(tick);
@@ -83,8 +47,6 @@ export function useScrollChrome() {
     window.addEventListener('wheel', intent, { passive: true });
     window.addEventListener('touchstart', intent, { passive: true });
     const focus = () => {
-      cancel();
-      clearTimeout(settle);
       paint(0);
     };
     el.addEventListener('focusin', focus);
@@ -95,8 +57,6 @@ export function useScrollChrome() {
       window.removeEventListener('touchstart', intent);
       el.removeEventListener('focusin', focus);
       cancelAnimationFrame(frame);
-      clearTimeout(settle);
-      animation?.cancel();
     };
   }, []);
   function toTop() {

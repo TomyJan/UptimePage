@@ -2251,14 +2251,6 @@ body {
   transform: translate3d(0, calc(-1px * var(--nav-shift, 0)), 0);
   will-change: transform;
 }
-.site-nav.is-settling {
-  transition:
-    transform 320ms var(--ease),
-    background-color 320ms ease,
-    color 280ms ease,
-    border-color 300ms ease,
-    box-shadow 300ms var(--ease);
-}
 .site-nav.is-scrolled {
   box-shadow: var(--shadow);
 }
