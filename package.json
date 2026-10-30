@@ -27,7 +27,7 @@
     "@radix-ui/react-dropdown-menu": "2.2.1",
     "@radix-ui/react-tooltip": "1.4.1",
     "@tanstack/react-query": "5.105.0",
-    "lucide-react": "1.61.0",
+    "lucide-react": "1.62.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router": "8.5.0",
