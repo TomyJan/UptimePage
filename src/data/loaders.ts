@@ -73,7 +73,13 @@ export async function loadGroup(
     throw new ApiClientError('invalid-response');
   // Apply confirmed removals even when another monitor's refresh failed.
   for (const revoked of data.revokedMonitorIds ?? []) revokeMonitor(cache, id, revoked, version);
-  if (data.freshness !== 'fresh' && cache.getQueryData(groupKey(version, id))) {
+  const previous = cache.getQueryData<GroupSnapshot>(groupKey(version, id));
+  if (
+    data.freshness !== 'fresh' &&
+    previous &&
+    ((previous.freshness === 'fresh' && !previous.subgroupErrors.length) ||
+      Date.parse(data.fetchedAt) < Date.parse(previous.fetchedAt))
+  ) {
     const error = data.subgroupErrors[0];
     throw new ApiClientError(
       error?.code ?? 'unavailable',

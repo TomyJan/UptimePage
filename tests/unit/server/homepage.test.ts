@@ -3,6 +3,41 @@ import { handleApi } from '../../../src/server/api.ts';
 import { config, now, memoryCache } from '../../fixtures/server.ts';
 import { protectedSource } from '../../fixtures/peekaping.ts';
 
+it.each([
+  { batchStatus: 1, heartbeatStatus: 0, active: true, state: 'down', responseMs: null },
+  { batchStatus: 0, heartbeatStatus: 1, active: true, state: 'operational', responseMs: 42 },
+  { batchStatus: 1, heartbeatStatus: 0, active: false, state: 'paused', responseMs: null },
+])(
+  'uses the latest homepage heartbeat for $state while preserving inactive monitors',
+  async ({ batchStatus, heartbeatStatus, active, state, responseMs }) => {
+    const source = protectedSource();
+    const response = await handleApi(new Request('https://site.test/api/v1/groups/core'), {
+      config: config(true),
+      now,
+      environment: { KEY: 'secret' },
+      fetcher: async (input, init) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/batch'))
+          return Response.json({
+            data: [{ id: 'public', name: 'API', status: batchStatus, active, interval: 60 }],
+          });
+        if (url.pathname.endsWith('/heartbeats'))
+          return Response.json({
+            data: [{ status: heartbeatStatus, time: '2026-10-21T11:59:50Z', ping: 42 }],
+          });
+        return source(input, init);
+      },
+    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.monitors[0]).toMatchObject({
+      state,
+      observedAt: '2026-10-21T11:59:50.000Z',
+      responseMs,
+    });
+  },
+);
+
 it('returns protected homepage values without fetching detail events or minute curves', async () => {
   const calls: string[] = [];
   const source = protectedSource();

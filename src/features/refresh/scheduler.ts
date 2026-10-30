@@ -12,10 +12,17 @@ export class RefreshScheduler {
   private hidden = false;
   private flight: Promise<RefreshResult> | null = null;
   private retryAt = 0;
+  private rememberRetry?: (timestamp: number) => void;
   deadline = 0;
-  constructor(request: () => Promise<unknown>, seconds: number) {
+  constructor(
+    request: () => Promise<unknown>,
+    seconds: number,
+    retry?: { retryAt: number; remember: (timestamp: number) => void },
+  ) {
     this.request = request;
     this.seconds = seconds;
+    this.retryAt = retry?.retryAt ?? 0;
+    this.rememberRetry = retry?.remember;
   }
   start() {
     this.active = true;
@@ -33,6 +40,7 @@ export class RefreshScheduler {
   deferUntil(timestamp: number) {
     if (!Number.isFinite(timestamp)) return;
     this.retryAt = Math.max(this.retryAt, timestamp);
+    this.rememberRetry?.(this.retryAt);
     this.deadline = Math.max(this.deadline, this.retryAt);
     this.schedule(true);
   }
@@ -51,7 +59,14 @@ export class RefreshScheduler {
     if (!preserve || !this.deadline)
       this.deadline = Math.max(Date.now() + this.seconds * 1000, this.retryAt);
     if (!this.hidden)
-      this.timer = setTimeout(() => void this.run(false), Math.max(0, this.deadline - Date.now()));
+      this.timer = setTimeout(
+        () => {
+          // Long browser/Node delays overflow; each chunk retains the absolute deadline.
+          if (Date.now() < this.deadline) this.schedule(true);
+          else void this.run(false);
+        },
+        Math.min(2147483647, Math.max(0, this.deadline - Date.now())),
+      );
   }
   run(_manual: boolean): Promise<RefreshResult> {
     if (this.flight) return this.flight;
@@ -67,7 +82,7 @@ export class RefreshScheduler {
         },
         (error: unknown) => {
           if (error instanceof ApiClientError && error.retryAt)
-            this.retryAt = Date.parse(error.retryAt);
+            this.deferUntil(Date.parse(error.retryAt));
           return { ok: false, error };
         },
       )

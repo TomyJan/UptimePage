@@ -81,6 +81,14 @@ export async function verifyDeployment(
       if (!href || (!script && !rel.some((r) => ['stylesheet', 'modulepreload'].includes(r))))
         continue;
       const url = new URL(href, base);
+      // The optional font is independent of the application bundle.
+      if (
+        !script &&
+        rel.includes('stylesheet') &&
+        !rel.includes('modulepreload') &&
+        url.href === 'https://cdn.amoe.cc/web-static/public/font/misans/misans.css'
+      )
+        continue;
       ensure(
         url.origin === base.origin && !url.username && !url.password,
         'Expected same-origin app assets',

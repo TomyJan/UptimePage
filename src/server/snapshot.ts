@@ -69,6 +69,7 @@ export async function loadGroupSnapshot(
   now = new Date(),
   membership?: PeekapingMembership,
   includeHomeData = true,
+  clock: () => number = Date.now,
 ): Promise<GroupSnapshot> {
   const group = findServerGroup(config, groupId);
   if (!group) throw new PublicGroupNotFoundError();
@@ -139,6 +140,7 @@ export async function loadGroupSnapshot(
                   'home',
                   scheduleRequest,
                   stop.signal,
+                  clock,
                 );
                 monitors.set(monitor.id, monitorSummarySchema.parse(result.monitor));
               } catch (error) {

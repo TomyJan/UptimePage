@@ -3,6 +3,166 @@ import { handleApi } from '../../../src/server/api.ts';
 import { config, now, memoryCache } from '../../fixtures/server.ts';
 
 import { protectedSource } from '../../fixtures/peekaping.ts';
+it.each([
+  {
+    initial: 1,
+    latest: 0,
+    state: 'down',
+    events: [{ id: 'outage', from: '2026-10-21T12:00:10.000Z', until: null, state: 'down' }],
+  },
+  {
+    initial: 0,
+    latest: 1,
+    state: 'operational',
+    events: [
+      {
+        id: 'outage',
+        from: '2026-10-21T11:59:00.000Z',
+        until: '2026-10-21T12:00:10.000Z',
+        state: 'down',
+      },
+    ],
+  },
+])(
+  'keeps cached homepage metadata coherent with a newer $state detail observation',
+  async ({ initial, latest, state, events }) => {
+    let detail = false;
+    let batchCalls = 0;
+    const source = protectedSource();
+    const runtime = {
+      config: config(true),
+      now,
+      cache: memoryCache(),
+      environment: { KEY: 'secret' },
+      fetcher: (async (input, init) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/batch')) {
+          batchCalls++;
+          return Response.json({
+            data: [{ id: 'public', name: 'API', active: true, status: initial, interval: 60 }],
+          });
+        }
+        if (url.searchParams.get('important') === 'true')
+          return Response.json({
+            data:
+              latest === 0
+                ? [{ id: 'outage', status: 0, time: '2026-10-21T12:00:10Z' }]
+                : [
+                    { id: 'outage', status: 0, time: '2026-10-21T11:59:00Z' },
+                    { id: 'recovery', status: 1, time: '2026-10-21T12:00:10Z' },
+                  ],
+          });
+        if (url.pathname.endsWith('/heartbeats'))
+          return Response.json({
+            data: [
+              {
+                status: detail ? latest : initial,
+                time: detail ? '2026-10-21T12:00:10Z' : '2026-10-21T11:59:00Z',
+                ping: 42,
+              },
+            ],
+          });
+        return source(input, init);
+      }) as typeof fetch,
+    };
+    await handleApi(new Request('https://site.test/api/v1/groups/core'), runtime);
+    detail = true;
+    const request = new Request('https://site.test/api/v1/groups/core/monitors/public');
+    for (const elapsed of [20000, 40000]) {
+      const response = await handleApi(request, {
+        ...runtime,
+        now: new Date(now.getTime() + elapsed),
+      });
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.monitor).toMatchObject({
+        state,
+        observedAt: '2026-10-21T12:00:10.000Z',
+        responseMs: latest === 1 ? 42 : null,
+        freshness: 'fresh',
+      });
+      expect(body.events).toEqual(events);
+      if (elapsed === 20000) expect(batchCalls).toBe(1);
+    }
+    expect(batchCalls).toBe(2);
+  },
+);
+
+it.each([
+  {
+    name: 'paused',
+    active: false,
+    heartbeat: { status: 0, time: '2026-10-21T11:59:30Z' },
+    state: 'paused',
+    observedAt: '2026-10-21T11:59:30.000Z',
+  },
+  {
+    name: 'pending',
+    active: true,
+    heartbeat: { status: 2, time: '2026-10-21T11:59:30Z' },
+    state: 'pending',
+    observedAt: '2026-10-21T11:59:30.000Z',
+  },
+  {
+    name: 'maintenance',
+    active: true,
+    heartbeat: { status: 3, time: '2026-10-21T11:59:30Z' },
+    state: 'maintenance',
+    observedAt: '2026-10-21T11:59:30.000Z',
+  },
+  {
+    name: 'invalid status',
+    active: true,
+    heartbeat: { status: '0', time: '2026-10-21T11:59:30Z' },
+    state: 'unknown',
+    observedAt: null,
+  },
+  {
+    name: 'future heartbeat',
+    active: true,
+    heartbeat: { status: 0, time: '2026-10-21T12:01:00Z' },
+    state: 'unknown',
+    observedAt: null,
+  },
+  {
+    name: 'invalid time',
+    active: true,
+    heartbeat: { status: 0, time: 'invalid' },
+    state: 'unknown',
+    observedAt: null,
+  },
+  { name: 'missing heartbeat', active: true, heartbeat: null, state: 'unknown', observedAt: null },
+])('does not invent detail state for $name', async ({ active, heartbeat, state, observedAt }) => {
+  const source = protectedSource();
+  const response = await handleApi(
+    new Request('https://site.test/api/v1/groups/core/monitors/public'),
+    {
+      config: config(true),
+      now,
+      clock: () => now.getTime(),
+      environment: { KEY: 'secret' },
+      fetcher: async (input, init) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('/batch'))
+          return Response.json({
+            data: [{ id: 'public', name: 'API', active, status: 1, interval: 60 }],
+          });
+        if (url.searchParams.get('important') === 'true')
+          return Response.json({
+            data: [{ id: 'incident', status: 0, time: '2026-10-21T11:59:00Z' }],
+          });
+        if (url.pathname.endsWith('/heartbeats'))
+          return Response.json({ data: heartbeat ? [heartbeat] : [] });
+        return source(input, init);
+      },
+    },
+  );
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body.monitor).toMatchObject({ state, observedAt, responseMs: null });
+  expect(body.events).toEqual([]);
+});
+
 it('uses status pages solely for membership and protected APIs for every displayed value', async () => {
   const calls: string[] = [];
   const runtime = {

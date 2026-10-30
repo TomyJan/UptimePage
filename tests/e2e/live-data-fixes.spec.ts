@@ -64,6 +64,35 @@ test('partial refresh retains the complete previous snapshot and its successful 
   await expect(page.locator('.detail-alert, .state.stale')).toHaveCount(0);
 });
 
+test('newer partial snapshots update cards and recovered members while reporting partial failure', async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route('**/api/v1/groups/core', (route) => {
+    const updated = ++requests > 1;
+    const data = groupFixture('core', updated ? 2 : 1);
+    data.freshness = 'stale';
+    data.fetchedAt = updated ? '2026-10-21T12:01:00Z' : '2026-10-21T12:00:00Z';
+    data.monitors[0].state = updated ? 'down' : 'operational';
+    data.subgroupErrors = [
+      {
+        subgroupId: 'infra',
+        code: 'unavailable',
+        diagnostic: { reason: 'timeout', stage: 'source' },
+      },
+    ];
+    return route.fulfill({ json: encodeGroupSnapshot(data) });
+  });
+  await page.goto('/');
+  await expect(page.locator('.monitor')).toHaveCount(1);
+  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Refresh now', exact: true }).click();
+  await expect(page.locator('.monitor')).toHaveCount(2);
+  await expect(page.locator('.monitor .state.down')).toHaveCount(2);
+  await expect(page.locator('.toast-message')).toContainText('timed out');
+  await expect(page.locator('.toast-message').filter({ hasText: /^Refreshed$/ })).toHaveCount(0);
+});
+
 test('dense checks use separated cells and a concise anchored tooltip', async ({ page }) => {
   const data = groupFixture('core', 1);
   const until = Date.parse(data.fetchedAt);
