@@ -426,32 +426,38 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
     if (group.source.type === 'uptimerobot') {
       const detail = await timed('detail', () =>
         coalesce<MonitorDetail | null>(detailKey.url, async () => {
-          const raw = await fetchUptimeRobotMonitors(
-            requireSecret(runtime.environment, group.source.apiKeyEnv),
-            [member.id],
-            runtime.fetcher,
-            {
-              includeDetails: true,
-              includeCertificate: true,
-              uptimeDays: rangeDays(range),
-              ...(range === '24h' ? {} : { responseTimesAverage: range === '7d' ? 30 : 60 }),
-              startDate: Math.floor((now.getTime() - rangeMilliseconds(range)) / 1000),
-              endDate: Math.floor(now.getTime() / 1000),
-            },
-          );
-          const record = raw.find(
-            (m) => m && typeof m === 'object' && 'id' in m && String(m.id) === member.id,
-          );
-          if (!record) return null;
-          const normalized = normalizeUptimeRobotMonitor(
-            record,
-            group.id,
-            member.subgroupIds,
-            now.toISOString(),
-            range,
-            range === '24h' ? null : range === '7d' ? 1800 : 3600,
-          );
-          if (!normalized) throw new SourceRequestError('Invalid UptimeRobot monitor');
+          const loadRange = async () => {
+            const raw = await fetchUptimeRobotMonitors(
+              requireSecret(runtime.environment, group.source.apiKeyEnv),
+              [member.id],
+              runtime.fetcher,
+              {
+                includeDetails: true,
+                includeCertificate: true,
+                uptimeDays: rangeDays(range),
+                ...(range === '24h' ? {} : { responseTimesAverage: range === '7d' ? 30 : 60 }),
+                startDate: Math.floor((now.getTime() - rangeMilliseconds(range)) / 1000),
+                endDate: Math.floor(now.getTime() / 1000),
+              },
+            );
+            const record = raw.find(
+              (m) => m && typeof m === 'object' && 'id' in m && String(m.id) === member.id,
+            );
+            if (!record) return null;
+            const normalized = normalizeUptimeRobotMonitor(
+              record,
+              group.id,
+              member.subgroupIds,
+              now.toISOString(),
+              range,
+              range === '24h' ? null : range === '7d' ? 1800 : 3600,
+            );
+            if (!normalized) throw new SourceRequestError('Invalid UptimeRobot monitor');
+            return { record, normalized };
+          };
+          const initial = await loadRange();
+          if (!initial) return null;
+          let { record, normalized } = initial;
           let latest = normalized;
           if (range !== '24h') {
             const entry = await readCache(
@@ -470,6 +476,17 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
                 parsed.data.configVersion === runtime.config.configVersion &&
                 parsed.data.monitor.groupId === group.id &&
                 parsed.data.monitor.id === member.id &&
+                parsed.data.monitor.freshness === 'fresh' &&
+                parsed.data.monitor.state === normalized.state &&
+                // The same state can belong to a later incident or recovery.
+                !normalized.history.some(
+                  (bucket) =>
+                    bucket.state === 'down' &&
+                    Math.max(
+                      Date.parse(bucket.from),
+                      normalized.state === 'down' ? 0 : Date.parse(bucket.until),
+                    ) > (Date.parse(parsed.data.monitor.observedAt ?? '') || 0),
+                ) &&
                 now.getTime() - Date.parse(parsed.data.fetchedAt) >= 0 &&
                 now.getTime() - Date.parse(parsed.data.fetchedAt) < freshMs
               )
@@ -496,6 +513,15 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
               );
               if (!check) throw new SourceRequestError('Invalid UptimeRobot latest check');
               latest = check;
+            }
+            if (latest.state !== normalized.state) {
+              // A transition between queries invalidates the old log semantics too.
+              // Re-read the complete window once, then fail through normal fallback
+              // if the source is still changing instead of publishing mixed data.
+              const aligned = await loadRange();
+              if (!aligned || aligned.normalized.state !== latest.state)
+                throw new SourceRequestError('Inconsistent UptimeRobot latest check');
+              ({ record, normalized } = aligned);
             }
           }
           const monitor = withMonitorLink(

@@ -126,6 +126,26 @@ it('applies a retry deadline learned from the initial query before polling start
   expect(calls).toBe(1);
   scheduler.stop();
 });
+it('does not shorten a known retry deadline after a manual request fails with an earlier one', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-21T00:00:00Z'));
+  let calls = 0;
+  const scheduler = new RefreshScheduler(async () => {
+    calls++;
+    throw new ApiClientError('unavailable', '2026-10-21T00:03:00Z');
+  }, 30);
+  scheduler.start();
+  scheduler.deferUntil(Date.parse('2026-10-21T00:10:00Z'));
+  await scheduler.run(true);
+  expect(calls).toBe(1);
+  await vi.advanceTimersByTimeAsync(180_000);
+  expect(calls).toBe(1);
+  await vi.advanceTimersByTimeAsync(419_999);
+  expect(calls).toBe(1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(calls).toBe(2);
+  scheduler.stop();
+});
 it('automatically refreshes once per interval and manual completion resets the deadline', async () => {
   vi.useFakeTimers();
   let calls = 0;

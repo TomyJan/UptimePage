@@ -73,8 +73,10 @@ export class RefreshScheduler {
           return { ok: true };
         },
         (error: unknown) => {
-          if (error instanceof ApiClientError && error.retryAt)
-            this.retryAt = Date.parse(error.retryAt);
+          if (error instanceof ApiClientError && error.retryAt) {
+            const retryAt = Date.parse(error.retryAt);
+            if (Number.isFinite(retryAt)) this.retryAt = Math.max(this.retryAt, retryAt);
+          }
           return { ok: false, error };
         },
       )

@@ -22,12 +22,12 @@ export function RefreshControl({
     { busy, remaining, seconds, run } = useRefresh(
       refresh,
       identity,
-      [
-        retryAt,
-        error instanceof ApiClientError && error.code === 'rate-limited' ? error.retryAt : null,
-      ]
-        .filter((value): value is string => Boolean(value))
-        .sort()
+      [retryAt, error instanceof ApiClientError ? error.retryAt : null]
+        .filter(
+          (value): value is string =>
+            typeof value === 'string' && Number.isFinite(Date.parse(value)),
+        )
+        .sort((a, b) => Date.parse(a) - Date.parse(b))
         .at(-1) ?? null,
     );
   const time = fetchedAt
