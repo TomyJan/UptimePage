@@ -50,11 +50,17 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 }
 ```
 
-以上是 `site` 的局部示例。页脚左侧固定为 `Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；hash 构建时从 Git 注入，也可用 `UPTIMEPAGE_COMMIT` 指定。未指定且无法从 Git 读取时显示 `dev`。
+以上是 `site` 的局部示例。页脚左侧固定为 `隐私政策 | Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；hash 构建时从 Git 注入，也可用 `UPTIMEPAGE_COMMIT` 指定。未指定且无法从 Git 读取时显示 `dev`。
 
 自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
 
 访客语言、时区、外观和刷新偏好保存在浏览器，手动选择优先。自动语言不支持时回退英文，时区获取失败时回退 UTC，外观跟随系统。
+
+### 隐私政策与提示
+
+`/privacy` 提供中英文隐私政策，入口位于页脚左侧及首次访问的底部悬浮提示。点击“知道了”后在本地保存确认状态；清除浏览器存储后会再次显示。存储被禁用时仍可关闭本次提示。
+
+提示仅作告知，不作为统计同意开关；Umami 仍按下述配置启用。默认政策说明浏览偏好、基本访问信息、可选统计和服务提供方。部署者应核对实际数据处理、公开有效的联系方式，并按适用要求补充披露或同意机制；仅增加提示不代表满足所有地区要求。
 
 ### 监控链接
 

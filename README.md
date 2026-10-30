@@ -13,6 +13,7 @@ UptimePage is a modern status page for EdgeOne Makers, aggregating multiple moni
 - 24 小时 / 7 天 / 30 天历史、响应曲线、可用率、事件及来源提供的证书信息。
 - 简中 / 英文、时区、深浅色、自动刷新；实例缓存、节点缓存和可选 KV。
 - 可选编译的配置编辑器，表单 / JSON 双向编辑，实时模拟预览与导入导出。
+- 独立隐私政策与首次访问提示，确认状态保存在本地，详见[隐私说明](docs/configuration.md#隐私政策与提示)。
 
 历史与证书能力取决于来源套餐和保留期，缺失数据不补造。
 
