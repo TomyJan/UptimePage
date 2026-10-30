@@ -263,8 +263,8 @@ async function handleRequest(request: Request, runtime: ApiRuntime): Promise<Res
         )
       : errorResponse('unavailable', null, { reason: 'internal', stage: 'membership' });
   }
-  // Invalidate old status-page-derived data and bind all status/detail entries to
-  // the membership generation, so a ten-minute refresh also revokes old details.
+  // Bind status/detail entries to the membership generation so a membership
+  // refresh also revokes details that are no longer public.
   const membershipDigest: string = membership
     ? Array.from(
         new Uint8Array(

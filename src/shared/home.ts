@@ -68,7 +68,7 @@ export function decodeGroupSnapshot(wire: CompactGroup): GroupSnapshot {
     })),
   };
 }
-// Accept the previous full response during rolling deployments. It never triggers extra requests.
+// Accept compact and full responses during rolling deployments without extra requests.
 export const groupResponseSchema = z.union([
   compactGroupSchema.transform(decodeGroupSnapshot),
   groupSnapshotSchema,

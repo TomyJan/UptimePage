@@ -66,7 +66,15 @@ GET /api/v1/groups/:groupId/monitors/:monitorId?range=24h|7d|30d
 
 首页每项和详情的 `monitor` 均可包含 `url`；没有合法链接或全部所属子组禁止展示时省略。继承规则见[监控链接](configuration.md#监控链接)。复用现有上游监控请求，不额外查询网站。
 
-详情结构见 [contracts.ts](../src/shared/contracts.ts)。时间使用 UTC ISO 8601，页面按访客所选时区显示。错误格式：
+详情结构见 [contracts.ts](../src/shared/contracts.ts)。时间使用 UTC ISO 8601，页面按访客所选时区显示。
+
+HTTP 200 不代表本次取数完整成功：
+
+- 首页通过 `freshness` 与 `subgroupErrors` 表达部分失败或旧快照回退；子组错误含 `code` 及可选 `retryAt`、`diagnostic`。`revokedMonitorIds` 可用于清除已确认撤销的监控。
+- UptimeRobot 详情回退旧数据时，`monitor.freshness` 为 `stale`，顶层 `retryAt`、`diagnostic` 说明失败原因。
+- 浏览器首次可展示部分数据；已有完整快照时保留它及成功更新时间，同时清除确认撤销的监控，不把失败响应当作刷新成功。
+
+非 2xx JSON 错误格式：
 
 ```json
 {
@@ -83,7 +91,9 @@ GET /api/v1/groups/:groupId/monitors/:monitorId?range=24h|7d|30d
 | `not-found`        | 404  | 未公开、不存在或不支持的路由 / 方法 |
 | `unavailable`      | 502  | 来源或服务端配置不可用              |
 | `rate-limited`     | 429  | 来源限流，`retryAt` 可给出重试时间  |
-| `invalid-response` | 502  | 参数无效或响应不满足契约            |
+| `invalid-response` | 502  | 详情的 `range` 参数无效             |
+
+上游响应格式无效时，服务端返回 `unavailable`，并在 `diagnostic.reason` 标明 `invalid-response`。成功响应不符合前端契约时，浏览器也会产生本地 `invalid-response` 错误；它不是服务端 HTTP 状态。
 
 `diagnostic` 可选，仅包含固定原因、HTTP 状态和处理阶段，不包含上游正文、地址、密钥或异常堆栈。原因包括缺少凭证、来源拒绝、超时、网络故障、格式错误及内部异常。首次加载显示原因，刷新失败通过 Toast 展示。平台在函数外强制中止或启动失败无法被函数捕获；浏览器对非 JSON 的 HTTP 545 显示边缘函数执行失败。
 
