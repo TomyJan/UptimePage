@@ -41,7 +41,7 @@ body[data-config-editor='on'] .back-top {
   gap: 12px;
   padding: 0 20px;
   z-index: 105;
-  box-shadow: var(--shadow);
+  box-shadow: var(--float-shadow);
   animation: ce-band-in 0.36s var(--ease) both;
 }
 .ce-top {

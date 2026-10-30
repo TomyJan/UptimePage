@@ -105,6 +105,7 @@ input {
   background: var(--surface);
   padding: 12px;
   border-radius: 10px;
+  box-shadow: var(--float-shadow);
 }
 
 .site-nav {
@@ -2292,7 +2293,6 @@ body {
   .back-top:hover {
     background: var(--accent-bg);
     border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
-    box-shadow: var(--shadow-hover);
   }
   .back-top:hover svg {
     transform: translateY(-2px);
