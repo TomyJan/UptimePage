@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { publicConfig } from '../../src/data/config.ts';
-import { groupFixture } from '../../src/demo/fixtures.ts';
+import { detailFixture, groupFixture } from '../../src/demo/fixtures.ts';
 
 test.use({ baseURL: process.env.UPTIMEPAGE_PREVIEW_URL ?? 'http://127.0.0.1:4173' });
 const start = new Date('2026-10-30T12:00:00Z');
@@ -129,4 +129,107 @@ for (const later of ['snapshot', 'error']) {
     await page.clock.fastForward(1);
     await expect.poll(() => requests).toBe(4);
   });
+}
+
+for (const replacement of ['shorter', 'none', 'success']) {
+  for (const action of ['interval', 'navigation', 'unmount']) {
+    if (replacement === 'success' && action !== 'unmount') continue;
+    test(`a ${replacement} subsequent refresh retains the known deadline across ${action}`, async ({
+      page,
+    }) => {
+      await prepareClock(page);
+      let requests = 0;
+      let otherRequests = 0;
+      let detailRequests = 0;
+      await page.route('**/api/v1/groups/**', (route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname.includes('/monitors/')) {
+          detailRequests++;
+          return route.fulfill({ json: detailFixture(first.id, 'm1', '24h', start.getTime()) });
+        }
+        const id = url.pathname.split('/').at(-1)!;
+        const snapshot = groupFixture(id, 2, start.getTime());
+        if (id === first.id && ++requests > 1 && !(replacement === 'success' && requests > 2)) {
+          snapshot.freshness = 'stale';
+          snapshot.subgroupErrors = [
+            { subgroupId: first.subgroups[0].id, code: 'unavailable' },
+            {
+              subgroupId: first.subgroups.at(-1)!.id,
+              code: 'rate-limited',
+              ...(requests === 2
+                ? { retryAt }
+                : replacement === 'shorter'
+                  ? { retryAt: '2026-10-30T12:03:00Z' }
+                  : {}),
+            },
+          ];
+        } else if (id !== first.id) otherRequests++;
+        return route.fulfill({ json: snapshot });
+      });
+      await Promise.all([page.waitForResponse('**/api/v1/groups/' + first.id), page.goto('/')]);
+      await page.clock.runFor(100);
+      await expect(page.locator('.monitor')).toHaveCount(2);
+      await manualRefresh(page);
+      await manualRefresh(page);
+      expect(requests).toBe(3);
+      if (action === 'interval') await changeInterval(page);
+      else if (action === 'navigation') {
+        await Promise.all([
+          page.waitForResponse('**/api/v1/groups/' + second.id),
+          page.locator('.group-tabs').getByRole('tab').nth(1).click(),
+        ]);
+        await page.clock.runFor(100);
+        expect(otherRequests).toBe(1);
+        // A different group must retain its own normal automatic polling.
+        await page.clock.fastForward(31_000);
+        await expect.poll(() => otherRequests).toBe(2);
+        expect(requests).toBe(3);
+        await Promise.all([
+          page.waitForResponse('**/api/v1/groups/' + first.id),
+          page.locator('.group-tabs').getByRole('tab').nth(0).click(),
+        ]);
+        await page.clock.runFor(100);
+      } else {
+        // Let the lazy detail route finish loading before freezing its polling clock.
+        await page.clock.resume();
+        await Promise.all([
+          page.waitForResponse('**/api/v1/groups/' + first.id + '/monitors/m1*'),
+          page.getByRole('link', { name: 'Website', exact: true }).click(),
+        ]);
+        await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+        await page.clock.runFor(100);
+        await expect(page.locator('.group-tabs')).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: 'Website', exact: true })).toBeVisible();
+        expect(detailRequests).toBe(1);
+        // The detail identity must poll while the unmounted group's backoff remains known.
+        await page.clock.fastForward(31_000);
+        await expect.poll(() => detailRequests).toBe(2);
+        expect(requests).toBe(3);
+        await page.clock.resume();
+        if (replacement === 'success') await page.getByRole('link', { name: /Back/ }).click();
+        else
+          await Promise.all([
+            page.waitForResponse('**/api/v1/groups/' + first.id),
+            page.getByRole('link', { name: /Back/ }).click(),
+          ]);
+        await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+        await page.clock.runFor(100);
+        await expect(page.locator('.monitor')).toHaveCount(2);
+      }
+      const afterRecreation = action === 'interval' || replacement === 'success' ? 3 : 4;
+      expect(requests).toBe(afterRecreation);
+      await page.clock.fastForward(181_000);
+      expect(requests).toBe(afterRecreation);
+      await manualRefresh(page);
+      expect(requests).toBe(afterRecreation + 1);
+      const remaining = Date.parse(retryAt) - (await page.evaluate(() => Date.now()));
+      await page.clock.fastForward(remaining - 1);
+      expect(requests).toBe(afterRecreation + 1);
+      await page.clock.fastForward(1);
+      await expect.poll(() => requests).toBe(afterRecreation + 2);
+      // Once expired, the remembered deadline cannot prevent normal subsequent polling.
+      await page.clock.fastForward(action === 'interval' ? 60_000 : 30_000);
+      await expect.poll(() => requests).toBe(afterRecreation + 3);
+    });
+  }
 }

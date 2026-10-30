@@ -163,6 +163,43 @@ it('automatically refreshes once per interval and manual completion resets the d
   expect(calls).toBe(2);
   scheduler.stop();
 });
+it('restores a remembered longer retry after replacing the scheduler and current error', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-10-21T00:00:00Z'));
+  let calls = 0;
+  let remembered = 0;
+  const create = () =>
+    new RefreshScheduler(
+      async () => {
+        calls++;
+        throw new ApiClientError(
+          'unavailable',
+          calls === 1 ? '2026-10-21T00:10:00Z' : '2026-10-21T00:03:00Z',
+        );
+      },
+      30,
+      {
+        retryAt: remembered,
+        remember: (timestamp) => {
+          remembered = Math.max(remembered, timestamp);
+        },
+      },
+    );
+  const first = create();
+  first.start();
+  await first.run(true);
+  await first.run(true);
+  first.stop();
+  const replacement = create();
+  replacement.start();
+  await vi.advanceTimersByTimeAsync(180_000);
+  expect(calls).toBe(2);
+  await vi.advanceTimersByTimeAsync(419_999);
+  expect(calls).toBe(2);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(calls).toBe(3);
+  replacement.stop();
+});
 it('pauses in background, catches up only once, disables polling at zero', async () => {
   vi.useFakeTimers();
   let calls = 0;

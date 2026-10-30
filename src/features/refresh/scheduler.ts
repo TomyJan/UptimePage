@@ -12,10 +12,17 @@ export class RefreshScheduler {
   private hidden = false;
   private flight: Promise<RefreshResult> | null = null;
   private retryAt = 0;
+  private rememberRetry?: (timestamp: number) => void;
   deadline = 0;
-  constructor(request: () => Promise<unknown>, seconds: number) {
+  constructor(
+    request: () => Promise<unknown>,
+    seconds: number,
+    retry?: { retryAt: number; remember: (timestamp: number) => void },
+  ) {
     this.request = request;
     this.seconds = seconds;
+    this.retryAt = retry?.retryAt ?? 0;
+    this.rememberRetry = retry?.remember;
   }
   start() {
     this.active = true;
@@ -33,6 +40,7 @@ export class RefreshScheduler {
   deferUntil(timestamp: number) {
     if (!Number.isFinite(timestamp)) return;
     this.retryAt = Math.max(this.retryAt, timestamp);
+    this.rememberRetry?.(this.retryAt);
     this.deadline = Math.max(this.deadline, this.retryAt);
     this.schedule(true);
   }
@@ -73,10 +81,8 @@ export class RefreshScheduler {
           return { ok: true };
         },
         (error: unknown) => {
-          if (error instanceof ApiClientError && error.retryAt) {
-            const retryAt = Date.parse(error.retryAt);
-            if (Number.isFinite(retryAt)) this.retryAt = Math.max(this.retryAt, retryAt);
-          }
+          if (error instanceof ApiClientError && error.retryAt)
+            this.deferUntil(Date.parse(error.retryAt));
           return { ok: false, error };
         },
       )
