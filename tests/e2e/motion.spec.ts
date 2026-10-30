@@ -44,19 +44,38 @@ for (const mode of ['desktop', 'mobile', 'reduced motion'] as const) {
   });
 }
 
-test('scroll chrome follows direction and keeps back-to-top at rest', async ({ page }) => {
-  await page.goto('/?demoCount=50');
-  await expect(page.locator('.monitor')).toHaveCount(50);
-  await page.mouse.wheel(0, 800);
-  await expect(page.locator('.site-nav')).toHaveAttribute('data-hidden', 'true');
-  await page.mouse.wheel(0, -180);
-  const top = page.getByRole('button', { name: 'Back to top' });
-  await expect(top).toBeVisible();
-  await page.waitForTimeout(500);
-  await expect(top).toBeVisible();
-  await top.click();
-  await expect(top).toBeHidden();
-});
+for (const mode of ['mouse', 'touch', 'keyboard', 'reduced motion'] as const) {
+  test.describe(`back-to-top (${mode})`, () => {
+    test.use({
+      ...(mode === 'touch'
+        ? { hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } }
+        : {}),
+      reducedMotion: mode === 'reduced motion' ? 'reduce' : 'no-preference',
+    });
+    test('stays available at rest and returns the page to the top', async ({ page }) => {
+      await page.goto('/?demoCount=50');
+      await expect(page.locator('.monitor')).toHaveCount(50);
+      await page.mouse.wheel(0, 800);
+      const nav = page.locator('.site-nav');
+      await expect(nav).toHaveAttribute('data-hidden', 'true');
+      await page.mouse.wheel(0, -180);
+      const top = page.getByRole('button', { name: 'Back to top' });
+      await expect(top).toBeVisible();
+      await page.waitForTimeout(500);
+      await expect(top).toBeVisible();
+      expect(await page.evaluate(() => scrollY)).toBeGreaterThan(100);
+      if (mode === 'touch') await top.tap();
+      else if (mode === 'keyboard') {
+        await top.focus();
+        await page.keyboard.press('Enter');
+      } else await top.click();
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+      await expect(top).toBeHidden();
+      await expect(nav).toHaveAttribute('data-hidden', 'false');
+      await expect(page.locator('#main')).toBeFocused();
+    });
+  });
+}
 test('latest toast replaces old messages and stays clear of back-to-top on a short screen', async ({
   page,
 }) => {

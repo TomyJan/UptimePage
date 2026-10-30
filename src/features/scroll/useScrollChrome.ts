@@ -27,10 +27,7 @@ export function useScrollChrome() {
       if (y <= 1) {
         paint(0);
         setTopVisible(false);
-        if (returning.current) {
-          returning.current = false;
-          document.getElementById('main')?.focus({ preventScroll: true });
-        }
+        returning.current = false;
         return;
       }
       // Scroll distance drives the position; stopping must not snap to either end.
@@ -61,6 +58,8 @@ export function useScrollChrome() {
   }, []);
   function toTop() {
     returning.current = true;
+    // Hiding an inert, focused trigger can cancel the browser's smooth scroll.
+    document.getElementById('main')?.focus({ preventScroll: true });
     setTopVisible(false);
     scrollTo({
       top: 0,
