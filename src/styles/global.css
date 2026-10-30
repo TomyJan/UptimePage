@@ -2260,7 +2260,7 @@ body {
 .back-top {
   position: fixed;
   right: max(24px, env(safe-area-inset-right));
-  bottom: max(24px, env(safe-area-inset-bottom));
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + var(--privacy-notice-offset, 0px));
   z-index: 100;
   width: 44px;
   height: 44px;
@@ -2312,7 +2312,7 @@ body {
 @media (max-width: 600px) {
   .back-top {
     right: max(12px, env(safe-area-inset-right));
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + var(--privacy-notice-offset, 0px));
   }
 }
 
@@ -2864,8 +2864,9 @@ button.nav-links-mobile {
 }
 
 .toast-viewport {
+  --toast-lift: var(--toast-requested-lift, 0px);
   position: fixed;
-  inset: 0;
+  inset: 0 0 calc(var(--privacy-notice-offset, 0px) + var(--ce-bottom, 0px));
   z-index: 90;
   pointer-events: none;
   overflow: visible;

@@ -18,6 +18,9 @@ import { usePreferences } from '../features/preferences/store.ts';
 import { localize } from '../features/preferences/locale.ts';
 import { Footer } from '../components/Footer.tsx';
 import { ResourceBoundary, ResourceNotice } from './ResourceRecovery.tsx';
+import { PrivacyPage } from '../features/privacy/PrivacyPage.tsx';
+import { CookieNotice } from '../features/privacy/CookieNotice.tsx';
+import '../features/privacy/privacy.css';
 export function Unavailable() {
   const t = useCopy();
   return (
@@ -85,6 +88,7 @@ export function App({
         <ResourceBoundary editorUnavailable={editorUnavailable}>
           <Routes>
             <Route path="/" element={<StatusPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route
               path="/services/:groupId/:monitorId"
               element={
@@ -104,6 +108,7 @@ export function App({
           commitUrl={publicConfig.build.commitUrl}
         />
       </footer>
+      <CookieNotice />
       <BackToTop visible={chrome.topVisible} onClick={chrome.toTop} />
       <ToastViewport topVisible={chrome.topVisible} />
       {children}

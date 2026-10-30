@@ -69,8 +69,11 @@ export function ToastViewport({ topVisible }: { topVisible: boolean }) {
   }, [items]);
   useLayoutEffect(() => {
     function measure() {
-      const bottom = (innerWidth <= 600 ? 12 : 24) + (topVisible ? 56 : 0),
-        available = innerHeight - bottom - 88;
+      const lift = host.current
+          ? parseFloat(getComputedStyle(host.current).getPropertyValue('--toast-lift')) || 0
+          : 0,
+        bottom = (innerWidth <= 600 ? 12 : 24) + lift,
+        available = (host.current?.getBoundingClientRect().height ?? innerHeight) - bottom - 88;
       let used = 0,
         count = 0,
         latestHeight = 64;
@@ -98,6 +101,7 @@ export function ToastViewport({ topVisible }: { topVisible: boolean }) {
       );
     }
     const observer = new ResizeObserver(measure);
+    if (host.current) observer.observe(host.current);
     host.current?.querySelectorAll('.toast-card').forEach((el) => observer.observe(el));
     window.addEventListener('resize', measure);
     measure();
@@ -143,7 +147,7 @@ export function ToastViewport({ topVisible }: { topVisible: boolean }) {
       className="toast-viewport"
       role="region"
       aria-label={t('notifications')}
-      style={{ '--toast-lift': topVisible ? '56px' : '0px' } as React.CSSProperties}
+      style={{ '--toast-requested-lift': topVisible ? '56px' : '0px' } as React.CSSProperties}
     >
       <div className="sr-only" role="status">
         {items.at(-1)?.message}

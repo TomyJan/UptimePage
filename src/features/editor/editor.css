@@ -1,3 +1,10 @@
+@media (max-height: 480px) {
+  /* The notice and a usable editor cannot share a very short viewport. */
+  body[data-config-editor='on']:has(.privacy-notice) .ce-panel {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
 body[data-config-editor='on'] {
   --ce-top: 36px;
   --ce-bottom: 30px;
@@ -15,7 +22,7 @@ body[data-config-editor='on'] .data-tooltip {
   z-index: 130;
 }
 body[data-config-editor='on'] .back-top {
-  bottom: calc(var(--ce-bottom) + 18px);
+  bottom: calc(var(--ce-bottom) + 18px + var(--privacy-notice-offset, 0px));
   right: calc(var(--ce-width) + 40px);
 }
 .ce-workspace {
@@ -95,10 +102,10 @@ body[data-config-editor='on'] .back-top {
 .ce-panel {
   position: fixed;
   right: 20px;
-  bottom: calc(var(--ce-bottom) + 18px);
+  bottom: calc(var(--ce-bottom) + 18px + var(--privacy-notice-offset, 0px));
   width: var(--ce-width);
   max-width: calc(100vw - 24px);
-  height: var(--ce-height);
+  height: min(var(--ce-height), calc(100dvh - 116px - var(--privacy-notice-offset, 0px)));
   border: 1px solid var(--line);
   border-radius: 18px;
   background: var(--surface);
@@ -795,7 +802,7 @@ body[data-config-editor='on'] .back-top {
   }
   .ce-panel {
     right: 10px;
-    bottom: calc(var(--ce-bottom) + 11px);
+    bottom: calc(var(--ce-bottom) + 11px + var(--privacy-notice-offset, 0px));
   }
   .ce-top,
   .ce-bottom {

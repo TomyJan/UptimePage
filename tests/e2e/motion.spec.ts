@@ -62,6 +62,8 @@ test('latest toast replaces old messages and stays clear of back-to-top on a sho
 }) => {
   await page.setViewportSize({ width: 568, height: 320 });
   await page.goto('/?demoCount=30');
+  await page.getByRole('button', { name: 'Got it' }).click();
+  await expect(page.locator('.privacy-notice')).toHaveCount(0);
   await expect(page.locator('.monitor')).toHaveCount(30);
   await page.mouse.wheel(0, 700);
   await page.mouse.wheel(0, -150);

@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { TransitionLink } from './TransitionLink.tsx';
+import { usePrivacyCopy } from '../features/privacy/copy.ts';
 
 const linkPattern = /\[([^\]]+)\]\((https:\/\/[^\s)]+)\)/g;
 
@@ -28,10 +30,12 @@ export function Footer({
   commit: string;
   commitUrl: string;
 }) {
+  const copy = usePrivacyCopy();
   return (
     <>
-      <span className="footer-default">
-        Powered by{' '}
+      <nav className="footer-default" aria-label={copy.navigation}>
+        <TransitionLink to="/privacy">{copy.title}</TransitionLink>{' '}
+        <span aria-hidden="true">|</span> Powered by{' '}
         <a href="https://github.com/TomyJan/UptimePage" target="_blank" rel="noreferrer">
           UptimePage
         </a>{' '}
@@ -42,7 +46,7 @@ export function Footer({
         <a href="https://vov.moe" target="_blank" rel="noreferrer">
           TomyJan
         </a>
-      </span>
+      </nav>
       {value ? <span className="footer-custom">{renderFooter(value)}</span> : null}
     </>
   );
