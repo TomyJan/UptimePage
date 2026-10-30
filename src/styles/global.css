@@ -810,13 +810,15 @@ input {
   gap: 16px;
   width: 100%;
   text-align: left;
+  border: 2px solid transparent;
   border-radius: 9px;
-  padding: 9px 10px;
+  padding: 7px 8px;
+  background-clip: padding-box;
   font-size: 12px;
   color: var(--ink);
   min-height: 38px;
   transition:
-    background 100ms,
+    background-color 100ms,
     color 100ms;
 }
 .menu-option .option-text {
@@ -829,16 +831,16 @@ input {
   color: var(--muted);
 }
 .menu-option[aria-checked='true'] {
-  background: var(--accent-bg);
+  background-color: var(--accent-bg);
   color: var(--accent);
 }
 .menu-option:hover,
 .menu-option:focus-visible {
-  background: var(--hover);
+  background-color: var(--hover);
   outline: none;
 }
 .menu-option[aria-checked='true']:hover {
-  background: var(--accent-bg);
+  background-color: var(--accent-bg);
 }
 .menu-option .check {
   color: var(--accent);
@@ -1908,7 +1910,7 @@ body,
 }
 .menu-option {
   transition:
-    background 160ms ease,
+    background-color 160ms ease,
     color 160ms ease;
 }
 .page-enter,
@@ -2338,10 +2340,10 @@ body {
   cursor: pointer;
 }
 .menu-option[data-highlighted] {
-  background: var(--hover);
+  background-color: var(--hover);
 }
 .menu-option[data-state='checked'] {
-  background: var(--accent-bg);
+  background-color: var(--accent-bg);
   color: var(--accent);
 }
 @keyframes menu-in {
