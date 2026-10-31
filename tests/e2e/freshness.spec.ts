@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { setTimeout as delay } from 'node:timers/promises';
 import { detailFixture, groupFixture } from '../../src/demo/fixtures.ts';
 
 test.use({ baseURL: 'http://127.0.0.1:4173' });
@@ -9,31 +10,34 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('manual-only snapshots retain observed state and timestamp until refreshed', async ({
-  page,
-}) => {
-  let calls = 0;
-  await page.route('**/api/v1/groups/core', (route) => {
-    const snapshot = groupFixture('core', 1);
-    if (++calls > 1) snapshot.fetchedAt = '2026-10-21T12:05:00Z';
-    return route.fulfill({ json: snapshot });
+for (const initialDelay of [0, 1500]) {
+  test(`manual-only snapshots retain observed state and timestamp until refreshed (${initialDelay}ms initial response)`, async ({
+    page,
+  }) => {
+    let calls = 0;
+    await page.route('**/api/v1/groups/core', async (route) => {
+      const snapshot = groupFixture('core', 1);
+      if (++calls > 1) snapshot.fetchedAt = '2026-10-21T12:05:00Z';
+      else await delay(initialDelay);
+      return route.fulfill({ json: snapshot });
+    });
+    await page.goto('/');
+    await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+    const timestamp = await page.locator('.refresh-main time').textContent();
+    await page.clock.fastForward(298999);
+    await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+    await page.clock.fastForward(1);
+    await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+    await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toHaveCount(0);
+    await expect(page.locator('.refresh-main time')).toHaveText(timestamp!);
+    expect(calls).toBe(1);
+    await page.clock.resume();
+    await page.getByRole('button', { name: 'Refresh now', exact: true }).click();
+    await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
+    expect(calls).toBe(2);
   });
-  await page.goto('/');
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
-  await page.clock.pauseAt(new Date('2026-10-21T12:00:01Z'));
-  const timestamp = await page.locator('.refresh-main time').textContent();
-  await page.clock.fastForward(298999);
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
-  await page.clock.fastForward(1);
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
-  await expect(page.getByText('Data is outdated. Current status is unconfirmed.')).toHaveCount(0);
-  await expect(page.locator('.refresh-main time')).toHaveText(timestamp!);
-  expect(calls).toBe(1);
-  await page.clock.resume();
-  await page.getByRole('button', { name: 'Refresh now', exact: true }).click();
-  await expect(page.locator('.monitor .state.operational')).toHaveCount(1);
-  expect(calls).toBe(2);
-});
+}
 
 test('cached groups and old details retain their last observation without repeated warnings', async ({
   page,
