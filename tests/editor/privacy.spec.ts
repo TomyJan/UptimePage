@@ -13,8 +13,7 @@ test('privacy navigation preserves editing and denied storage acknowledgment sur
   await page.goto('/?configeditor=on');
   const notice = page.getByRole('region', { name: 'Cookie & privacy' });
   await notice.getByRole('link', { name: 'Privacy policy' }).click();
-  await expect(page).toHaveURL(/configeditor=on$/);
-  expect(new URL(page.url()).pathname).toBe('/privacy');
+  await expect(page).toHaveURL(/\/privacy\?configeditor=on$/);
   await expect(page.getByRole('heading', { name: 'Privacy policy', level: 1 })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Configuration editor' })).toBeVisible();
   await notice.getByRole('button', { name: 'Got it' }).click();
