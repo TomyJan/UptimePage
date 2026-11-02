@@ -1,5 +1,6 @@
 import { rangeMilliseconds } from '../../shared/ranges.ts';
-import { useRefreshFeedback } from '../refresh/useRefreshFeedback.ts';
+import { useSnapshotRefresh } from '../refresh/useSnapshotRefresh.ts';
+import { LoadNotice } from '../refresh/LoadNotice.tsx';
 import { errorMessage } from '../refresh/feedback.ts';
 import { TransitionLink } from '../../components/TransitionLink.tsx';
 import { useEffect, useState } from 'react';
@@ -61,28 +62,8 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
   const denied = q.error instanceof ApiClientError && q.error.code === 'not-found';
   const data = q.data ?? known;
 
-  const refresh = useRefreshFeedback(async () => {
-    const result = await q.refetch();
-    if (result.error) throw result.error;
-    const data = result.data;
-    if (data && (data.diagnostic || data.monitor.freshness !== 'fresh'))
-      throw new ApiClientError(
-        data.diagnostic?.status === 429 ? 'rate-limited' : 'unavailable',
-        data.retryAt ?? null,
-        data.diagnostic,
-      );
-  }, `${groupId}:${monitorId}:${range}`);
-  const refreshControl = (
-    <RefreshControl
-      fetchedAt={
-        data && !data.diagnostic && data.monitor.freshness === 'fresh' ? data.fetchedAt : null
-      }
-      identity={`${groupId}:${monitorId}:${range}`}
-      error={q.error}
-      retryAt={data?.retryAt}
-      refresh={refresh}
-    />
-  );
+  const refresh = useSnapshotRefresh(q, `${groupId}:${monitorId}:${range}`, data ?? undefined);
+  const refreshControl = <RefreshControl {...refresh} />;
   if (!publicConfig.groups.some((g) => g.id === groupId) || denied)
     return (
       <>
@@ -111,7 +92,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
           <div className="empty" role="status">
             <p>{t('loadError')}</p>
             <p>{errorMessage(q.error, t)}</p>
-            <button className="retry" onClick={() => void refresh().catch(() => {})}>
+            <button className="retry" disabled={refresh.busy} onClick={() => void refresh.run()}>
               {t('retry')}
             </button>
           </div>
@@ -125,6 +106,7 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
           rangeLoading={rangeLoading}
           rangeError={rangeError}
           refreshing={q.isFetching}
+          notice={!rangeError ? <LoadNotice state={refresh} /> : undefined}
           heading={
             d ? (
               <div className="detail-title">
@@ -176,7 +158,11 @@ function MonitorContent({ groupId, monitorId }: { groupId: string; monitorId: st
               <div className="empty" role="status">
                 <p>{t('loadError')}</p>
                 <p>{errorMessage(q.error, t)}</p>
-                <button className="retry" onClick={() => void refresh().catch(() => {})}>
+                <button
+                  className="retry"
+                  disabled={refresh.busy}
+                  onClick={() => void refresh.run()}
+                >
                   {t('retry')}
                 </button>
               </div>

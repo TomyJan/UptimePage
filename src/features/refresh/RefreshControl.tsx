@@ -2,34 +2,16 @@ import { ChevronDown, RefreshCw } from 'lucide-react';
 import { Dropdown } from '../../components/Dropdown.tsx';
 import { useCopy } from '../preferences/copy.ts';
 import { setPreferences, usePreferences, type Preferences } from '../preferences/store.ts';
-import { useRefresh } from './useRefresh.ts';
-import { ApiClientError } from '../../data/client.ts';
+import type { SnapshotRefresh } from './useSnapshotRefresh.ts';
 export function RefreshControl({
   fetchedAt,
-  refresh,
-  identity,
-  error,
-  retryAt,
-}: {
-  fetchedAt: string | null;
-  refresh: () => Promise<unknown>;
-  identity: string;
-  error?: unknown;
-  retryAt?: string | null;
-}) {
+  busy,
+  remaining,
+  seconds,
+  run,
+}: Pick<SnapshotRefresh, 'fetchedAt' | 'busy' | 'remaining' | 'seconds' | 'run'>) {
   const t = useCopy(),
-    { preferences, timeZone, locale } = usePreferences(),
-    { busy, remaining, seconds, run } = useRefresh(
-      refresh,
-      identity,
-      [retryAt, error instanceof ApiClientError ? error.retryAt : null]
-        .filter(
-          (value): value is string =>
-            typeof value === 'string' && Number.isFinite(Date.parse(value)),
-        )
-        .sort((a, b) => Date.parse(a) - Date.parse(b))
-        .at(-1) ?? null,
-    );
+    { preferences, timeZone, locale } = usePreferences();
   const time = fetchedAt
     ? new Intl.DateTimeFormat(locale, {
         timeZone,

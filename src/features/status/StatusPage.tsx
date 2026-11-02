@@ -1,11 +1,12 @@
 import { transition } from '../../app/transitions.ts';
-import { useRefreshFeedback } from '../refresh/useRefreshFeedback.ts';
+import { useSnapshotRefresh } from '../refresh/useSnapshotRefresh.ts';
+import { LoadNotice } from '../refresh/LoadNotice.tsx';
+import { SnapshotLoadError } from '../../data/snapshot.ts';
 import { errorMessage } from '../refresh/feedback.ts';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Search } from 'lucide-react';
 import { AnimatedHeight } from '../../components/AnimatedHeight.tsx';
-import { ApiClientError } from '../../data/client.ts';
 import { useGroupCounts, useGroupQuery } from '../../data/hooks.ts';
 
 import { usePublicConfig } from '../../data/config.ts';
@@ -36,37 +37,13 @@ export function StatusPage() {
       },
       { replace: true },
     );
-  const refresh = useRefreshFeedback(async () => {
-    const result = await q.refetch();
-    if (result.error) throw result.error;
-    const data = result.data;
-    if (data && data.freshness !== 'fresh') {
-      const error = data.subgroupErrors[0];
-      throw new ApiClientError(
-        error?.code ?? 'unavailable',
-        data.subgroupErrors
-          .flatMap((e) => (e.retryAt ? [e.retryAt] : []))
-          .sort()
-          .at(-1) ?? null,
-        error?.diagnostic,
-      );
-    }
-  }, id);
+  const refresh = useSnapshotRefresh(q, id);
   const monitors = snapshot ? selectMonitors(snapshot, sub, search, pinned) : [];
   return (
     <>
       <section className="intro">
         <h1>{t('title')}</h1>
-        <RefreshControl
-          fetchedAt={q.data?.freshness === 'fresh' ? q.data.fetchedAt : null}
-          identity={id}
-          error={q.error}
-          retryAt={snapshot?.subgroupErrors
-            .flatMap((e) => (e.code === 'rate-limited' && e.retryAt ? [e.retryAt] : []))
-            .sort()
-            .at(-1)}
-          refresh={refresh}
-        />
+        <RefreshControl {...refresh} />
       </section>
       <GroupTabs
         items={publicConfig.groups}
@@ -86,6 +63,7 @@ export function StatusPage() {
               pinned={pinned}
               onPin={() => transition('monitor-list', () => setPinned((v) => !v))}
             />
+            <LoadNotice state={refresh} group={group} snapshot={snapshot} />
             <div className="sub-row">
               <GroupTabs
                 sub
@@ -124,13 +102,16 @@ export function StatusPage() {
               searching={Boolean(search.trim())}
               loading={!snapshot}
               refreshing={q.isFetching}
+              failedMonitorIds={
+                refresh.error instanceof SnapshotLoadError ? refresh.error.monitorIds : []
+              }
             />
           </>
         ) : (
           <div className="empty">
             <p>{t('loadError')}</p>
             <p>{errorMessage(q.error, t)}</p>
-            <button className="retry" onClick={() => void refresh().catch(() => {})}>
+            <button className="retry" disabled={refresh.busy} onClick={() => void refresh.run()}>
               {t('retry')}
             </button>
           </div>

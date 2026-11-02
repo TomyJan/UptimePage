@@ -2,7 +2,8 @@ import { AnimatedHeight } from './AnimatedHeight.tsx';
 import { HistoryLoading, Skeleton } from './Loading.tsx';
 import { TransitionLink } from './TransitionLink.tsx';
 import { useLocation } from 'react-router';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CircleAlert } from 'lucide-react';
+import { DataTooltip } from './DataTooltip.tsx';
 import type { MonitorSummary } from '../shared/contracts.ts';
 import { Logo } from './Logo.tsx';
 import { MonitorLink } from './MonitorLink.tsx';
@@ -18,12 +19,14 @@ export function MonitorCard({
   refreshing = false,
   initialHeight,
   subgroup = 'all',
+  failed = false,
 }: {
   monitor?: MonitorSummary;
   until: string;
   refreshing?: boolean;
   initialHeight?: number;
   subgroup?: string;
+  failed?: boolean;
 }) {
   const { locale } = usePreferences(),
     t = useCopy(),
@@ -74,6 +77,17 @@ export function MonitorCard({
                       {name}
                     </TransitionLink>
                     <MonitorLink monitor={m} name={name} subgroup={subgroup} />
+                    {(failed || m.freshness === 'unavailable') && (
+                      <DataTooltip content={t('loadError')}>
+                        <button
+                          type="button"
+                          className="monitor-load-error"
+                          aria-label={t('loadError')}
+                        >
+                          <CircleAlert size={14} aria-hidden="true" />
+                        </button>
+                      </DataTooltip>
+                    )}
                   </div>
                   {m.description && (
                     <div className="monitor-description">{localize(m.description, locale)}</div>

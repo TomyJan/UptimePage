@@ -31,7 +31,6 @@ export function groupFixture(groupId: string, count = 10, now = demoNow): GroupS
   ];
   const monitors: MonitorSummary[] = Array.from({ length: count }, (_, i) => {
     const state = i === 1 ? 'down' : i === 6 ? 'maintenance' : i === 9 ? 'paused' : 'operational';
-    const freshness = i === 4 ? 'stale' : 'fresh';
     return {
       id: `m${i + 1}`,
       groupId,
@@ -43,7 +42,7 @@ export function groupFixture(groupId: string, count = 10, now = demoNow): GroupS
       logo: null,
       description: null,
       state,
-      freshness,
+      freshness: 'fresh',
       observedAt: i === 9 ? null : iso(now - (i === 4 ? 720000 : 0)),
       responseMs: i === 1 || i === 9 ? null : i === 2 ? 0 : 100 + i * 17,
       uptime24h: {

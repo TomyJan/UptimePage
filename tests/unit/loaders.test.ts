@@ -24,6 +24,55 @@ it('validates and caches preview snapshots against the supplied configuration ve
   );
   expect(result.configVersion).toBe('preview-version');
 });
+
+it('accepts newer detail observations when optional fields or historical samples are absent', async () => {
+  const cache = new QueryClient();
+  const key = monitorKey(publicConfig.configVersion, 'core', 'm1', '24h');
+  cache.setQueryData(key, detailFixture('core', 'm1', '24h'));
+  const next = detailFixture('core', 'm1', '24h', Date.parse('2026-10-21T12:01:00Z'))!;
+  next.capabilities = {
+    certificate: 'unavailable',
+    response: 'unavailable',
+    history: 'unavailable',
+    events: 'available',
+  };
+  next.certificateExpiresAt = null;
+  next.monitor.history = [];
+  next.response = [];
+  next.monitor.state = 'down';
+  const client = { getMonitor: async () => next } as unknown as ApiClient;
+  const result = await cache.fetchQuery({
+    queryKey: key,
+    queryFn: ({ signal }) => loadMonitor(cache, client, 'core', 'm1', '24h', signal),
+  });
+  expect(result.monitor.state).toBe('down');
+  expect(result.fetchedAt).toBe('2026-10-21T12:01:00.000Z');
+  cache.clear();
+});
+
+it('retains the failure scope when a member fails inside an otherwise fresh group response', async () => {
+  const cache = new QueryClient();
+  const key = groupKey(publicConfig.configVersion, 'core');
+  const initial = groupFixture('core', 2);
+  cache.setQueryData(key, initial);
+  const next = groupFixture('core', 2, Date.parse('2026-10-21T12:01:00Z'));
+  next.monitors[0].freshness = 'unavailable';
+  next.subgroupErrors = [{ subgroupId: 'web', code: 'unavailable' }];
+  await expect(
+    loadGroup(
+      cache,
+      { getGroup: async () => next } as unknown as ApiClient,
+      'core',
+      new AbortController().signal,
+    ),
+  ).rejects.toMatchObject({
+    code: 'unavailable',
+    subgroupIds: ['web'],
+    monitorIds: ['m1'],
+  });
+  expect(cache.getQueryData(key)).toEqual(initial);
+  cache.clear();
+});
 import type { ApiClient, GroupSnapshot } from '../../src/shared/contracts.ts';
 it('updates an incomplete snapshot with newer partial states and recovered members', async () => {
   const cache = new QueryClient();

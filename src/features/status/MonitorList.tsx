@@ -9,6 +9,7 @@ export function MonitorList({
   loading = false,
   refreshing = false,
   subgroup = 'all',
+  failedMonitorIds = [],
 }: {
   monitors: MonitorSummary[];
   until: string;
@@ -16,6 +17,7 @@ export function MonitorList({
   loading?: boolean;
   refreshing?: boolean;
   subgroup?: string;
+  failedMonitorIds?: readonly string[];
 }) {
   const t = useCopy();
   const list = useRef<HTMLDivElement>(null);
@@ -71,6 +73,7 @@ export function MonitorList({
               subgroup={subgroup}
               until={until}
               refreshing={refreshing}
+              failed={failedMonitorIds.includes(m.id)}
               initialHeight={
                 wasLoading.current
                   ? (loadingHeights.current[i] ?? loadingHeights.current[0])

@@ -394,6 +394,72 @@ input {
 .sub-tabs button:hover:not(.active) {
   color: var(--ink);
 }
+.load-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid color-mix(in srgb, var(--warn) 22%, var(--line));
+  border-radius: 14px;
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.load-notice > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.load-notice-copy {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.load-notice-targets {
+  color: var(--ink);
+}
+.load-notice-copy > span:last-child {
+  flex-basis: 100%;
+}
+.load-notice-retry {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid color-mix(in srgb, var(--warn) 24%, transparent);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 11px;
+  transition:
+    background-color 160ms ease,
+    opacity 160ms ease;
+}
+.load-notice-retry:hover:not(:disabled) {
+  background: var(--warn-bg);
+}
+.load-notice-retry:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.monitor-load-error {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--warn-bg);
+  color: var(--warn);
+}
 .sub-count {
   font: 10px var(--mono);
   opacity: 0.8;

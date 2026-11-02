@@ -35,6 +35,7 @@ export function MonitorLayout({
   back,
   refreshControl,
   heading,
+  notice,
   detail,
   range = '24h',
   rangeLoading = false,
@@ -49,6 +50,7 @@ export function MonitorLayout({
   back?: ReactNode;
   refreshControl?: ReactNode;
   heading?: ReactNode;
+  notice?: ReactNode;
   detail?: MonitorDetail;
   range?: Range;
   rangeLoading?: boolean;
@@ -83,6 +85,7 @@ export function MonitorLayout({
           </section>
         </AnimatedHeight>
       </div>
+      {notice}
       <MetricGrid
         detail={detail}
         loadingRange={rangeLoading ? range : undefined}

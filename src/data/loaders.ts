@@ -3,6 +3,7 @@ import type { ApiClient, GroupSnapshot, Range } from '../shared/contracts.ts';
 import { ApiClientError } from './client.ts';
 import { publicConfig } from './config.ts';
 import { groupKey, monitorKey } from './queries.ts';
+import { snapshotError } from './snapshot.ts';
 export async function loadMonitor(
   cache: QueryClient,
   client: ApiClient,
@@ -21,15 +22,8 @@ export async function loadMonitor(
       data.configVersion !== version
     )
       throw new ApiClientError('invalid-response');
-    if (
-      (data.diagnostic || data.monitor.freshness !== 'fresh') &&
-      cache.getQueryData(monitorKey(version, group, id, range))
-    )
-      throw new ApiClientError(
-        data.diagnostic?.status === 429 ? 'rate-limited' : 'unavailable',
-        data.retryAt ?? null,
-        data.diagnostic,
-      );
+    const issue = snapshotError(data);
+    if (issue && cache.getQueryData(monitorKey(version, group, id, range))) throw issue;
     return data;
   } catch (error) {
     if (error instanceof ApiClientError && error.code === 'not-found') {
@@ -74,21 +68,12 @@ export async function loadGroup(
   // Apply confirmed removals even when another monitor's refresh failed.
   for (const revoked of data.revokedMonitorIds ?? []) revokeMonitor(cache, id, revoked, version);
   const previous = cache.getQueryData<GroupSnapshot>(groupKey(version, id));
+  const issue = snapshotError(data);
   if (
-    data.freshness !== 'fresh' &&
+    issue &&
     previous &&
-    ((previous.freshness === 'fresh' && !previous.subgroupErrors.length) ||
-      Date.parse(data.fetchedAt) < Date.parse(previous.fetchedAt))
-  ) {
-    const error = data.subgroupErrors[0];
-    throw new ApiClientError(
-      error?.code ?? 'unavailable',
-      data.subgroupErrors
-        .flatMap((e) => (e.retryAt ? [e.retryAt] : []))
-        .sort()
-        .at(-1) ?? null,
-      error?.diagnostic,
-    );
-  }
+    (!snapshotError(previous) || Date.parse(data.fetchedAt) < Date.parse(previous.fetchedAt))
+  )
+    throw issue;
   return data;
 }
