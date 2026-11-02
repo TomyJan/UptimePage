@@ -22,20 +22,30 @@ export function GroupTabs({
     id = useId();
   const root = useRef<HTMLDivElement>(null),
     indicator = useRef<HTMLSpanElement>(null);
+  const itemIds = JSON.stringify(items.map((item) => item.id));
   useLayoutEffect(() => {
     const active = root.current?.querySelector<HTMLButtonElement>('[aria-selected=true]');
     if (!active || !indicator.current) return;
+    const container = root.current!;
     const measure = () => {
       const inset = sub ? 0 : 12;
       indicator.current!.style.width = `${Math.max(0, active.offsetWidth - inset * 2)}px`;
       indicator.current!.style.transform = `translateX(${active.offsetLeft + inset}px)`;
+      const left = active.offsetLeft - 4;
+      const right = active.offsetLeft + active.offsetWidth + 4;
+      const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth';
+      if (left < container.scrollLeft) container.scrollTo({ left, behavior });
+      else if (right > container.scrollLeft + container.clientWidth)
+        container.scrollTo({ left: right - container.clientWidth, behavior });
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(root.current!);
-    observer.observe(active);
+    observer.observe(container);
+    container.querySelectorAll('[role=tab]').forEach((tab) => observer.observe(tab));
     return () => observer.disconnect();
-  }, [selected, locale, sub]);
+  }, [selected, locale, sub, itemIds]);
   return (
     <div
       ref={root}
@@ -52,7 +62,7 @@ export function GroupTabs({
         if (e.key === 'End') next = tabs.length - 1;
         if (next >= 0) {
           e.preventDefault();
-          tabs[next].focus();
+          tabs[next].focus({ preventScroll: true });
           tabs[next].click();
         }
       }}

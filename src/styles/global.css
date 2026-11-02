@@ -374,6 +374,7 @@ input {
 }
 .sub-tabs button {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 7px;
   border-radius: 9px;
