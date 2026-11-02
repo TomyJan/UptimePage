@@ -155,9 +155,12 @@ test('docking preserves the full-size window and can be restored with keyboard f
   await page.locator('.intro h1').click();
   await page.mouse.move(20, 150);
   await expect(panel).toHaveAttribute('data-docked', 'true');
+  const layoutWidth = await page.evaluate(
+    () => document.documentElement.getBoundingClientRect().width,
+  );
   await expect
     .poll(async () => Math.round((await panel.boundingBox())!.x))
-    .toBeGreaterThan(page.viewportSize()!.width - 50);
+    .toBeGreaterThan(layoutWidth - 50);
   const dock = await panel.boundingBox();
   expect(dock!.height).toBeCloseTo(size!.height, 0);
   expect(dock!.width).toBeCloseTo(size!.width, 0);
