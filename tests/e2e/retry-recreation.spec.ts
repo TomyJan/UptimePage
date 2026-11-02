@@ -225,9 +225,14 @@ for (const replacement of ['shorter', 'none', 'success']) {
       const remaining = Date.parse(retryAt) - (await page.evaluate(() => Date.now()));
       await page.clock.fastForward(remaining - 1);
       expect(requests).toBe(afterRecreation + 1);
-      await page.clock.fastForward(1);
+      await Promise.all([
+        page.waitForResponse('**/api/v1/groups/' + first.id),
+        page.clock.fastForward(1),
+      ]);
       await expect.poll(() => requests).toBe(afterRecreation + 2);
       // Once expired, the remembered deadline cannot prevent normal subsequent polling.
+      // The next interval starts after the response settles, not when the request is counted.
+      await expect(page.locator('.refresh-main')).toHaveAttribute('aria-busy', 'false');
       await page.clock.fastForward(action === 'interval' ? 60_000 : 30_000);
       await expect.poll(() => requests).toBe(afterRecreation + 3);
     });
