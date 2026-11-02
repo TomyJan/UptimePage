@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
 :root {
+  scrollbar-gutter: stable;
   color-scheme: light;
   --radius: 14px;
   --mono: var(--sans);
