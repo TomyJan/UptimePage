@@ -166,15 +166,16 @@ test('without the transition API navigation works and eviction moves focus to a 
 });
 
 // Touch must open a tooltip without the Radix click handler closing it again.
-test('touch history and uptime tooltips toggle and dismiss', async ({ browser }) => {
+test('touch history and uptime tooltips toggle and dismiss', async ({ browser, baseURL }) => {
   const context = await browser.newContext({
+    baseURL,
     hasTouch: true,
     isMobile: true,
     viewport: { width: 390, height: 844 },
     locale: 'en-US',
   });
   const page = await context.newPage();
-  await page.goto('http://127.0.0.1:5173/');
+  await page.goto('/');
   await expect(page.locator('.monitor')).toHaveCount(10);
   for (const target of [page.locator('.bars').first(), page.locator('.uptime').first()]) {
     await target.tap();
