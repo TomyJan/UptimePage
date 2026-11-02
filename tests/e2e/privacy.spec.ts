@@ -202,7 +202,12 @@ for (const theme of ['light', 'dark']) {
     expect(box!.x).toBeGreaterThanOrEqual(8);
     expect(box!.x + box!.width).toBeLessThanOrEqual(312);
     expect(box!.y + box!.height).toBeLessThanOrEqual(640);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+    const { scrollWidth, layoutWidth } = await page.evaluate(() => {
+      const root = document.documentElement;
+      return { scrollWidth: root.scrollWidth, layoutWidth: root.getBoundingClientRect().width };
+    });
+    // 预留的滚动条槽会缩小布局宽度，检查内容是否溢出实际可用区域。
+    expect(scrollWidth).toBeLessThanOrEqual(Math.ceil(layoutWidth));
     await notice.getByRole('link', { name: '隐私政策' }).click();
     await expect(page.getByRole('heading', { name: '隐私政策', level: 1 })).toBeVisible();
     await notice.getByRole('button', { name: '知道了' }).click();
