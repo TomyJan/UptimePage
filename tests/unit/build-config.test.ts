@@ -21,7 +21,7 @@ const config = (name: string) => ({
   ],
 });
 async function generate(path?: string, preload?: string) {
-  const env: NodeJS.ProcessEnv = { ...process.env, UPTIMEPAGE_COMMIT: 'aabbccd' };
+  const env: NodeJS.ProcessEnv = { ...process.env, UPTIMEPAGE_COMMIT: 'aabbccd' + '1'.repeat(33) };
   delete env.UPTIMEPAGE_CONFIG;
   if (path !== undefined) env.UPTIMEPAGE_CONFIG = path;
   await run(

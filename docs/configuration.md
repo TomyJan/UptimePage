@@ -52,7 +52,7 @@ GitHub 地址（`raw.githubusercontent.com`、`gist.githubusercontent.com` 或 `
 }
 ```
 
-以上是 `site` 的局部示例。页脚左侧固定为 `隐私政策 | Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；提交号优先使用 `UPTIMEPAGE_COMMIT`，否则从 Git 读取，均不可用时显示 `dev`。手动指定须为 7–64 位十六进制 hash，页面显示前 7 位。
+以上是 `site` 的局部示例。页脚左侧固定为 `隐私政策 | Powered by UptimePage 短hash | TomyJan` 及对应链接，不由 `footer` 覆盖；提交号优先使用 `UPTIMEPAGE_COMMIT`，否则从 Git 读取，均不可用时显示 `dev`。手动指定须为 40 位或 64 位十六进制完整 hash，页面显示前 7 位，链接保留完整 hash。
 
 自定义导航在桌面直接显示，手机端收进导航菜单；`newTab` 行为一致。
 

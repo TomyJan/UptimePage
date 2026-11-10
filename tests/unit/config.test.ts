@@ -64,13 +64,14 @@ describe('configuration boundary', () => {
     expect(result.serverConfig.groups[0].source.apiKeyEnv).toBe('PRIVATE_PEEK_KEY');
   });
   it('keeps build commit metadata in the public config for the fixed footer', () => {
+    const revision = 'aabbccd' + '1'.repeat(33);
     const result = splitConfig(parseConfig(fixture()), 'version', {
-      commit: 'aabbccd',
-      commitUrl: 'https://github.com/TomyJan/UptimePage/commit/aabbccd',
+      commit: revision.slice(0, 7),
+      commitUrl: `https://github.com/TomyJan/UptimePage/commit/${revision}`,
     });
     expect(result.publicConfig.build).toEqual({
-      commit: 'aabbccd',
-      commitUrl: 'https://github.com/TomyJan/UptimePage/commit/aabbccd',
+      commit: revision.slice(0, 7),
+      commitUrl: `https://github.com/TomyJan/UptimePage/commit/${revision}`,
     });
     expect(result.publicConfig.site.footer).toBe('');
   });
