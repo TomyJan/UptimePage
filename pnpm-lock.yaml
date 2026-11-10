@@ -58,8 +58,8 @@ importers:
         specifier: 3.9.10
         version: 3.9.10
       tailwindcss:
-        specifier: 4.3.4
-        version: 4.3.4
+        specifier: 4.3.5
+        version: 4.3.5
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -1101,9 +1101,6 @@ packages:
   std-env@4.3.0:
     resolution: {integrity: sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==}
 
-  tailwindcss@4.3.4:
-    resolution: {integrity: sha512-PCJZTFFdG+sL3gvnP1Do9o6GbkvH2q0p04xSs3f7cSvmAeK+sttG+/7ncK1fdRwKFfC7n+wDDJaOMBSefkI9ow==}
-
   tailwindcss@4.3.5:
     resolution: {integrity: sha512-FcQk9BuffmEHJP2G0XmB2SplU1aLTI7j07Kunk+U74Ny+XiWOtzXz9aujFZ/avntw1e2cOv/3PkgzflQ7gX2vQ==}
 
@@ -2037,8 +2034,6 @@ snapshots:
   source-map-js@1.2.2: {}
 
   std-env@4.3.0: {}
-
-  tailwindcss@4.3.4: {}
 
   tailwindcss@4.3.5: {}
 
