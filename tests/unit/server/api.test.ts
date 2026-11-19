@@ -36,6 +36,19 @@ const fetcher: typeof fetch = async () =>
     }),
   );
 
+it('serves a local health endpoint without contacting an upstream source', async () => {
+  const response = await handleApi(new Request('https://site.test/api/v1/health'), {
+    config,
+    environment: { KEY: 'secret' },
+    fetcher: async () => {
+      throw new Error('upstream should not be called');
+    },
+  });
+  expect(response.status).toBe(200);
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(await response.json()).toEqual({ status: 'ok' });
+});
+
 class MemoryCache implements ResponseCache {
   private readonly values = new Map<string, Response>();
   async match(request: Request) {

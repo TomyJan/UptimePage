@@ -179,6 +179,8 @@ function stale(snapshot: GroupSnapshot): GroupSnapshot {
 
 export async function handleApi(request: Request, runtime: ApiRuntime): Promise<Response> {
   try {
+    if (new URL(request.url).pathname === '/api/v1/health')
+      return request.method === 'GET' ? json({ status: 'ok' }) : errorResponse('not-found');
     if (new URL(request.url).pathname.startsWith('/api/v1/icons/'))
       return await handleIcon(request, runtime);
     return await handleRequest(request, runtime);
